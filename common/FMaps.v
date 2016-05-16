@@ -1,0 +1,104 @@
+
+(** * Some auxiliary lemmas for FMaps. *)
+
+(** These lemmas can be proven by facts in Coq.FSets.FMapFacts. *)
+
+From Coq Require Import FMaps OrderedType.
+From mathcomp Require Import ssreflect ssrbool.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Import Prenex Implicits.
+
+
+
+Module FMapLemmas (M : FMapInterface.S).
+
+  Module F := Facts(M).
+  Include F.
+
+  Section FMapLemmas.
+
+    Local Notation key := M.E.t.
+
+    Variable elt elt' : Type.
+
+    Lemma memP k (m : M.t elt) : reflect (M.In k m) (M.mem k m).
+    Proof.
+      case H: (M.mem k m).
+      - apply: ReflectT.
+        exact: (M.mem_2 H).
+      - apply: ReflectF.
+        move=> Hin; move: (M.mem_1 Hin).
+        rewrite H; discriminate.
+    Qed.
+
+    Lemma find_add_eq (m : M.t elt) (x y : key) (e : elt) :
+      M.E.eq x y -> M.find x (M.add y e m) = Some e.
+    Proof.
+      move=> Hxy.
+      apply: F.add_eq_o.
+      apply: M.E.eq_sym.
+      exact: Hxy.
+    Qed.
+
+    Lemma find_add_neq (m : M.t elt) (x y : key) (e : elt) :
+      ~(M.E.eq x y) -> M.find x (M.add y e m) = M.find x m.
+    Proof.
+      move=> Hne.
+      apply: F.add_neq_o.
+      move=> Heq; apply: Hne; apply: M.E.eq_sym.
+      exact: Heq.
+    Qed.
+
+    Lemma find_some_map (f : elt -> elt') (m : M.t elt) (x : key) (e : elt) :
+      M.find x m = Some e ->
+      M.find x (M.map f m) = Some (f e).
+    Proof.
+      move=> H.
+      rewrite F.map_o.
+      rewrite /option_map.
+      rewrite H.
+      reflexivity.
+    Qed.
+
+    Lemma find_none_map (f : elt -> elt') (m : M.t elt) (x : key) :
+      M.find x m = None ->
+      M.find x (M.map f m) = None.
+    Proof.
+      move=> H.
+      rewrite F.map_o.
+      rewrite /option_map.
+      rewrite H.
+      reflexivity.
+    Qed.
+
+    Lemma find_map_some (f : elt -> elt') (m : M.t elt) (x : key) (e : elt') :
+      M.find x (M.map f m) = Some e ->
+      exists a, e = f a /\ M.find x m = Some a.
+    Proof.
+      move=> H.
+      move: (M.find_2 H) => {H} H.
+      case: (F.map_mapsto_iff m x e f) => Hf _.
+      move: (Hf H) => {H Hf} [] => a [Hea Hxa].
+      exists a.
+      split.
+      - assumption.
+      - apply: M.find_1.
+        assumption.
+    Qed.
+
+    Lemma find_map_none (f : elt -> elt') (m : M.t elt) (x : key) :
+      M.find x (M.map f m) = None ->
+      M.find x m = None.
+    Proof.
+      rewrite F.map_o.
+      rewrite /option_map.
+      case: (M.find x m).
+      - discriminate.
+      - reflexivity.
+    Qed.
+
+  End FMapLemmas.
+
+End FMapLemmas.

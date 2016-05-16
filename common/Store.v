@@ -1,0 +1,356 @@
+
+(** * Stores of variable values *)
+
+From Coq Require Import Program Program.Tactics FMaps.
+From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
+From Common Require Import Types HList FMaps Nats Env Var.
+Import HEnv.
+
+Set Implicit Arguments.
+Unset Strict Implicit.
+Import Prenex Implicits.
+
+
+
+(** Stores as total maps from variables to values of a single type. *)
+
+Module Type TSTORE.
+
+  Section TStore.
+
+    Variable value : Type.
+
+    Parameter var : eqType.
+
+    Parameter t : Type -> Type.
+
+    Parameter acc : var -> t value -> value.
+
+    Parameter upd : var -> value -> t value -> t value.
+
+    Parameter acc_upd_eq :
+      forall x y v s,
+        x == y ->
+        acc x (upd y v s) = v.
+
+    Parameter acc_upd_neq :
+      forall x y v s,
+        x != y ->
+        acc x (upd y v s) = acc x s.
+
+    End TStore.
+
+End TSTORE.
+
+Module MakeTStore (X : EQTYPE) <: TSTORE.
+
+  Section TStore.
+
+    Variable value : Type.
+
+    Definition var := X.t.
+
+    Definition t : Type := var -> value.
+
+    Definition acc (x : var) (s : t) := s x.
+
+    Definition upd (x : var) (v : value) (s : t) :=
+      fun (y : var) => if y == x then v else acc y s.
+
+    Lemma acc_upd_eq x y v s :
+      x == y ->
+      acc x (upd y v s) = v.
+    Proof.
+      rewrite /acc /upd => Hxy.
+      rewrite Hxy.
+      reflexivity.
+    Qed.
+
+    Lemma acc_upd_neq x y v s :
+      x != y ->
+      acc x (upd y v s) = acc x s.
+    Proof.
+      rewrite {1}/acc /upd => Hxy.
+      rewrite (negPf Hxy).
+      reflexivity.
+    Qed.
+
+  End TStore.
+
+End MakeTStore.
+
+Module TStoreAdapter (X : EQTYPE) (V : Equalities.Typ).
+  Module S := MakeTStore X.
+  Definition value := V.t.
+  Definition var := S.var.
+  Definition t := S.t value.
+  Definition acc x (s : t) := S.acc x s.
+  Definition upd x v (s : t) := S.upd x v s.
+  Lemma acc_upd_eq :
+    forall x y v (s : t),
+      x == y ->
+      acc x (upd y v s) = v.
+  Proof.
+    move=> x y v s.
+    exact: S.acc_upd_eq.
+  Qed.
+  Lemma acc_upd_neq :
+    forall x y v (s : t),
+      x != y ->
+      acc x (upd y v s) = acc x s.
+  Proof.
+    move=> x y v s.
+    exact: S.acc_upd_neq.
+  Qed.
+End TStoreAdapter.
+
+
+
+(** Stores as partial maps from variables to values of a single type. *)
+
+Module Type PSTORE.
+
+  Section PStore.
+
+    Variable value : Type.
+
+    Parameter var : eqType.
+
+    Parameter t : Type -> Type.
+
+    Parameter empty : t value.
+
+    Parameter acc : var -> t value -> option value.
+
+    Parameter upd : var -> value -> t value -> t value.
+
+    Parameter acc_upd_eq :
+      forall x y v s,
+        x == y ->
+        acc x (upd y v s) = Some v.
+
+    Parameter acc_upd_neq :
+      forall x y v s,
+        x != y ->
+        acc x (upd y v s) = acc x s.
+
+    Parameter acc_empty :
+      forall x, acc x empty = None.
+
+  End PStore.
+
+End PSTORE.
+
+Module MakePStore (X : SsrOrderedType) <: PSTORE.
+
+  Module M := FMapList.Make(X).
+  Module L := FMapLemmas(M).
+
+  Section PStore.
+
+    Definition var : eqType := X.T.
+
+    Variable value : Type.
+
+    Definition t : Type := M.t value.
+
+    Definition empty : t := M.empty value.
+
+    Definition acc (x : var) (s : t) := M.find x s.
+
+    Definition upd (x : var) (v : value) (s : t) := M.add x v s.
+
+    Lemma acc_upd_eq x y v s :
+      x == y ->
+      acc x (upd y v s) = Some v.
+    Proof.
+      rewrite /acc /upd => Hxy.
+      rewrite (eqP Hxy) => {Hxy x}.
+      apply: L.find_add_eq.
+      reflexivity.
+    Qed.
+
+    Lemma acc_upd_neq x y v s :
+      x != y ->
+      acc x (upd y v s) = acc x s.
+    Proof.
+      rewrite /acc /upd => Hxy.
+      apply: L.find_add_neq.
+      exact: (negP Hxy).
+    Qed.
+
+    Lemma acc_empty :
+      forall x, acc x empty = None.
+    Proof.
+      exact: L.empty_o.
+    Qed.
+
+  End PStore.
+
+End MakePStore.
+
+Module PStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
+  Module S := MakePStore X.
+  Definition var := S.var.
+  Definition value := V.t.
+  Definition t := S.t value.
+  Definition empty := S.empty value.
+  Definition acc x (s : t) := S.acc x s.
+  Definition upd x v (s : t) := S.upd x v s.
+  Lemma acc_upd_eq :
+    forall x y v s,
+      x == y ->
+      acc x (upd y v s) = Some v.
+  Proof.
+    move=> x y v s.
+    exact: S.acc_upd_eq.
+  Qed.
+  Lemma acc_upd_neq :
+    forall x y v s,
+      x != y ->
+      acc x (upd y v s) = acc x s.
+  Proof.
+    move=> x y v s.
+    exact: S.acc_upd_neq.
+  Qed.
+    Lemma acc_empty :
+      forall x, acc x empty = None.
+    Proof.
+      exact: S.acc_empty.
+    Qed.
+End PStoreAdapter.
+
+Module VStore := MakePStore NatOrder.
+
+
+
+(** Stores with heterogeneous values. *)
+
+Module Type HSTORE.
+
+  Local Open Scope hlist_scope.
+
+  Parameter T : Set.
+
+  Parameter V : T -> Set.
+
+  Parameter t : HEnv.t T -> Type.
+
+  Parameter empty : forall E : HEnv.t T, t E.
+
+  Parameter upd :
+    forall (E : HEnv.t T) (ty : T),
+      pvar E ty -> V ty -> t E -> t E.
+
+  Parameter acc :
+    forall (E : HEnv.t T) (ty : T),
+      pvar E ty -> t E -> V ty.
+
+  Parameter bisim : forall (E : HEnv.t T), t E -> t E -> Prop.
+
+  Axiom acc_upd_heq :
+    forall (E : HEnv.t T) (tyx tyy : T) (x : pvar E tyx) (y : pvar E tyy)
+           (e : V tyy) (s : t E),
+      pvar_var x == pvar_var y ->
+      acc x (upd y e s) =v e.
+
+  Axiom acc_upd_eq :
+    forall (E : HEnv.t T) (ty : T) (x : pvar E ty) (y : pvar E ty)
+           (e : V ty) (s : t E),
+      pvar_var x == pvar_var y ->
+      acc x (upd y e s) = e.
+
+  Axiom acc_upd_neq :
+    forall (E : HEnv.t T) (tyx tyy : T) (x : pvar E tyx) (y : pvar E tyy)
+           (e : V tyy) (s : t E),
+      pvar_var x != pvar_var y ->
+      acc x (upd y e s) = acc x s.
+
+  Axiom bisim_refl : forall (E : HEnv.t T) (s : t E), bisim s s.
+
+  Axiom bisim_pvar_inv :
+    forall (E : HEnv.t T) (s1 s2 : t E) (ty : T) (x : pvar E ty),
+      bisim s1 s2 -> acc x s1 = acc x s2.
+
+End HSTORE.
+
+Module Type HETEROGENEOUS.
+  Parameter T : Set.
+  Parameter V : T -> Set.
+  Parameter default : forall (x : T), V x.
+End HETEROGENEOUS.
+
+Module MakeHStore (H : HETEROGENEOUS) <: HSTORE.
+
+  Local Open Scope hlist_scope.
+
+  Definition T : Set := H.T.
+
+  Definition V : T -> Set := H.V.
+
+  Definition t (E : HEnv.t T) : Type := hlist V (HEnv.vtypes E).
+
+  Program Fixpoint defaults (types : list T) : hlist V types :=
+    match types with
+    | nil => hnil V
+    | cons hd tl => Hcons (H.default hd) (defaults tl)
+    end.
+
+  Definition empty (E : HEnv.t T) : t E := defaults (HEnv.vtypes E).
+
+  Definition upd E ty (x : pvar E ty) (v : V ty) (st : t E) : t E :=
+    updlidx (pvar_lidx x) v st.
+
+  Definition acc E ty (x : pvar E ty) (st : t E) : V ty :=
+    acclidx (pvar_lidx x) st.
+
+  Definition bisim E (s1 s2 : t E) : Prop :=
+    forall ty (x : pvar E ty), acc x s1 = acc x s2.
+
+  Lemma acc_upd_heq E tyx tyy (x : pvar E tyx) (y : pvar E tyy)
+        (e : V tyy) (s : t E) :
+    pvar_var x == pvar_var y ->
+    (acc x (upd y e s) =v e).
+  Proof.
+    rewrite /acc /upd /= => Hxy.
+    rewrite acclidx_updlidx_heq.
+    - reflexivity.
+    - apply: pvar_lidx_heq.
+      assumption.
+  Qed.
+
+  Lemma acc_upd_eq E ty (x y : pvar E ty) (e : V ty) (s : t E) :
+    pvar_var x == pvar_var y ->
+    acc x (upd y e s) = e.
+  Proof.
+    move=> Hxy.
+    apply: value_eq_eq.
+    apply: acc_upd_heq.
+    assumption.
+  Qed.
+
+  Lemma acc_upd_neq E tyx tyy (x : pvar E tyx) (y : pvar E tyy)
+        (e : V tyy) (s : t E) :
+    pvar_var x != pvar_var y ->
+    acc x (upd y e s) = acc x s.
+  Proof.
+    rewrite /acc /upd /= => Hne.
+    rewrite acclidx_updlidx_hneq.
+    - reflexivity.
+    - apply: pvar_lidx_hneq.
+      assumption.
+  Qed.
+
+  Lemma bisim_refl E (s : t E) : bisim s s.
+  Proof.
+    move=> ty x; reflexivity.
+  Qed.
+
+  Lemma bisim_pvar_inv E (s1 s2 : t E) ty (x : pvar E ty) :
+    bisim s1 s2 -> acc x s1 = acc x s2.
+  Proof.
+    move=> Hs.
+    exact: Hs.
+  Qed.
+
+End MakeHStore.

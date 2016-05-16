@@ -1,0 +1,27 @@
+-R . Top
+-R common Common
+-R qhasm Qhasm
+-R sqhasm sQhasm
+-I .
+# Basic
+common/Notations.v
+common/Tactics.v
+common/Arch.v
+common/Types.v
+common/Lists.v
+common/FMaps.v
+common/FSets.v
+common/Nats.v
+common/ZRing.v
+common/HList.v
+common/Bits.v
+common/Var.v
+common/Env.v
+common/Store.v
+# Less restricted style
+qhasm/IProg.v
+qhasm/MiniQhasmPlusAMD64.v
+qhasm/IProgGenAMD64.v
+# Strict style
+sqhasm/IProg.v
+sqhasm/MiniQhasmPlusAMD64.v
