@@ -3,7 +3,7 @@
 
 From Coq Require Import Program Program.Tactics.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
-Require Import HList Var.
+Require Import HList Nats Var.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,7 +11,7 @@ Import Prenex Implicits.
 
 
 
-(** Simple environments. *)
+(** Environments for variables with the same type. *)
 
 Module SEnv.
 
@@ -60,6 +60,116 @@ End SEnv.
 
 
 (** Environments for variables with heterogeneous types. *)
+
+Module TEnv.
+
+  Section Env.
+
+    (* Variable types. *)
+    Variable T : Set.
+
+    Definition t : Type := VM.t T.
+
+    Definition empty : t := VM.empty T.
+
+    (* Check if a variable is defined in an environment. *)
+    Definition mem (v : var) (E : t) : bool := VM.mem v E.
+
+    Definition add (v : var) (ty : T) (E : t) : t := VM.add v ty E.
+
+    Inductive pvar (E : t) : Set :=
+    | PVar : forall (x : var) (ty : T), VM.find x E = Some ty -> pvar E.
+
+    Definition pvar_var (E : t) (x : pvar E) : var :=
+      match x with
+      | PVar v _ _ => v
+      end.
+
+    Definition pvar_ty (E : t) (x : pvar E) : T :=
+      match x with
+      | PVar _ ty _ => ty
+      end.
+
+    Definition new_var (E : t) : var :=
+      match VMLemmas.max_elt E with
+      | Some (v, _) => v + 1
+      | None => 0
+      end.
+
+    Lemma new_var_is_new :
+      forall (E : t), ~~ mem (new_var E) E.
+    Proof.
+      move=> E.
+      apply/negP => Hmem.
+      move: (VM.mem_2 Hmem) => {Hmem}.
+      rewrite /new_var.
+      move: (refl_equal (VMLemmas.max_elt E)).
+      move: {2}(VMLemmas.max_elt E) => x.
+      destruct x.
+      - destruct p as [x ty].
+        move=> Hmax; rewrite Hmax => Hin.
+        move: (VMLemmas.max_elt_Above Hmax) => Habove.
+        have: VM.In (x + 1) (VM.remove x E).
+        + case: Hin => ty1 Hmapsto.
+          exists ty1.
+          apply: (VM.remove_2 _ Hmapsto).
+          rewrite addn1 => {Hmax Habove Hmapsto ty ty1 E} Heq.
+          move: (ltnSn x).
+          rewrite {1}(eqP Heq).
+          rewrite ltnn.
+          discriminate.
+        + move=> Hin1.
+          move: (Habove _ Hin1) => Hlt.
+          move: (ltn_trans Hlt (ltnSn x)).
+          rewrite addn1 ltnn.
+          discriminate.
+      - move=> Hmax; rewrite Hmax => Hin.
+        move: (VMLemmas.max_elt_Empty Hmax) => Hempty.
+        case: Hin => ty Hmapsto.
+        move: (Hempty 0 ty).
+        apply; assumption.
+    Qed.
+
+    Definition to_senv (E : t) : SEnv.t :=
+      VM.fold (fun x ty env => SEnv.add x env) E SEnv.empty.
+
+    Lemma mem_to_senv E :
+      forall x, mem x E -> SEnv.mem x (to_senv E).
+    Proof.
+      rewrite /to_senv.
+      eapply VMLemmas.P.fold_rec.
+      - move=> env Hempty x Hmem.
+        apply: False_ind.
+        exact: (VMLemmas.empty_mem Hempty Hmem).
+      - move=> x ty env E1 E2 Hmapsto Hin Hadd Hind y Hmem.
+        case Hyx: (y == x).
+        + rewrite /SEnv.mem /SEnv.add VSLemmas.add_b.
+          rewrite (eqP Hyx).
+          rewrite /VSLemmas.eqb.
+          case: (VSLemmas.eq_dec x x).
+          * done.
+          * move=> Hx; apply: False_ind; apply: Hx.
+            exact: eqxx.
+        + rewrite /SEnv.mem /SEnv.add VSLemmas.add_neq_b.
+          * apply: Hind.
+            move: (Hadd y).
+            move/negP: Hyx => Hyx.
+            rewrite (VMLemmas.find_add_neq _ _ Hyx) => Hfind.
+            rewrite /mem -(VMLemmas.find_eq_mem_eq Hfind).
+            exact: Hmem.
+          * move=> Hxy.
+            move/eqP: Hyx; apply.
+            rewrite (eqP Hxy); reflexivity.
+    Qed.
+
+  End Env.
+
+End TEnv.
+
+
+
+(** Environments for variables with heterogeneous types. Indices for the access
+ of values in a heterogeneous list (HList) are defined in the environments. *)
 
 Module HEnv.
 

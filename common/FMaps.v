@@ -15,7 +15,9 @@ Import Prenex Implicits.
 Module FMapLemmas (M : FMapInterface.S).
 
   Module F := Facts(M).
+  Module OP := OrdProperties(M).
   Include F.
+  Include OP.
 
   Section FMapLemmas.
 
@@ -97,6 +99,24 @@ Module FMapLemmas (M : FMapInterface.S).
       case: (M.find x m).
       - discriminate.
       - reflexivity.
+    Qed.
+
+    Lemma empty_mem (m : M.t elt) (x : key) :
+      M.Empty m -> M.mem x m -> False.
+    Proof.
+      move=> Hempty Hmem.
+      move/memP: Hmem => [e Hmapsto].
+      move: (Hempty x e); apply.
+      exact: Hmapsto.
+    Qed.
+
+    Lemma find_eq_mem_eq (m1 m2 : M.t elt) (x1 x2 : key) :
+      M.find x1 m1 = M.find x2 m2 -> M.mem x1 m1 = M.mem x2 m2.
+    Proof.
+      case Hfind1: (M.find x1 m1);
+      move=> Hfind2;
+      rewrite mem_find_b mem_find_b Hfind1 -Hfind2;
+      reflexivity.
     Qed.
 
   End FMapLemmas.

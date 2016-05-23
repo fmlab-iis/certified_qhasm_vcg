@@ -13,7 +13,9 @@ Import Prenex Implicits.
 Module FSetLemmas (S : FSetInterface.S).
 
   Module F := Facts(S).
+  Module OP := OrdProperties(S).
   Include F.
+  Include OP.
 
   Lemma memP x (s : S.t) : reflect (S.In x s) (S.mem x s).
   Proof.
