@@ -119,6 +119,27 @@ Module FMapLemmas (M : FMapInterface.S).
       reflexivity.
     Qed.
 
+    Lemma find_some_mem (m : M.t elt) (x : key) (v : elt) :
+      M.find x m = Some v ->
+      M.mem x m.
+    Proof.
+      move=> Hfind.
+      move: (M.find_2 Hfind) => Hmapsto.
+      apply: M.mem_1.
+      exists v; assumption.
+    Qed.
+
+    Lemma find_none_mem (m : M.t elt) (x : key) :
+      M.find x m = None ->
+      ~~ (M.mem x m).
+    Proof.
+      move=> Hfind.
+      apply/negP=> Hmem.
+      move: (M.mem_2 Hmem) => [v Hmapsto].
+      move: (M.find_1 Hmapsto).
+      rewrite Hfind; discriminate.
+    Qed.
+
   End FMapLemmas.
 
 End FMapLemmas.

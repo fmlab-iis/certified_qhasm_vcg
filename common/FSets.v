@@ -27,4 +27,29 @@ Module FSetLemmas (S : FSetInterface.S).
       rewrite H; discriminate.
   Qed.
 
+  Lemma mem_add_eq :
+    forall x y s,
+      S.E.eq x y ->
+      S.mem x (S.add y s).
+  Proof.
+    move=> x y s Heq.
+    apply: S.mem_1.
+    apply: S.add_1.
+    apply: S.E.eq_sym.
+    assumption.
+  Qed.
+
+  Lemma mem_add_neq :
+    forall x y s,
+      ~ (S.E.eq x y) ->
+      S.mem x (S.add y s) = S.mem x s.
+  Proof.
+    move=> x y s Hne.
+    apply: add_neq_b.
+    move=> Heq.
+    apply: Hne.
+    apply: S.E.eq_sym.
+    assumption.
+  Qed.
+
 End FSetLemmas.

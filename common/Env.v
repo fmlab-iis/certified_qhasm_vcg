@@ -32,27 +32,14 @@ Module SEnv.
     | PVar v _ => v
     end.
 
-  Definition new_var (E : t) : var :=
-    match VS.max_elt E with
-    | Some v => v + 1
-    | None => 0
-    end.
+  (* Create a new variable. *)
+
+  Definition new_var (E : t) : var := VS.new_var E.
 
   Lemma new_var_is_new :
     forall (E : t), ~~ mem (new_var E) E.
   Proof.
-    move=> E.
-    apply/negP => Hmem.
-    move: (VS.mem_2 Hmem) => {Hmem}.
-    rewrite /new_var.
-    case H: (VS.max_elt E).
-    - move=> Hin.
-      move: (VS.max_elt_2 H Hin) => Hfalse.
-      apply: Hfalse.
-      rewrite addn1.
-      exact: ltnSn.
-    - move: (VS.max_elt_3 H) => {H} H Hin.
-      move: (H 0) => Hnotin; apply: Hnotin; exact: Hin.
+    exact: VS.new_var_is_new.
   Qed.
 
 End SEnv.
@@ -75,10 +62,13 @@ Module TEnv.
     (* Check if a variable is defined in an environment. *)
     Definition mem (v : var) (E : t) : bool := VM.mem v E.
 
+    (* Find the type of a variable in an environment. *)
+    Definition find (v : var) (E : t) : option T := VM.find v E.
+
     Definition add (v : var) (ty : T) (E : t) : t := VM.add v ty E.
 
     Inductive pvar (E : t) : Set :=
-    | PVar : forall (x : var) (ty : T), VM.find x E = Some ty -> pvar E.
+    | PVar : forall (x : var) (ty : T), find x E = Some ty -> pvar E.
 
     Definition pvar_var (E : t) (x : pvar E) : var :=
       match x with
@@ -90,76 +80,24 @@ Module TEnv.
       | PVar _ ty _ => ty
       end.
 
-    Definition new_var (E : t) : var :=
-      match VMLemmas.max_elt E with
-      | Some (v, _) => v + 1
-      | None => 0
-      end.
+    (* Create a new variable. *)
+
+    Definition new_var (E : t) : var := VM.new_var E.
 
     Lemma new_var_is_new :
       forall (E : t), ~~ mem (new_var E) E.
     Proof.
-      move=> E.
-      apply/negP => Hmem.
-      move: (VM.mem_2 Hmem) => {Hmem}.
-      rewrite /new_var.
-      move: (refl_equal (VMLemmas.max_elt E)).
-      move: {2}(VMLemmas.max_elt E) => x.
-      destruct x.
-      - destruct p as [x ty].
-        move=> Hmax; rewrite Hmax => Hin.
-        move: (VMLemmas.max_elt_Above Hmax) => Habove.
-        have: VM.In (x + 1) (VM.remove x E).
-        + case: Hin => ty1 Hmapsto.
-          exists ty1.
-          apply: (VM.remove_2 _ Hmapsto).
-          rewrite addn1 => {Hmax Habove Hmapsto ty ty1 E} Heq.
-          move: (ltnSn x).
-          rewrite {1}(eqP Heq).
-          rewrite ltnn.
-          discriminate.
-        + move=> Hin1.
-          move: (Habove _ Hin1) => Hlt.
-          move: (ltn_trans Hlt (ltnSn x)).
-          rewrite addn1 ltnn.
-          discriminate.
-      - move=> Hmax; rewrite Hmax => Hin.
-        move: (VMLemmas.max_elt_Empty Hmax) => Hempty.
-        case: Hin => ty Hmapsto.
-        move: (Hempty 0 ty).
-        apply; assumption.
+      exact: VM.new_var_is_new.
     Qed.
 
-    Definition to_senv (E : t) : SEnv.t :=
-      VM.fold (fun x ty env => SEnv.add x env) E SEnv.empty.
+    (* Convert to SEnv. *)
+
+    Definition to_senv (E : t) : SEnv.t := VM.vset E.
 
     Lemma mem_to_senv E :
       forall x, mem x E -> SEnv.mem x (to_senv E).
     Proof.
-      rewrite /to_senv.
-      eapply VMLemmas.P.fold_rec.
-      - move=> env Hempty x Hmem.
-        apply: False_ind.
-        exact: (VMLemmas.empty_mem Hempty Hmem).
-      - move=> x ty env E1 E2 Hmapsto Hin Hadd Hind y Hmem.
-        case Hyx: (y == x).
-        + rewrite /SEnv.mem /SEnv.add VSLemmas.add_b.
-          rewrite (eqP Hyx).
-          rewrite /VSLemmas.eqb.
-          case: (VSLemmas.eq_dec x x).
-          * done.
-          * move=> Hx; apply: False_ind; apply: Hx.
-            exact: eqxx.
-        + rewrite /SEnv.mem /SEnv.add VSLemmas.add_neq_b.
-          * apply: Hind.
-            move: (Hadd y).
-            move/negP: Hyx => Hyx.
-            rewrite (VMLemmas.find_add_neq _ _ Hyx) => Hfind.
-            rewrite /mem -(VMLemmas.find_eq_mem_eq Hfind).
-            exact: Hmem.
-          * move=> Hxy.
-            move/eqP: Hyx; apply.
-            rewrite (eqP Hxy); reflexivity.
+      exact: VM.mem_vset.
     Qed.
 
   End Env.
@@ -234,25 +172,25 @@ Module HEnv.
         rewrite (eqP Hxv) (eqP Hyv) in H1.
         apply: False_ind; apply: (negP H1); reflexivity.
       + (* y != v *)
-        rewrite (VMLemmas.find_add_eq _ _ (Hxv)) in H;
-        rewrite (VMLemmas.find_add_neq _ _ Hyv) /prepend_vtype in H0 =>
+        rewrite (VM.Lemmas.find_add_eq _ _ (Hxv)) in H;
+        rewrite (VM.Lemmas.find_add_neq _ _ Hyv) /prepend_vtype in H0 =>
         {H1 Hxv Hyv}.
         case: H => H; rewrite -H /= => {H}.
-        move: (VMLemmas.find_map_some H0) => {H0} [ey' [He_ey _]].
+        move: (VM.Lemmas.find_map_some H0) => {H0} [ey' [He_ey _]].
         rewrite He_ey /prepend_vtype_to_entry /=.
         move=> Heq; by inversion Heq.
     - (* x != v *)
-      rewrite (VMLemmas.find_add_neq _ _ Hxv) /prepend_vtype in H => {Hxv}.
-      move: (VMLemmas.find_map_some H) => {H} [ex' [He_ex He_x]].
+      rewrite (VM.Lemmas.find_add_neq _ _ Hxv) /prepend_vtype in H => {Hxv}.
+      move: (VM.Lemmas.find_map_some H) => {H} [ex' [He_ex He_x]].
       rewrite He_ex /prepend_vtype_to_entry /= => {He_ex}.
       case Hyv: (y == v); move/idP: Hyv => Hyv.
       + (* y == v *)
-        rewrite (VMLemmas.find_add_eq _ _ Hyv) in H0 => {Hyv}.
+        rewrite (VM.Lemmas.find_add_eq _ _ Hyv) in H0 => {Hyv}.
         case: H0 => H0; rewrite -H0 /= => {H0}.
         move=> Heq; by inversion Heq.
       + (* y != v *)
-        rewrite (VMLemmas.find_add_neq _ _ Hyv) /prepend_vtype in H0 => {Hyv}.
-        move: (VMLemmas.find_map_some H0) => {H0} [ey' [He_ey He_y]].
+        rewrite (VM.Lemmas.find_add_neq _ _ Hyv) /prepend_vtype in H0 => {Hyv}.
+        move: (VM.Lemmas.find_map_some H0) => {H0} [ey' [He_ey He_y]].
         rewrite He_ey /prepend_vtype_to_entry /= => {He_ey}.
         move: (lidx_disjoint He_x He_y H1) => Hne Heq; apply: Hne.
         exact: (his_eq_lidx_eq Heq).
@@ -271,7 +209,7 @@ Module HEnv.
    * we will fail to do dependent destruction.
    *)
   Inductive pvar (E : t) (ty : T) : Set :=
-  | PVar : forall v e, Env.find v E = Some e -> Env.vty e = ty -> pvar E ty.
+  | PVar : forall v e, find v E = Some e -> vty e = ty -> pvar E ty.
 
   (* A any_pvar is a defined variable in an environment. *)
   Inductive any_pvar (E : t) : Set :=
@@ -284,13 +222,13 @@ Module HEnv.
     end.
 
   (* Return the entry of a pvar in an environment. *)
-  Definition pvar_entry (E : t) ty (x : pvar E ty) : Env.entry (Env.vtypes E) :=
+  Definition pvar_entry (E : t) ty (x : pvar E ty) : entry (vtypes E) :=
     match x with
     | PVar _ e _ _ => e
     end.
 
   (* Return the lidx of a pvar in an environment. *)
-  Program Definition pvar_lidx (E : t) ty (x : pvar E ty) : lidx ty (Env.vtypes E) :=
+  Program Definition pvar_lidx (E : t) ty (x : pvar E ty) : lidx ty (vtypes E) :=
     match x with
     | PVar _ e _ _ => Env.vidx e
     end.
@@ -340,8 +278,53 @@ Module HEnv.
     dependent destruction Htx.
     dependent destruction Hty.
     rewrite /=.
-    apply: (Env.lidx_disjoint Hex Hey).
+    apply: (lidx_disjoint Hex Hey).
     assumption.
+  Qed.
+
+  (* Create a new variable. *)
+
+  Definition new_var (E : t) : var := VM.new_var (vmap E).
+
+  Lemma new_var_is_new :
+    forall (E : t), ~~ mem (new_var E) E.
+  Proof.
+    move=> E.
+    exact: (VM.new_var_is_new (vmap E)).
+  Qed.
+
+  (* Convert to SEnv. *)
+
+  Definition to_senv (E : t) : SEnv.t := VM.vset (vmap E).
+
+  Lemma mem_to_senv E :
+    forall x, mem x E -> SEnv.mem x (to_senv E).
+  Proof.
+    exact: VM.mem_vset.
+  Qed.
+
+  (* Convert to TEnv. *)
+
+  Definition to_tenv (E : t) : TEnv.t T :=
+    VM.map (vty (types:=vtypes E)) (vmap E).
+
+  Lemma mem_to_tenv E :
+    forall x, mem x E -> TEnv.mem x (to_tenv E).
+  Proof.
+    rewrite /TEnv.mem /to_tenv => x Hmem.
+    rewrite VM.Lemmas.map_b.
+    exact: Hmem.
+  Qed.
+
+  Lemma to_tenv_find_ty (E : t) :
+    forall x, find_type x E = TEnv.find x (to_tenv E).
+  Proof.
+    rewrite /find_type /find /TEnv.find /to_tenv => x.
+    case H: (VM.find x (vmap E)).
+    - apply: Logic.eq_sym.
+      exact: (VM.Lemmas.find_some_map _ H).
+    - apply: Logic.eq_sym.
+      exact: (VM.Lemmas.find_none_map _ H).
   Qed.
 
   End Env.
