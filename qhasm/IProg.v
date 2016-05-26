@@ -100,10 +100,10 @@ Section Semantics.
   Definition eval_binop (op : binop) (v1 v2 : value) : value :=
     match op with
     | IAdd => (v1 + v2)%Z
-    | ISub => 0 (* tbd *)
-    | IMul => 0 (* tbd *)
-    | IDiv => 0 (* tbd *)
-    | IMod => 0 (* tbd *)
+    | ISub => (v1 - v2)%Z
+    | IMul => (v1 * v2)%Z
+    | IDiv => (v1 / v2)%Z
+    | IMod => (v1 mod v2)%Z
     end.
 
   Inductive eval_exp : exp E -> value -> State.t -> Prop :=
@@ -175,7 +175,12 @@ Section Semantics.
         n == m.
   Proof.
     move=> op e Hind n m s Hn Hm.
-  Admitted.
+    inversion_clear Hn.
+    inversion_clear Hm.
+    move: (Hind _ _ _ H H1) => {H H1} H01.
+    rewrite -H0 -H2 (eqP H01).
+    exact: eqxx.
+  Qed.
 
   Lemma eval_ibinop_unique :
     forall (op : binop) (e1 : exp E),
@@ -190,7 +195,13 @@ Section Semantics.
           n == m.
   Proof.
     move=> op e1 Hind1 e2 Hind2 n m s Hn Hm.
-  Admitted.
+    inversion_clear Hn.
+    inversion_clear Hm.
+    move: (Hind1 _ _ _ H H2) => {H H2} => H10.
+    move: (Hind2 _ _ _ H0 H3) => {H0 H3} => H23.
+    rewrite -H1 -H4 (eqP H10) (eqP H23).
+    exact: eqxx.
+  Qed.
 
   Lemma eval_exp_unique :
     forall e n m s, eval_exp e n s -> eval_exp e m s -> n == m.
@@ -294,10 +305,10 @@ Section Specification.
   Definition eval_cop op (v1 v2 : value) : bool :=
     match op with
     | IEq => v1 == v2
-    | ILt => Z.ltb v1 v2
-    | ILe => Z.leb v1 v2
-    | IGt => Z.gtb v1 v2
-    | IGe => Z.geb v1 v2
+    | ILt => (v1 <? v2)%Z
+    | ILe => (v1 <=? v2)%Z
+    | IGt => (v1 >? v2)%Z
+    | IGe => (v1 >=? v2)%Z
     end.
 
   Inductive eval_bexp : bexp -> bool -> State.t -> Prop :=
