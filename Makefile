@@ -51,12 +51,14 @@ vo_to_obj = $(addsuffix .o,\
 
 COQLIBS?=\
   -R "." Top\
+  -R "lib/CompCert" CompCert\
   -R "common" Common\
   -R "qhasm" Qhasm\
   -R "sqhasm" sQhasm\
   -I "."
 COQDOCLIBS?=\
   -R "." Top\
+  -R "lib/CompCert" CompCert\
   -R "common" Common\
   -R "qhasm" Qhasm\
   -R "sqhasm" sQhasm
@@ -101,7 +103,9 @@ endif
 #                    #
 ######################
 
-VFILES:=common/Notations.v\
+VFILES:=lib/CompCert/Coqlib.v\
+  lib/CompCert/Integers.v\
+  common/Notations.v\
   common/Tactics.v\
   common/Arch.v\
   common/Types.v\
@@ -109,9 +113,11 @@ VFILES:=common/Notations.v\
   common/FMaps.v\
   common/FSets.v\
   common/Nats.v\
-  common/ZRing.v\
-  common/HList.v\
+  common/ZAriths.v\
   common/Bits.v\
+  common/ZRing.v\
+  common/Integers.v\
+  common/HList.v\
   common/Var.v\
   common/Env.v\
   common/Store.v\

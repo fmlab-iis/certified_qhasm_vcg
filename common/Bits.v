@@ -1,10 +1,10 @@
 
 From Coq Require Import OrderedType ZArith String.
-From mathcomp Require Import ssreflect ssrbool ssrnat ssrint ssralg ssrfun.
+From mathcomp Require Import ssreflect ssrbool ssrnat ssralg ssrfun.
 From mathcomp Require Import eqtype div zmodp.
 From mathcomp Require Export tuple.
 From Bits Require Export bits.
-Require Import Nats Tactics.
+Require Import Nats ZAriths Tactics.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -23,21 +23,16 @@ Notation "x <= y" := (leB x y) : bits_scope.
 (** Constants *)
 
 Inductive nstring (n : nat) : Set :=
-| NString : forall s : string, String.length s == n -> nstring n.
+| NString : forall s : string, String.length s = n -> nstring n.
 
 Notation "n .-string" := (nstring n) (at level 4, format "n .-string") : type_scope.
 
 Definition fromNString (n : nat) (s : n.-string) : BITS (n * 4).
 Proof.
   destruct s as [s Hlen].
-  move: (fromHex s).
-  rewrite (eqP Hlen) => b.
-  exact: b.
-Qed.
-
-(** Convert to int *)
-
-Variable toInt : forall (n : nat), BITS n -> int.
+  rewrite -Hlen.
+  exact: (fromHex s).
+Defined.
 
 
 
@@ -184,6 +179,57 @@ Section BitsLemmas.
       + exact: toNatBounded.
       + rewrite expn_gt0.
         apply/orP; by left.
+  Qed.
+
+  Lemma toPosZ_nil (x : BITS 0) : toPosZ x = 0%Z.
+  Proof.
+    by rewrite (tuple0 x).
+  Qed.
+
+  Lemma toPosZ_zero n : toPosZ (zero n) = 0%Z.
+  Proof.
+    rewrite /toPosZ.
+    elim: n => /=.
+    - reflexivity.
+    - move=> n Hind.
+      rewrite Hind Z.double_spec.
+      reflexivity.
+  Qed.
+
+  Lemma toPosZ_min n (x : BITS n) : Z.le 0 (toPosZ x).
+  Proof.
+    destruct x as [x Hsize].
+    rewrite /toPosZ => {Hsize n} /=.
+    elim: x => /=.
+    - done.
+    - move=> b x.
+      set n := (seq.foldr
+                  (fun (b : bool) (z : Z) =>
+                     if b then Z.succ (Z.double z) else Z.double z) (0%Z) x).
+      move=> Hind /=.
+      move: (Zdouble_positive Hind) => H.
+      case Hb: b.
+      + apply: (Zle_trans _ _ _ Hind).
+        apply: (Zle_trans _ _ _ H).
+        exact: Zle_succ.
+      + exact: (Zle_trans _ _ _ Hind H).
+  Qed.
+
+  Lemma toPosZ_max n : forall (x : BITS n), Z.lt (toPosZ x) (two_power_nat n).
+  Proof.
+    elim: n.
+    - move=> x.
+      rewrite toPosZ_nil.
+      exact: zero_lt_two_power_nat.
+    - move=> n IHn.
+      case/tupleP => [b x].
+      case Hb: b; rewrite /toPosZ /=; fold (toPosZ x).
+      + rewrite /Z.succ Z.double_spec two_power_nat_S.
+        apply: ltn_Sdouble.
+        exact: IHn.
+      + rewrite Z.double_spec two_power_nat_S.
+        apply: (Zmult_gt_0_lt_compat_l _ _ _ _ (IHn x)).
+        done.
   Qed.
 
 End BitsLemmas.

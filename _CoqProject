@@ -1,4 +1,5 @@
 -R . Top
+-R lib/CompCert CompCert
 -R common Common
 -R qhasm Qhasm
 -R sqhasm sQhasm
