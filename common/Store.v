@@ -124,6 +124,8 @@ Module Type PSTORE.
 
     Parameter upd : var -> value -> t value -> t value.
 
+    Parameter unset : var -> t value -> t value.
+
     Parameter acc_upd_eq :
       forall x y v s,
         x == y ->
@@ -136,6 +138,16 @@ Module Type PSTORE.
 
     Parameter acc_empty :
       forall x, acc x empty = None.
+
+    Parameter acc_unset_eq :
+      forall x y s,
+        x == y ->
+        acc x (unset y s) = None.
+
+    Parameter acc_unset_neq :
+      forall x y s,
+        x != y ->
+        acc x (unset y s) = acc x s.
 
   End PStore.
 
@@ -160,6 +172,8 @@ Module MakePStore (X : SsrOrderedType) <: PSTORE.
 
     Definition upd (x : var) (v : value) (s : t) := M.add x v s.
 
+    Definition unset (x : var) (s : t) := M.remove x s.
+
     Lemma acc_upd_eq x y v s :
       x == y ->
       acc x (upd y v s) = Some v.
@@ -183,6 +197,29 @@ Module MakePStore (X : SsrOrderedType) <: PSTORE.
       forall x, acc x empty = None.
     Proof.
       exact: L.empty_o.
+    Qed.
+
+    Lemma acc_unset_eq :
+      forall x y s,
+        x == y ->
+        acc x (unset y s) = None.
+    Proof.
+      move=> x y s Heq.
+      apply: L.remove_eq_o.
+      rewrite eq_sym.
+      exact: Heq.
+    Qed.
+
+    Lemma acc_unset_neq :
+      forall x y s,
+        x != y ->
+        acc x (unset y s) = acc x s.
+    Proof.
+      move=> x y s Hne.
+      apply: L.remove_neq_o.
+      move=> Heq.
+      move/eqP: Hne; apply.
+      by rewrite (eqP Heq).
     Qed.
 
   End PStore.

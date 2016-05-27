@@ -3,7 +3,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import Notations ZRing Types Nats Env Var Store.
+From Common Require Import ZRing Env Var Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -63,6 +63,9 @@ Module State.
   Definition upd (x : var) (v : value) (s : t) : t :=
     VStore.upd x v s.
 
+  Definition unset (x : var) (s : t) : t :=
+    VStore.unset x s.
+
   Lemma acc_upd_eq :
     forall x y v (s : t),
       x == y ->
@@ -83,6 +86,22 @@ Module State.
     forall x, acc x empty = None.
   Proof.
     exact: VStore.acc_empty.
+  Qed.
+
+  Lemma acc_unset_eq :
+    forall x y s,
+      x == y ->
+      acc x (unset y s) = None.
+  Proof.
+    exact: VStore.acc_unset_eq.
+  Qed.
+
+  Lemma acc_unset_neq :
+    forall x y s,
+      x != y ->
+      acc x (unset y s) = acc x s.
+  Proof.
+    exact: VStore.acc_unset_neq.
   Qed.
 
 End State.

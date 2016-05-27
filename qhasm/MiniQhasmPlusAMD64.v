@@ -1,18 +1,16 @@
 
 (** * MiniQhasm+ for AMD64 *)
 
-From Coq Require Import ZArith FMaps String OrderedType.
-From Coq Require Import Program Program.Tactics.
-From mathcomp Require Import ssreflect ssrbool ssrnat ssrfun seq eqtype.
-From Common Require Import Notations Tactics Arch Nats ZRing Types Env Var Store Bits.
+From Coq Require Import ZArith.
+From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From CompCert Require Import Integers.
+From Common Require Import ZRing Env Var Store Integers.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
 Delimit Scope qhasm_scope with qhasm.
-
-Definition WORDSIZE : nat := AMD64.wordsize.
 
 
 
@@ -24,7 +22,7 @@ Section Syntax.
   Notation pvar := (SEnv.pvar E).
 
   (* Constants *)
-  Definition const : Set := BITS WORDSIZE.
+  Definition const : Set := int64.
 
   (* Atomics can be variables or constants. *)
   Inductive atomic : Set :=
@@ -72,68 +70,11 @@ End Syntax.
 
 (** Values *)
 
-Section Values.
+Definition value : Set := int64.
 
-  (* Values of Qhasm variables *)
-  Inductive value : Set :=
-  | Vint64 : BITS 64 -> value.
+Definition ctoZ c := if c then 1%Z else 0%Z.
 
-  (* Basic operations for values *)
-
-  Definition vadd (v1 v2 : value) : option value :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (Vint64 (n1 + n2))
-    end.
-
-  Definition vadc (v1 v2 : value) : option (bool * value) :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (carry_addB n2 n2, Vint64 (n1 + n2))
-    end.
-
-  Definition vcarry_add (v1 v2 : value) : option bool :=
-    match vadc v1 v2 with
-    | Some (c, v) => Some c
-    | None => None
-    end.
-
-  Definition vsub (v1 v2 : value) : option value :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (Vint64 (n1 - n2))
-    end.
-
-  Definition vmul (v1 v2 : value) : option value :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (Vint64 (n1 * n2))
-    end.
-
-  Definition vand (v1 v2 : value) : option value :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (Vint64 (andB n1 n2))
-    end.
-
-  Definition vor (v1 v2 : value) : option value :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (Vint64 (orB n1 n2))
-    end.
-
-  Definition vxor (v1 v2 : value) : option value :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => Some (Vint64 (xorB n1 n2))
-    end.
-
-  (** Check overflows *)
-  Definition vadd_ovf (v1 v2 : value) : bool :=
-    match v1, v2 with
-    | Vint64 n1, Vint64 n2 => addB_ovf n1 n2
-    end.
-
-  (** Convert to Z *)
-  Definition vtoZ (v : value) : Z :=
-    match v with
-    | Vint64 n => toZ n
-    end.
-
-End Values.
+Definition add_carry n m := Int64.add_carry n m Int64.zero == Int64.one.
 
 
 
@@ -143,7 +84,7 @@ Module State.
 
   Record t : Type :=
     mkState { store: VStore.t value;
-              carry: bool }.
+              carry: option bool }.
 
   Definition acc (x : var) (s : t) : option value :=
     VStore.acc x (store s).
@@ -154,7 +95,11 @@ Module State.
 
   Definition set_carry c (s : t) : t :=
     {| store := store s;
-       carry := c |}.
+       carry := Some c |}.
+
+  Definition reset_carry (s : t) : t :=
+    {| store := store s;
+       carry := None |}.
 
   Lemma acc_upd_eq :
     forall x y v s,
@@ -192,7 +137,7 @@ Section Semantics.
         eval_atomic (QVar v) n st
   | EQConst :
       forall n st,
-        eval_atomic (QConst E n) (Vint64 n) st.
+        eval_atomic (QConst E n) n st.
 
   Inductive eval_instr : State.t -> instr E -> State.t -> Prop :=
   | EQAssign :
@@ -206,11 +151,15 @@ Section Semantics.
       forall r s t st,
         eval_instr st (QAddC r s t) st
   | EQAdc :
-      forall r s t vs vt c v st,
+      forall r s t vs vt st,
+        let v := Int64.add vs vt in
+        let c := add_carry vs vt in
         eval_atomic s vs st ->
         eval_atomic t vt st ->
-        vadc vs vt = Some (c, v) ->
-        eval_instr st (QAdc r s t) (State.set_carry c (State.upd (pvar_var r) v st))
+        eval_instr
+          st
+          (QAdc r s t)
+          (State.set_carry c (State.upd (pvar_var r) v st))
   | EQAdcC : (* tbd *)
       forall r s t st,
         eval_instr st (QAdcC r s t) st
@@ -333,7 +282,7 @@ Section Safety.
       forall r s t vs vt st,
         eval_atomic s vs st ->
         eval_atomic t vt st ->
-        ~~ vadd_ovf vs vt ->
+        ~~ add_carry vs vt ->
         instr_safe (QAdd r s t) st.
 
   Inductive program_safe : program E -> State.t -> Prop :=
@@ -448,11 +397,12 @@ Section Specification.
   | EEVar :
       forall v n s,
         State.acc (pvar_var v) s = Some n ->
-        eval_exp (EVar v) (vtoZ n) s
+        eval_exp (EVar v) (Int64.unsigned n) s
   | EEConst : forall n s, eval_exp (EConst n) n s
   | EECarry :
-      forall s,
-        eval_exp ECarry (toZ (State.carry s)) s
+      forall s c,
+        State.carry s = Some c ->
+        eval_exp ECarry (ctoZ c) s
   | EEUnop :
       forall op e n m s,
         eval_exp e n s ->
