@@ -364,6 +364,10 @@ Section Specification.
       eval_program s1 p s2 ->
       eval_bexp g true s2.
 
+  Definition counterexample (f : bexp) (p : program E) (g : bexp) (s : State.t) : Prop :=
+    eval_bexp f true s /\
+    exists s' : State.t, eval_program s p s' /\ eval_bexp g false s'.
+
   Lemma spec_empty :
     forall f g,
       spec f [::] g -> entails f g.
