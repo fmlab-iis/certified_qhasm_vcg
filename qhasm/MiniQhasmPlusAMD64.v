@@ -86,6 +86,10 @@ Module State.
     mkState { store: VStore.t value;
               carry: option bool }.
 
+  Definition empty : t :=
+    {| store := VStore.empty value;
+       carry := None |}.
+
   Definition acc (x : var) (s : t) : option value :=
     VStore.acc x (store s).
 
@@ -119,6 +123,70 @@ Module State.
     exact: VStore.acc_upd_neq.
   Qed.
 
+  Lemma acc_empty :
+    forall x,
+      acc x empty = None.
+  Proof.
+    rewrite /acc => x.
+    exact: VStore.acc_empty.
+  Qed.
+
+  Definition Upd x v s1 s2 : Prop :=
+    (forall y, acc y s2 = acc y (upd x v s1)) /\
+    carry s1 = carry s2.
+
+  Definition Carry c s1 s2 : Prop :=
+    (forall x, acc x s2 = acc x s1) /\
+    carry s2 = c.
+
+  Lemma Upd_upd :
+    forall x v s,
+      Upd x v s (upd x v s).
+  Proof.
+    move=> x v s.
+    split.
+    - exact: VStore.Upd_upd.
+    - reflexivity.
+  Qed.
+
+  Lemma acc_Upd_eq :
+    forall x y v s1 s2,
+      x == y ->
+      Upd y v s1 s2 ->
+      acc x s2 = Some v.
+  Proof.
+    move=> x y v s1 s2 Hxy [Hupd _].
+    exact: (VStore.acc_Upd_eq Hxy Hupd).
+  Qed.
+
+  Lemma acc_Upd_neq :
+    forall x y v s1 s2,
+      x != y ->
+      Upd y v s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    move=> x y v s1 s2 Hxy [Hupd _].
+    exact: (VStore.acc_Upd_neq Hxy Hupd).
+  Qed.
+
+  Lemma acc_Carry :
+    forall c x s1 s2,
+      Carry c s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    move=> c x s1 s2 [Hv Hc].
+    exact: Hv.
+  Qed.
+
+  Lemma Carry_carry :
+    forall c s1 s2,
+      Carry c s1 s2 ->
+      carry s2 = c.
+  Proof.
+    move=> c s1 s2 [_ Hc].
+    exact: Hc.
+  Qed.
+
 End State.
 
 
@@ -141,9 +209,10 @@ Section Semantics.
 
   Inductive eval_instr : State.t -> instr E -> State.t -> Prop :=
   | EQAssign :
-      forall r s vs st,
-        eval_atomic s vs st ->
-        eval_instr st (QAssign r s) (State.upd (pvar_var r) vs st)
+      forall r s vs s1 s2,
+        eval_atomic s vs s1 ->
+        State.Upd (pvar_var r) vs s1 s2 ->
+        eval_instr s1 (QAssign r s) s2
   | EQAdd : (* tbd *)
       forall r s t st,
         eval_instr st (QAdd r s t) st
@@ -151,15 +220,14 @@ Section Semantics.
       forall r s t st,
         eval_instr st (QAddC r s t) st
   | EQAdc :
-      forall r s t vs vt st,
+      forall r s t vs vt s1 s2 s3,
         let v := Int64.add vs vt in
         let c := add_carry vs vt in
-        eval_atomic s vs st ->
-        eval_atomic t vt st ->
-        eval_instr
-          st
-          (QAdc r s t)
-          (State.set_carry c (State.upd (pvar_var r) v st))
+        eval_atomic s vs s1 ->
+        eval_atomic t vt s1 ->
+        State.Upd (pvar_var r) v s1 s2 ->
+        State.Carry (Some c) s2 s3 ->
+        eval_instr s1 (QAdc r s t) s3
   | EQAdcC : (* tbd *)
       forall r s t st,
         eval_instr st (QAdcC r s t) st

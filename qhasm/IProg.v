@@ -104,6 +104,62 @@ Module State.
     exact: VStore.acc_unset_neq.
   Qed.
 
+  Definition Upd x v (s1 s2 : t) : Prop :=
+    forall y, acc y s2 = acc y (upd x v s1).
+
+  Definition Unset x (s1 s2 : t) : Prop :=
+    forall y, acc y s2 = acc y (unset x s1).
+
+  Lemma Upd_upd :
+    forall x v s,
+      Upd x v s (upd x v s).
+  Proof.
+    exact: VStore.Upd_upd.
+  Qed.
+
+  Lemma Unset_unset :
+    forall x s,
+      Unset x s (unset x s).
+  Proof.
+    exact: VStore.Unset_unset.
+  Qed.
+
+  Lemma acc_Upd_eq :
+    forall x y v s1 s2,
+      x == y ->
+      Upd y v s1 s2 ->
+      acc x s2 = Some v.
+  Proof.
+    exact: VStore.acc_Upd_eq.
+  Qed.
+
+  Lemma acc_Upd_neq :
+    forall x y v s1 s2,
+      x != y ->
+      Upd y v s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    exact: VStore.acc_Upd_neq.
+  Qed.
+
+  Lemma acc_Unset_eq :
+    forall x y s1 s2,
+      x == y ->
+      Unset y s1 s2 ->
+      acc x s2 = None.
+  Proof.
+    exact: VStore.acc_Unset_eq.
+  Qed.
+
+  Lemma acc_Unset_neq :
+    forall x y s1 s2,
+      x != y ->
+      Unset y s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    exact: VStore.acc_Unset_neq.
+  Qed.
+
 End State.
 
 Section Semantics.
@@ -145,9 +201,10 @@ Section Semantics.
 
   Inductive eval_instr : State.t -> instr E -> State.t -> Prop :=
   | EIAssign :
-      forall v e n s,
-        eval_exp e n s ->
-        eval_instr s (IAssign v e) (State.upd (pvar_var v) n s).
+      forall v e n s1 s2,
+        eval_exp e n s1 ->
+        State.Upd (pvar_var v) n s1 s2 ->
+        eval_instr s1 (IAssign v e) s2.
 
   Inductive eval_program : State.t -> program E -> State.t -> Prop :=
   | EIEmpty : forall s, eval_program s nil s

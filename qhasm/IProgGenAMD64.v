@@ -51,6 +51,13 @@ Section Conversion.
     move=> H; exact: H.
   Defined.
 
+  Lemma conv_pvar_var (x : pvar E) :
+    pvar_var (conv_pvar x) == pvar_var x.
+  Proof.
+    destruct x as [x Hmem] => /=.
+    exact: eqxx.
+  Qed.
+
   Lemma carry_var_neq :
     forall x : pvar E,
       icarry_var != pvar_var (conv_pvar x).
@@ -100,13 +107,13 @@ Section Conversion.
 
   Notation ivalue := Int64.unsigned.
 
-  Definition conv_ocarry (c : option bool) : option IProg.value :=
+  Definition conv_qcarry (c : option bool) : option IProg.value :=
     match c with
     | Some c' => Some (ctoZ c')
     | None => None
     end.
 
-  Definition conv_ovalue (n : option value) : option IProg.value :=
+  Definition conv_qvalue (n : option value) : option IProg.value :=
     match n with
     | Some m => Some (ivalue m)
     | None => None
@@ -192,34 +199,59 @@ Section Conversion.
 
   Definition values_eqmod (qst : State.t) (ist : IProg.State.t) : Prop :=
     forall (x : pvar E),
-      conv_ovalue (State.acc (pvar_var x) qst) = (IProg.State.acc (pvar_var (conv_pvar x)) ist).
+      conv_qvalue (State.acc (pvar_var x) qst) = (IProg.State.acc (pvar_var (conv_pvar x)) ist).
 
   Definition carry_eqmod (qst : State.t) (ist : IProg.State.t) : Prop :=
-    conv_ocarry (State.carry qst) = (IProg.State.acc icarry_var ist).
+    conv_qcarry (State.carry qst) = (IProg.State.acc icarry_var ist).
 
   (* Program variables have the same values. *)
   Definition state_eqmod (qst : State.t) (ist : IProg.State.t) : Prop :=
     values_eqmod qst ist /\ carry_eqmod qst ist.
 
+  Lemma state_eqmod_values (qst : State.t) (ist : IProg.State.t) :
+    state_eqmod qst ist -> values_eqmod qst ist.
+  Proof.
+    move=> [H _]; exact: H.
+  Qed.
+
+  Lemma state_eqmod_carry (qst : State.t) (ist : IProg.State.t) :
+    state_eqmod qst ist -> carry_eqmod qst ist.
+  Proof.
+    move=> [_ H]; exact: H.
+  Qed.
+
+  Lemma state_eqmod_Upd x n qst1 qst2 ist1 ist2 :
+    state_eqmod qst1 ist1 ->
+    State.Upd (pvar_var x) n qst1 qst2 ->
+    IProg.State.Upd (pvar_var (conv_pvar x)) (ivalue n) ist1 ist2 ->
+    state_eqmod qst2 ist2.
+  Proof.
+    move=> Heqm [Hqv Hqc] Hiv; split.
+    - move=> y.
+      rewrite Hqv Hiv.
+      case Hyx: (pvar_var y == pvar_var x).
+      + move/idP: Hyx => Hyx.
+        rewrite (State.acc_upd_eq _ _ Hyx).
+        rewrite (IProg.State.acc_upd_eq _ _ (conv_pvar_eq Hyx)).
+        reflexivity.
+      + move/idP/negP: Hyx => Hyx.
+        rewrite (State.acc_upd_neq _ _ Hyx).
+        rewrite (IProg.State.acc_upd_neq _ _ (conv_pvar_neq Hyx)).
+        exact: (state_eqmod_values Heqm).
+    - rewrite /carry_eqmod.
+      rewrite -Hqc Hiv.
+      rewrite (IProg.State.acc_upd_neq _ _ (carry_var_neq x)).
+      exact: (state_eqmod_carry Heqm).
+  Qed.
+
   Lemma state_eqmod_upd x n qst ist :
     state_eqmod qst ist ->
     state_eqmod (State.upd (pvar_var x) n qst) (IProg.State.upd (pvar_var (conv_pvar x)) (ivalue n) ist).
   Proof.
-    move=> [Heqv Heqc].
-    split.
-    - move=> y.
-      case Hyx: (pvar_var y == pvar_var x).
-      + move/idP: Hyx => Hyx.
-        rewrite (State.acc_upd_eq _ qst Hyx).
-        rewrite (IProg.State.acc_upd_eq _ ist (conv_pvar_eq Hyx)).
-        reflexivity.
-      + move/idP/negP: Hyx => Hyx.
-        rewrite (State.acc_upd_neq _ qst Hyx).
-        rewrite (IProg.State.acc_upd_neq _ ist (conv_pvar_neq Hyx)).
-        exact: Heqv.
-    - rewrite /carry_eqmod => /=.
-      rewrite (IProg.State.acc_upd_neq _ ist (carry_var_neq x)).
-      exact: Heqc.
+    move=> Heqm.
+    exact: (state_eqmod_Upd Heqm
+                            (State.Upd_upd (pvar_var x) n qst)
+                            (IProg.State.Upd_upd (pvar_var (conv_pvar x)) (ivalue n) ist)).
   Qed.
 
   Lemma istate_eqmod_acc_some x n qst ist :
@@ -228,7 +260,7 @@ Section Conversion.
     IProg.State.acc (pvar_var (conv_pvar x)) ist = Some (ivalue n).
   Proof.
     move=> [Heqv _] Hq.
-    move: (Heqv x). rewrite /conv_ovalue Hq => Heq.
+    move: (Heqv x). rewrite /conv_qvalue Hq => Heq.
     rewrite Heq.
     reflexivity.
   Qed.
@@ -239,7 +271,7 @@ Section Conversion.
     IProg.State.acc (pvar_var (conv_pvar x)) ist = None.
   Proof.
     move=> [Heqv _] Hq.
-    move: (Heqv x) => /=. rewrite /conv_ovalue Hq => Heq.
+    move: (Heqv x) => /=. rewrite /conv_qvalue Hq => Heq.
     rewrite Heq.
     reflexivity.
   Qed.
@@ -250,7 +282,7 @@ Section Conversion.
     exists m, State.acc (pvar_var x) qst = Some m /\ ivalue m = n.
   Proof.
     move=> [Heqv _] Hi.
-    move: (Heqv x). rewrite /conv_ovalue Hi.
+    move: (Heqv x). rewrite /conv_qvalue Hi.
     case Hq: (State.acc (pvar_var x) qst).
     - move=> [] Hn; rewrite -Hn.
       eexists; split.
@@ -265,7 +297,7 @@ Section Conversion.
     State.acc (pvar_var x) qst = None.
   Proof.
     move=> [Heqv _] Hi.
-    move: (Heqv x). rewrite /conv_ovalue Hi.
+    move: (Heqv x). rewrite /conv_qvalue Hi.
     case: (State.acc (pvar_var x) qst).
     - discriminate.
     - reflexivity.
@@ -298,7 +330,7 @@ Section Conversion.
       IProg.State.acc (pvar_var icarry) ist = Some ic /\ ctoZ qc = ic.
   Proof.
     move=> [_ Heqc] Hqc /=.
-    rewrite /carry_eqmod /conv_ocarry in Heqc.
+    rewrite /carry_eqmod /conv_qcarry in Heqc.
     rewrite Hqc in Heqc.
     rewrite -Heqc.
     by exists (ctoZ qc).
@@ -310,7 +342,7 @@ Section Conversion.
     IProg.State.acc (pvar_var icarry) ist = None.
   Proof.
     move=> [_ Heqc] Hqc /=.
-    rewrite /carry_eqmod /conv_ocarry in Heqc.
+    rewrite /carry_eqmod /conv_qcarry in Heqc.
     rewrite Hqc in Heqc.
     by rewrite -Heqc.
   Qed.
@@ -322,7 +354,7 @@ Section Conversion.
       State.carry qst = Some qc /\ ctoZ qc = ic.
   Proof.
     move=> [_ Heqc] Hic /=.
-    rewrite /carry_eqmod /conv_ocarry in Heqc.
+    rewrite /carry_eqmod /conv_qcarry in Heqc.
     rewrite Hic in Heqc.
     move: Heqc.
     case: (State.carry qst).
@@ -337,7 +369,7 @@ Section Conversion.
     State.carry qst = None.
   Proof.
     move=> [_ Heqc] Hic /=.
-    rewrite /carry_eqmod /conv_ocarry in Heqc.
+    rewrite /carry_eqmod /conv_qcarry in Heqc.
     rewrite Hic in Heqc.
     move: Heqc.
     case: (State.carry qst).
@@ -384,136 +416,135 @@ Section Conversion.
       exact: istate_eqmod_qconst.
   Qed.
 
-  Lemma state_eqmod_qassign r s (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qassign r s (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QAssign r s in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
     move=> i Heqm Hsafe Hi Hp.
-    move: (Heqm) => [Heqv Heqc].
     inversion_clear Hi.
     rewrite /conv_instr /= in Hp.
     move: (IProg.eval_program_singleton Hp) => {Hp} Hp.
     inversion_clear Hp.
-    move: (istate_eqmod_qatomic Heqm H) => H1.
-    move: (IProg.eval_exp_unique H0 H1) => Heq.
-    rewrite (eqP Heq) => {H0 H1 Heq n}.
-    exact: state_eqmod_upd.
+    move: (istate_eqmod_qatomic Heqm H) => Hvs.
+    move: (IProg.eval_exp_unique H1 Hvs) => Heq.
+    apply: (state_eqmod_Upd Heqm).
+    - exact: H0.
+    - rewrite -(eqP Heq).
+      exact: H2.
   Qed.
 
-  Lemma state_eqmod_qadd r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qadd r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QAdd r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qaddc r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qaddc r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QAddC r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qadc r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qadc r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QAdc r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
-    move=> i Heqm Hsafe Hi Hp.
-    inversion_clear Hi.
   Admitted.
 
-  Lemma state_eqmod_qadcc r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qadcc r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QAdcC r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qsub r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qsub r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QSub r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qsubc r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qsubc r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QSubC r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qsbb r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qsbb r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QSbb r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qsbbc r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qsbbc r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QSbbC r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qmul r s t (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qmul r s t (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QMul r s t in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qmulf r s t u (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qmulf r s t u (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QMulf r s t u in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qshl r s n (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qshl r s n (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QShl r s n in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qshr r s n (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qshr r s n (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QShr r s n in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_qmod2n r s n (qst qst' : State.t) (ist ist' : IProg.State.t) :
+  Lemma state_eqmod_qmod2n r s n (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
     let i := QMod2n r s n in
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
   Admitted.
 
-  Lemma state_eqmod_instr (i : instr E) (qst qst' : State.t) (ist ist' : IProg.State.t) :
-    state_eqmod qst ist -> instr_safe i qst ->
-    eval_instr qst i qst' -> IProg.eval_program ist (conv_instr i) ist' ->
-    state_eqmod qst' ist'.
+  Lemma state_eqmod_instr (i : instr E) (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
+    state_eqmod qst1 ist1 -> instr_safe i qst1 ->
+    eval_instr qst1 i qst2 -> IProg.eval_program ist1 (conv_instr i) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
-    elim: i qst qst' ist ist'.
+    elim: i qst1 qst2 ist1 ist2.
     - (* QAssign *)
       exact: state_eqmod_qassign.
     - (* QAdd *)
@@ -544,27 +575,27 @@ Section Conversion.
       exact: state_eqmod_qmod2n.
   Qed.
 
-  Lemma state_eqmod_program (p : program E) (qst qst' : State.t) (ist ist' : IProg.State.t) :
-    state_eqmod qst ist -> program_safe p qst ->
-    eval_program qst p qst' -> IProg.eval_program ist (conv_program p) ist' ->
-    state_eqmod qst' ist'.
+  Lemma state_eqmod_program (p : program E) (qst1 qst2 : State.t) (ist1 ist2 : IProg.State.t) :
+    state_eqmod qst1 ist1 -> program_safe p qst1 ->
+    eval_program qst1 p qst2 -> IProg.eval_program ist1 (conv_program p) ist2 ->
+    state_eqmod qst2 ist2.
   Proof.
-    elim: p qst qst' ist ist'.
-    - move=> qst qst' ist ist' Heqm Hqs Hqe Hie.
+    elim: p qst1 qst2 ist1 ist2.
+    - move=> qst1 qst2 ist1 ist2 Heqm Hqs Hqe Hie.
       move: Heqm {Hqs}.
       move: (eval_program_empty Hqe) => {Hqe} Hqe.
       move: (IProg.eval_program_empty Hie) => {Hie} Hie.
       rewrite Hqe Hie.
       move=> H; exact: H.
-    - move=> hd tl H qst qst' ist ist' Heqm Hqs Hqe Hie.
-      move: (eval_program_cons Hqe) => {Hqe} [qst'' [Hqe Hqe'']].
-      move: (IProg.eval_program_split Hie) => {Hie} [ist'' [Hie Hie'']].
+    - move=> hd tl H qst1 qst2 ist1 ist2 Heqm Hqs Hqe Hie.
+      move: (eval_program_cons Hqe) => {Hqe} [qst3 [Hqe Hqe3]].
+      move: (IProg.eval_program_split Hie) => {Hie} [ist3 [Hie Hie3]].
       move: (program_safe_hd Hqs) => Hqs_hd.
-      move: (state_eqmod_instr Heqm Hqs_hd Hqe Hie) => Heqm''.
-      apply: (H _ _ _ _ Heqm'').
+      move: (state_eqmod_instr Heqm Hqs_hd Hqe Hie) => Heqm3.
+      apply: (H _ _ _ _ Heqm3).
       + exact: (program_safe_tl Hqs Hqe).
-      + exact: Hqe''.
-      + exact: Hie''.
+      + exact: Hqe3.
+      + exact: Hie3.
   Qed.
 
 
@@ -869,12 +900,19 @@ Section Conversion.
   Definition conv_qstore (s : VStore.t value) : VStore.t IProg.value :=
     VStore.M.map ivalue s.
 
-  Lemma conv_qstore_acc (x : pvar E) s :
-    conv_ovalue (VStore.acc (pvar_var x) s) =
-    IProg.State.acc (pvar_var (conv_pvar x)) (conv_qstore s).
+  Definition set_qcarry (c : option bool) (s : VStore.t IProg.value) :=
+    match conv_qcarry c with
+    | None => VStore.unset icarry_var s
+    | Some n => VStore.upd icarry_var n s
+    end.
+
+  Definition conv_qstate (s : State.t) : IProg.State.t :=
+    set_qcarry (State.carry s) (conv_qstore (State.store s)).
+
+  Lemma conv_qstore_acc x s :
+    conv_qvalue (VStore.acc x s) = IProg.State.acc x (conv_qstore s).
   Proof.
-    destruct x as [x Hmem] => /=.
-    rewrite /conv_ovalue /conv_qstore.
+    rewrite /conv_qvalue /conv_qstore.
     case H: (VStore.acc x s).
     - rewrite /IProg.State.acc /VStore.acc (VStore.L.find_some_map ivalue H).
       reflexivity.
@@ -882,52 +920,43 @@ Section Conversion.
       reflexivity.
   Qed.
 
-  Definition conv_qcarry (c : option bool) (s : VStore.t IProg.value) :=
-    match conv_ocarry c with
-    | None => VStore.unset icarry_var s
-    | Some n => VStore.upd icarry_var n s
-    end.
-
-  Lemma conv_qcarry_acc (x : pvar E) (c : option bool) s :
-    IProg.State.acc (pvar_var (conv_pvar x)) (conv_qcarry c s) =
-    IProg.State.acc (pvar_var (conv_pvar x)) s.
+  Lemma conv_qcarry_acc x (c : option bool) s :
+    x != icarry_var ->
+    IProg.State.acc x (set_qcarry c s) = IProg.State.acc x s.
   Proof.
-    rewrite /conv_qcarry /conv_ocarry.
+    move=> Hne.
+    rewrite /conv_qcarry /conv_qcarry.
     case: c.
     - move=> c.
-      rewrite IProg.State.acc_upd_neq.
-      + reflexivity.
-      + exact: var_carry_neq.
-    - rewrite IProg.State.acc_unset_neq.
-      + reflexivity.
-      + exact: var_carry_neq.
+      rewrite (IProg.State.acc_upd_neq _ _ Hne).
+      reflexivity.
+    - rewrite (IProg.State.acc_unset_neq _ Hne).
+      reflexivity.
   Qed.
 
   Definition conv_qcarry_carry (c : option bool) s :
-    IProg.State.acc icarry_var (conv_qcarry c s) = conv_ocarry c.
+    IProg.State.acc icarry_var (set_qcarry c s) = conv_qcarry c.
   Proof.
-    rewrite /conv_qcarry.
-    case: (conv_ocarry c).
+    rewrite /set_qcarry.
+    case: (conv_qcarry c).
     - move=> a; rewrite (IProg.State.acc_upd_eq _ _ (eqxx icarry_var)).
       reflexivity.
     - rewrite (IProg.State.acc_unset_eq _ (eqxx icarry_var)).
       reflexivity.
   Qed.
 
-  Definition conv_qstate (s : State.t) : IProg.State.t :=
-    conv_qcarry (State.carry s) (conv_qstore (State.store s)).
-
-  Lemma conv_qstate_acc (x : pvar E) (s : State.t) :
-    conv_ovalue (State.acc (pvar_var x) s) = IProg.State.acc (pvar_var (conv_pvar x)) (conv_qstate s).
+  Lemma conv_qstate_acc x (s : State.t) :
+    x != icarry_var ->
+    conv_qvalue (State.acc x s) = IProg.State.acc x (conv_qstate s).
   Proof.
-    rewrite /conv_qstate.
-    rewrite conv_qcarry_acc.
+    rewrite /conv_qstate => Hne.
+    rewrite (conv_qcarry_acc _ _ Hne).
     rewrite conv_qstore_acc.
     reflexivity.
   Qed.
 
   Lemma conv_qstate_carry (s : State.t) :
-    conv_ocarry (State.carry s) = IProg.State.acc icarry_var (conv_qstate s).
+    conv_qcarry (State.carry s) = IProg.State.acc icarry_var (conv_qstate s).
   Proof.
     rewrite /conv_qstate.
     rewrite conv_qcarry_carry.
@@ -939,8 +968,36 @@ Section Conversion.
   Proof.
     split.
     - move=> x.
-      exact: conv_qstate_acc.
+      move: (var_carry_neq x).
+      destruct x as [x Hmem] => /= Hne.
+      exact: (conv_qstate_acc _ Hne).
     - exact: conv_qstate_carry.
+  Qed.
+
+  Lemma conv_qstate_Upd x v qst1 qst2 :
+    State.Upd (pvar_var x) v qst1 qst2 ->
+    IProg.State.Upd (pvar_var (conv_pvar x)) (ivalue v) (conv_qstate qst1) (conv_qstate qst2).
+  Proof.
+    move=> [Hqu Hqc].
+    move=> y.
+    case Hyc: (y == icarry_var).
+    - rewrite (eqP Hyc).
+      rewrite -conv_qstate_carry -Hqc.
+      rewrite (IProg.State.acc_upd_neq _ _ (carry_var_neq x)).
+      exact: conv_qstate_carry.
+    - move/idP/negP: Hyc => Hyc.
+      rewrite -(conv_qstate_acc _ Hyc) Hqu.
+      case Hyx: (y == pvar_var (conv_pvar x)).
+      + move/idP: Hyx => Hyx.
+        rewrite (IProg.State.acc_upd_eq _ _ Hyx).
+        rewrite (eqP (conv_pvar_var x)) in Hyx.
+        rewrite (State.acc_upd_eq _ _ Hyx).
+        reflexivity.
+      + move/idP/negP: Hyx => Hyx.
+        rewrite (IProg.State.acc_upd_neq _ _ Hyx).
+        rewrite (eqP (conv_pvar_var x)) in Hyx.
+        rewrite (State.acc_upd_neq _ _ Hyx).
+        exact: (conv_qstate_acc _ Hyc).
   Qed.
 
   Lemma iconv_qstate_qassign r s s1 s2 :
@@ -949,7 +1006,14 @@ Section Conversion.
     eval_instr s1 i s2 ->
     IProg.eval_program (conv_qstate s1) (conv_instr i) (conv_qstate s2).
   Proof.
-  Admitted.
+    move=> i Hsafe Hi /=.
+    apply: (IProg.EICons (s2:=(conv_qstate s2))).
+    - inversion_clear Hi.
+      apply: EIAssign.
+      + exact: (istate_eqmod_qatomic (conv_qstate_eqmod s1) H).
+      + exact: (conv_qstate_Upd H0).
+    - exact: IProg.EIEmpty.
+  Qed.
 
   Lemma iconv_qstate_qadd r s t s1 s2 :
     let i := QAdd r s t in
@@ -1190,13 +1254,15 @@ Section Conversion.
     - exact: Hmax.
   Qed.
 
-  Lemma values_in_range_upd (x : pvar E) n ist :
+  Lemma values_in_range_Upd x n ist1 ist2 :
     value_in_range n ->
-    values_in_range ist ->
-    values_in_range (IProg.State.upd (pvar_var (conv_pvar x)) n ist).
+    values_in_range ist1 ->
+    IProg.State.Upd x n ist1 ist2 ->
+    values_in_range ist2.
   Proof.
-    move=> Hn Hr y m.
-    case Hyx: (pvar_var (conv_pvar y) == pvar_var (conv_pvar x)).
+    move=> Hn Hr Hupd y m.
+    rewrite (Hupd (pvar_var (conv_pvar y))).
+    case Hyx: (pvar_var (conv_pvar y) == x).
     - rewrite (IProg.State.acc_upd_eq _ _ Hyx).
       case=> Hnm; rewrite -Hnm; exact: Hn.
     - move/idP/negP: Hyx => Hyx.
@@ -1205,34 +1271,93 @@ Section Conversion.
       exact: (Hr _ _ Hy).
   Qed.
 
-  Lemma carry_in_range_upd (x : pvar E) n ist :
-    carry_in_range ist ->
-    carry_in_range (IProg.State.upd (pvar_var (conv_pvar x)) n ist).
+  Lemma values_in_range_upd x n ist :
+    value_in_range n ->
+    values_in_range ist ->
+    values_in_range (IProg.State.upd x n ist).
   Proof.
-    move=> Hc b.
-    rewrite (IProg.State.acc_upd_neq _ _ (carry_var_neq x)).
-    move=> Hb.
-    exact: (Hc _ Hb).
+    move=> Hn Hr.
+    apply: (values_in_range_Upd Hn Hr).
+    exact: IProg.State.Upd_upd.
   Qed.
 
-  Lemma valid_istate_upd (x : pvar E) n ist :
+  Lemma carry_in_range_Upd x n ist1 ist2 :
+    x != icarry_var ->
+    carry_in_range ist1 ->
+    IProg.State.Upd x n ist1 ist2 ->
+    carry_in_range ist2.
+  Proof.
+    move=> Hne Hc Hupd b.
+    rewrite (Hupd icarry_var).
+    rewrite IProg.State.acc_upd_neq.
+    - move=> Hb.
+      exact: (Hc _ Hb).
+    - apply/idP/negP.
+      move/idP/negP: Hne.
+      move=> Hne Heq; apply: Hne.
+      rewrite eq_sym.
+      exact: Heq.
+  Qed.
+
+  Lemma carry_in_range_upd x n ist :
+    x != icarry_var ->
+    carry_in_range ist ->
+    carry_in_range (IProg.State.upd x n ist).
+  Proof.
+    move=> Hne Hc.
+    apply: (carry_in_range_Upd Hne Hc).
+    exact: IProg.State.Upd_upd.
+  Qed.
+
+  Lemma valid_istate_Upd x n ist1 ist2 :
+    x != icarry_var ->
+    value_in_range n ->
+    valid_istate ist1 ->
+    IProg.State.Upd x n ist1 ist2 ->
+    valid_istate ist2.
+  Proof.
+    move=> Hne Hrn [Hv1 Hc1] Hupd.
+    split.
+    - exact: (values_in_range_Upd Hrn Hv1 Hupd).
+    - exact: (carry_in_range_Upd Hne Hc1 Hupd).
+  Qed.
+
+  Lemma valid_istate_Upd_pvar (x : pvar E) n ist1 ist2 :
+    value_in_range n ->
+    valid_istate ist1 ->
+    IProg.State.Upd (pvar_var (conv_pvar x)) n ist1 ist2 ->
+    valid_istate ist2.
+  Proof.
+    move=> Hrn Hvs Hupd.
+    apply: (valid_istate_Upd _ Hrn Hvs Hupd).
+    exact: var_carry_neq.
+  Qed.
+
+  Lemma valid_istate_upd x n ist :
+    x != icarry_var ->
+    value_in_range n ->
+    valid_istate ist ->
+    valid_istate (IProg.State.upd x n ist).
+  Proof.
+    move=> Hne Hvn Hv.
+    apply: (valid_istate_Upd Hne Hvn Hv).
+    exact: IProg.State.Upd_upd.
+  Qed.
+
+  Lemma valid_istate_upd_pvar (x : pvar E) n ist :
     value_in_range n ->
     valid_istate ist ->
     valid_istate (IProg.State.upd (pvar_var (conv_pvar x)) n ist).
   Proof.
-    move=> Hrn [Hvs Hcs].
-    split.
-    - exact: (values_in_range_upd Hrn Hvs).
-    - exact: (carry_in_range_upd Hcs).
+    apply: valid_istate_upd.
+    exact: var_carry_neq.
   Qed.
 
-  Lemma ivalueK (x : pvar E) n s :
-    values_in_range s ->
-    VStore.acc (pvar_var (conv_pvar x)) s = Some n ->
+  Lemma ivalueK (n : IProg.value) :
+    value_in_range n ->
     ivalue (qvalue n) = n.
   Proof.
-    move=> Hvr Hacc.
-    move: (Hvr x n Hacc) => [Hmin Hmax].
+    move=> [Hmin Hmax].
     rewrite /ivalue /qvalue.
     apply: Int64.unsigned_repr.
     split.
@@ -1242,54 +1367,154 @@ Section Conversion.
       exact: Hmax.
   Qed.
 
-  Lemma conv_istore_acc (x : pvar E) s :
-    valid_istate s ->
-    conv_ovalue (VStore.acc (pvar_var x) (conv_istore s)) =
-    VStore.acc (pvar_var (conv_pvar x)) s.
+  Lemma qvalueK (n : value) :
+    qvalue (ivalue n) = n.
   Proof.
-    move=> [Hvs Hcs].
-    pose y := x.
-    destruct x as [x Hmem] => /=.
-    rewrite /conv_ovalue.
-    case H: (VStore.acc x (conv_istore s)).
-    - rewrite /VStore.acc /conv_istore in H.
-      move: (VStore.L.find_map_some H) => {H} [i [Hi Hfind]].
-      rewrite /VStore.acc Hfind Hi.
-      have Hfind': VStore.M.find (pvar_var (conv_pvar y)) s = Some i by exact: Hfind.
-      move: (ivalueK Hvs Hfind') => Heq; rewrite Heq.
+    rewrite /qvalue /ivalue.
+    exact: Int64.repr_unsigned.
+  Qed.
+
+  Definition conv_ivalue (n : option IProg.value) : option value :=
+    match n with
+    | None => None
+    | Some m => Some (qvalue m)
+    end.
+
+  Lemma conv_ivalueK n :
+    conv_ivalue (conv_qvalue n) = n.
+  Proof.
+    case: n => /=.
+    - move=> n; rewrite qvalueK.
       reflexivity.
-    - rewrite /conv_istore in H.
-      move: (VStore.L.find_map_none H).
-      move=> Heq; rewrite /VStore.acc Heq.
+    - reflexivity.
+  Qed.
+
+  Lemma conv_qvalueK_some n :
+    value_in_range n ->
+    conv_qvalue (conv_ivalue (Some n)) = Some n.
+  Proof.
+    move=> Hr /=.
+    rewrite (ivalueK Hr).
+    reflexivity.
+  Qed.
+
+  Lemma conv_qvalueK_none :
+    conv_qvalue (conv_ivalue None) = None.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma conv_istore_acc_i x s :
+    VStore.acc x (conv_istore s) = conv_ivalue (VStore.acc x s).
+  Proof.
+    rewrite /VStore.acc /conv_istore.
+    case H: (VStore.M.find x s).
+    - rewrite (VStore.L.find_some_map _ H).
+      reflexivity.
+    - rewrite (VStore.L.find_none_map _ H).
       reflexivity.
   Qed.
 
-  Lemma conv_istore_upd x n s :
-    valid_istate s ->
-    conv_istore (VStore.upd (pvar_var (conv_pvar x)) n s) =
-    VStore.upd (pvar_var x) (qvalue n) (conv_istore s).
+  Lemma conv_istore_acc_some_q x n s :
+    VStore.acc x s = Some n ->
+    value_in_range n ->
+    conv_qvalue (VStore.acc x (conv_istore s)) = Some n.
   Proof.
-  Abort.
+    move=> Hacc Hr.
+    rewrite conv_istore_acc_i Hacc.
+    exact: conv_qvalueK_some.
+  Qed.
+
+  Lemma conv_istore_acc_none_q x s :
+    VStore.acc x s = None ->
+    conv_qvalue (VStore.acc x (conv_istore s)) = None.
+  Proof.
+    move=> Hacc.
+    rewrite conv_istore_acc_i Hacc.
+    exact: conv_qvalueK_none.
+  Qed.
+
+  Lemma conv_istore_acc_q x s :
+    (forall n, VStore.acc x s = Some n -> value_in_range n) ->
+    conv_qvalue (VStore.acc x (conv_istore s)) = VStore.acc x s.
+  Proof.
+    case H: (VStore.acc x s).
+    - move=> Hn.
+      apply: conv_istore_acc_some_q.
+      + rewrite H; reflexivity.
+      + apply: Hn.
+        reflexivity.
+    - rewrite (conv_istore_acc_none_q H).
+      reflexivity.
+  Qed.
+
+  Lemma conv_istore_Upd x n s1 s2 :
+    VStore.Upd x n s1 s2 ->
+    VStore.Upd x (qvalue n) (conv_istore s1) (conv_istore s2).
+  Proof.
+    move=> Hiupd y.
+    rewrite conv_istore_acc_i.
+    rewrite (Hiupd y).
+    case Hyx: (y == x).
+    - move/idP: Hyx => Hyx.
+      rewrite 2!(VStore.acc_upd_eq _ _ Hyx).
+      reflexivity.
+    - move/idP/negP: Hyx => Hyx.
+      rewrite 2!(VStore.acc_upd_neq _ _ Hyx).
+      rewrite conv_istore_acc_i.
+      reflexivity.
+  Qed.
 
   Lemma conv_icarry_carry s :
     valid_istate s ->
-    conv_ocarry (conv_icarry s) = IProg.State.acc icarry_var s.
+    conv_qcarry (conv_icarry s) = IProg.State.acc icarry_var s.
   Proof.
     move=> [_ Hcs].
-    rewrite /conv_ocarry /conv_icarry.
+    rewrite /conv_qcarry /conv_icarry.
     case H: (IProg.State.acc icarry_var s).
     - move: (Hcs _ H).
       case => Heq; rewrite Heq /=; reflexivity.
     - reflexivity.
   Qed.
 
-  Lemma conv_istate_acc (x : pvar E) s :
+  Lemma conv_istate_acc_q (x : pvar E) s :
     valid_istate s ->
-    conv_ovalue (State.acc (pvar_var x) (conv_istate s)) =
+    conv_qvalue (State.acc (pvar_var x) (conv_istate s)) =
     IProg.State.acc (pvar_var (conv_pvar x)) s.
   Proof.
+    move=> [Hvs _].
+    move: (Hvs x) => {Hvs}.
+    destruct x as [x Hmem] => /=.
+    exact: conv_istore_acc_q.
+  Qed.
+
+  Lemma conv_istate_acc_i (x : pvar E) s :
+    valid_istate s ->
+    State.acc (pvar_var x) (conv_istate s) =
+    conv_ivalue (IProg.State.acc (pvar_var (conv_pvar x)) s).
+  Proof.
     move=> Hvs.
-    exact: (conv_istore_acc _ Hvs).
+    rewrite -(conv_istate_acc_q _ Hvs).
+    rewrite conv_ivalueK.
+    reflexivity.
+  Qed.
+
+  Lemma conv_istate_Upd (x : pvar E) n s1 s2 :
+    IProg.State.Upd (pvar_var (conv_pvar x)) n s1 s2 ->
+    State.Upd (pvar_var x) (qvalue n) (conv_istate s1) (conv_istate s2).
+  Proof.
+    move=> Hupd; split => /=.
+    - apply: conv_istore_Upd.
+      destruct x as [x Hmem]; rewrite /= in Hupd *.
+      exact: Hupd.
+    - rewrite /conv_icarry.
+      case Hc: (IProg.State.acc icarry_var s1).
+      + rewrite (IProg.State.acc_Upd_neq (carry_var_neq x) Hupd).
+        rewrite Hc.
+        reflexivity.
+      + rewrite (IProg.State.acc_Upd_neq (carry_var_neq x) Hupd).
+        rewrite Hc.
+        reflexivity.
   Qed.
 
   Lemma conv_istate_eqmod s :
@@ -1298,41 +1523,45 @@ Section Conversion.
   Proof.
     move=> Hvs; split.
     - move=> x.
-      exact: conv_istate_acc.
+      exact: conv_istate_acc_q.
     - rewrite /carry_eqmod /=.
       exact: conv_icarry_carry.
   Qed.
 
-  Lemma valid_istate_qvar r n x s :
+  Lemma valid_istate_qvar r n x s1 s2 :
     let a := QVar r in
-    valid_istate s ->
-    IProg.eval_exp (conv_atomic a) n s ->
-    valid_istate (IProg.State.upd (pvar_var (conv_pvar x)) n s).
+    valid_istate s1 ->
+    IProg.eval_exp (conv_atomic a) n s1 ->
+    IProg.State.Upd (pvar_var (conv_pvar x)) n s1 s2 ->
+    valid_istate s2.
   Proof.
-    move=> a Hv Ha.
-    move: (Hv) => [Hvs _].
+    move=> a Hv Ha Hupd.
+    apply: (valid_istate_Upd_pvar _ Hv Hupd).
+    move: Hv => [Hv _].
     inversion_clear Ha.
-    move: (Hvs r n H) => {Hvs} Hrn.
-    exact: (valid_istate_upd _ Hrn Hv).
+    exact: (Hv r n H).
   Qed.
 
-  Lemma valid_istate_qconst n m x s :
+  Lemma valid_istate_qconst n m x s1 s2 :
     let a := QConst E n in
-    valid_istate s ->
-    IProg.eval_exp (conv_atomic a) m s ->
-    valid_istate (IProg.State.upd (pvar_var (conv_pvar x)) m s).
+    valid_istate s1 ->
+    IProg.eval_exp (conv_atomic a) m s1 ->
+    IProg.State.Upd (pvar_var (conv_pvar x)) m s1 s2 ->
+    valid_istate s2.
   Proof.
-    move=> a Hv Ha.
+    move=> a Hv Ha Hupd.
+    apply: (valid_istate_Upd_pvar _ Hv Hupd).
     inversion_clear Ha.
-    exact: (valid_istate_upd _ (ivalue_in_range n) Hv).
+    exact: ivalue_in_range.
   Qed.
 
-  Lemma valid_istate_qatomic a n x s :
-    valid_istate s ->
-    IProg.eval_exp (conv_atomic a) n s ->
-    valid_istate (IProg.State.upd (pvar_var (conv_pvar x)) n s).
+  Lemma valid_istate_qatomic a n x s1 s2 :
+    valid_istate s1 ->
+    IProg.eval_exp (conv_atomic a) n s1 ->
+    IProg.State.Upd (pvar_var (conv_pvar x)) n s1 s2 ->
+    valid_istate s2.
   Proof.
-    elim: a n x s.
+    elim: a n x s1 s2.
     - exact: valid_istate_qvar.
     - exact: valid_istate_qconst.
   Qed.
@@ -1340,103 +1569,117 @@ Section Conversion.
   Lemma valid_istate_qassign r s s1 s2 :
     let i := QAssign r s in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
     move=> i Hvs1 Hi.
     inversion_clear Hi.
     rewrite (IProg.eval_program_empty H0) in H => {H0 s3}.
     inversion_clear H.
-    exact: (valid_istate_qatomic _ Hvs1 H0).
+    exact: (valid_istate_qatomic Hvs1 H0 H1).
   Qed.
 
   Lemma valid_istate_qadd r s t s1 s2 :
     let i := QAdd r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qaddc r s t s1 s2 :
     let i := QAddC r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qadc r s t s1 s2 :
     let i := QAdc r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qadcc r s t s1 s2 :
     let i := QAdcC r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qsub r s t s1 s2 :
     let i := QSub r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qsubc r s t s1 s2 :
     let i := QSubC r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qsbb r s t s1 s2 :
     let i := QSbb r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qsbbc r s t s1 s2 :
     let i := QSbbC r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qmul r s t s1 s2 :
     let i := QMul r s t in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qmulf r s t u s1 s2 :
     let i := QMulf r s t u in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qshl r s n s1 s2 :
     let i := QShl r s n in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qshr r s n s1 s2 :
     let i := QShr r s n in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
   Lemma valid_istate_qmod2n r s n s1 s2 :
     let i := QMod2n r s n in
     valid_istate s1 ->
-    IProg.eval_program s1 (conv_instr i) s2 -> valid_istate s2.
+    IProg.eval_program s1 (conv_instr i) s2 ->
+    valid_istate s2.
   Proof.
   Admitted.
 
@@ -1477,29 +1720,41 @@ Section Conversion.
       exact: (valid_istate_instr Hvs1 Hi).
   Qed.
 
-  Lemma qconv_istate_qvar r n x s :
-    let a := QVar r in
+  Lemma qconv_istate_qvar n s x :
+    let a := QVar x in
+    valid_istate s ->
     IProg.eval_exp (conv_atomic a) n s ->
-    conv_istate (IProg.State.upd (pvar_var (conv_pvar x)) n s) =
-    State.upd (pvar_var x) (qvalue n) (conv_istate s).
+    eval_atomic a (qvalue n) (conv_istate s).
   Proof.
-  Abort.
+    move=> a Hvs Ha.
+    inversion_clear Ha.
+    apply: EQVar.
+    rewrite (conv_istate_acc_i _ Hvs).
+    rewrite H.
+    reflexivity.
+  Qed.
 
-  Lemma qconv_istate_qconst n m x s :
-    let a := QConst E n in
-    IProg.eval_exp (conv_atomic a) m s ->
-    conv_istate (IProg.State.upd (pvar_var (conv_pvar x)) m s) =
-    State.upd (pvar_var x) (qvalue m) (conv_istate s).
-  Proof.
-  Abort.
-
-  Lemma qconv_istate_qatomic a n x s :
+  Lemma qconv_istate_qconst n s m :
+    let a := QConst E m in
+    valid_istate s ->
     IProg.eval_exp (conv_atomic a) n s ->
-    conv_istate (IProg.State.upd (pvar_var (conv_pvar x)) n s) =
-    State.upd (pvar_var x) (qvalue n) (conv_istate s).
+    eval_atomic a (qvalue n) (conv_istate s).
   Proof.
-    elim: a n x s.
-  Abort.
+    move=> a _ Ha.
+    inversion_clear Ha.
+    rewrite qvalueK.
+    exact: EQConst.
+  Qed.
+
+  Lemma qconv_istate_qatomic a n s :
+    valid_istate s ->
+    IProg.eval_exp (conv_atomic a) n s ->
+    eval_atomic a (qvalue n) (conv_istate s).
+  Proof.
+    elim: a.
+    - exact: qconv_istate_qvar.
+    - exact: qconv_istate_qconst.
+  Qed.
 
   Lemma qconv_istate_qassign r s s1 s2 :
     let i := QAssign r s in
@@ -1507,7 +1762,14 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+    move=> i Hv1 Hi.
+    inversion_clear Hi.
+    rewrite (IProg.eval_program_empty H0) in H => {H0 s3}.
+    inversion_clear H.
+    apply: EQAssign.
+    - exact: (qconv_istate_qatomic Hv1 H0).
+    - exact: conv_istate_Upd.
+  Qed.
 
   Lemma qconv_istate_qadd r s t s1 s2 :
     let i := QAdd r s t in
@@ -1515,7 +1777,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qaddc r s t s1 s2 :
     let i := QAddC r s t in
@@ -1523,7 +1785,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qadc r s t s1 s2 :
     let i := QAdc r s t in
@@ -1531,7 +1793,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qadcc r s t s1 s2 :
     let i := QAdcC r s t in
@@ -1539,7 +1801,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qsub r s t s1 s2 :
     let i := QSub r s t in
@@ -1547,7 +1809,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qsubc r s t s1 s2 :
     let i := QSubC r s t in
@@ -1555,7 +1817,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qsbb r s t s1 s2 :
     let i := QSbb r s t in
@@ -1563,7 +1825,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qsbbc r s t s1 s2 :
     let i := QSbbC r s t in
@@ -1571,7 +1833,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qmul r s t s1 s2 :
     let i := QMul r s t in
@@ -1579,7 +1841,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qmulf r s t u s1 s2 :
     let i := QMulf r s t u in
@@ -1587,7 +1849,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qshl r s n s1 s2 :
     let i := QShl r s n in
@@ -1595,7 +1857,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qshr r s n s1 s2 :
     let i := QShr r s n in
@@ -1603,7 +1865,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_qmod2n r s n s1 s2 :
     let i := QMod2n r s n in
@@ -1611,7 +1873,7 @@ Section Conversion.
     IProg.eval_program s1 (conv_instr i) s2 ->
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
-  Abort.
+  Admitted.
 
   Lemma qconv_istate_instr i s1 s2 :
     valid_istate s1 ->
@@ -1619,14 +1881,38 @@ Section Conversion.
     eval_instr (conv_istate s1) i (conv_istate s2).
   Proof.
     elim: i s1 s2.
-  Abort.
+    - exact: qconv_istate_qassign.
+    - exact: qconv_istate_qadd.
+    - exact: qconv_istate_qaddc.
+    - exact: qconv_istate_qadc.
+    - exact: qconv_istate_qadcc.
+    - exact: qconv_istate_qsub.
+    - exact: qconv_istate_qsubc.
+    - exact: qconv_istate_qsbb.
+    - exact: qconv_istate_qsbbc.
+    - exact: qconv_istate_qmul.
+    - exact: qconv_istate_qmulf.
+    - exact: qconv_istate_qshl.
+    - exact: qconv_istate_qshr.
+    - exact: qconv_istate_qmod2n.
+  Qed.
 
   Lemma qconv_istate_program p s1 s2 :
     valid_istate s1 ->
     IProg.eval_program s1 (conv_program p) s2 ->
     eval_program (conv_istate s1) p (conv_istate s2).
   Proof.
-  Abort.
+    elim: p s1 s2 => /=.
+    - move=> s1 s2 Hv1 Hp.
+      rewrite (IProg.eval_program_empty Hp).
+      exact: EQEmpty.
+    - move=> i p IH s1 s2 Hv1 Hp.
+      move: (IProg.eval_program_split Hp) => [s3 [H12 H32]].
+      apply: EQCons.
+      + exact: (qconv_istate_instr Hv1 H12).
+      + apply: (IH _ _ _ H32).
+        exact: (valid_istate_instr Hv1 H12).
+  Qed.
 
   Lemma qconv_istate_exp e n s :
         valid_istate s ->
@@ -1637,10 +1923,10 @@ Section Conversion.
     exact: (qstate_eqmod_exp (conv_istate_eqmod Hvs) H).
   Qed.
 
-  Lemma qconv_istate_bexp b s :
+  Lemma qconv_istate_bexp e b s :
     valid_istate s ->
-    (s |= conv_bexp b)%iprog ->
-    (conv_istate s |= b)%qhasm.
+    IProg.eval_bexp (conv_bexp e) b s ->
+    eval_bexp e b (conv_istate s).
   Proof.
     move=> Hvs H.
     exact: (qstate_eqmod_bexp (conv_istate_eqmod Hvs) H).
@@ -1656,9 +1942,9 @@ Section Conversion.
     split.
     - exact: (qconv_istate_bexp Hvs Hif).
     - exists (conv_istate ist'); split.
-      +
-      +
-  Abort.
-
+      + exact: (qconv_istate_program Hvs Hip).
+      + apply: (qconv_istate_bexp _ Hig).
+        exact: (valid_istate_program Hvs Hip).
+  Qed.
 
 End Conversion.
