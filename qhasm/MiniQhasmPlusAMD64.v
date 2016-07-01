@@ -4,7 +4,7 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
 From CompCert Require Import Integers.
-From Common Require Import ZRing Env Var Store Integers.
+From Common Require Import ZAriths Env Var Store Integers.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

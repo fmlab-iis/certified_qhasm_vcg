@@ -1,7 +1,7 @@
 
 From Coq Require Import OrderedType FMaps FSets ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat ssrint eqtype tuple.
-Require Import ZRing.
+Require Import ZAriths.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

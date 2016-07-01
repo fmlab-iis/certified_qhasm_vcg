@@ -4,7 +4,7 @@
 From Coq Require Import ZArith FMaps String OrderedType.
 From Coq Require Import Program Program.Tactics.
 From mathcomp Require Import ssreflect ssrbool ssrnat ssrfun seq eqtype.
-From Common Require Import Tactics Arch Nats Bits ZRing HList Var Env Store.
+From Common Require Import Tactics Arch Nats Bits ZAriths HList Var Env Store.
 From sQhasm Require Import IProg.
 Import HEnv.
 

@@ -115,7 +115,6 @@ VFILES:=lib/CompCert/Coqlib.v\
   common/Nats.v\
   common/ZAriths.v\
   common/Bits.v\
-  common/ZRing.v\
   common/Integers.v\
   common/HList.v\
   common/Var.v\

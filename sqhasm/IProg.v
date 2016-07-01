@@ -3,7 +3,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import ZRing Nats Types Var Env Store.
+From Common Require Import ZAriths Nats Types Var Env Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
