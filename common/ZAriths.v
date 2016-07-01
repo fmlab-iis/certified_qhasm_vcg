@@ -206,3 +206,24 @@ Canonical Z_comRing := Eval hnf in ComRingType Z ZRing.zmulC.
 
 
 (** Equality Modulo *)
+
+Section EqualityModulo.
+
+  Definition eqmb (x y p : Z) : bool :=
+    (x mod p)%Z == (y mod p)%Z.
+
+  Lemma eqmP : forall x y p, reflect (eqm p x y) (eqmb x y p).
+  Proof.
+    rewrite /eqm /eqmb => x y p.
+    case Hxy: (x mod p == y mod p)%Z.
+    - apply: ReflectT.
+      apply/eqP.
+      assumption.
+    - apply: ReflectF.
+      apply/eqP/negP.
+      by rewrite Hxy.
+  Qed.
+
+End EqualityModulo.
+
+Notation "x === y # p" := (eqmb x y p) (at level 70, no associativity).
