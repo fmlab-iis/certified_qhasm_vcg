@@ -3,4 +3,5 @@
 -R common Common
 -R qhasm Qhasm
 -R sqhasm sQhasm
+-R mqhasm mQhasm
 -I .

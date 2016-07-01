@@ -55,13 +55,15 @@ COQLIBS?=\
   -R "common" Common\
   -R "qhasm" Qhasm\
   -R "sqhasm" sQhasm\
+  -R "mqhasm" mQhasm\
   -I "."
 COQDOCLIBS?=\
   -R "." Top\
   -R "lib/CompCert" CompCert\
   -R "common" Common\
   -R "qhasm" Qhasm\
-  -R "sqhasm" sQhasm
+  -R "sqhasm" sQhasm\
+  -R "mqhasm" mQhasm
 
 ##########################
 #                        #
@@ -124,7 +126,8 @@ VFILES:=lib/CompCert/Coqlib.v\
   qhasm/MiniQhasmPlusAMD64.v\
   qhasm/IProgGenAMD64.v\
   sqhasm/IProg.v\
-  sqhasm/MiniQhasmPlusAMD64.v
+  sqhasm/MiniQhasmPlusAMD64.v\
+  mqhasm/mQhasm.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))

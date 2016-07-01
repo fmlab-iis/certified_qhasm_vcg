@@ -3,6 +3,7 @@
 -R common Common
 -R qhasm Qhasm
 -R sqhasm sQhasm
+-R mqhasm mQhasm
 -I .
 # 3rd Party Libraries
 lib/CompCert/Coqlib.v
@@ -30,3 +31,5 @@ qhasm/IProgGenAMD64.v
 # Strict style
 sqhasm/IProg.v
 sqhasm/MiniQhasmPlusAMD64.v
+# Integer programs as mini Qhasm+
+mqhasm/mQhasm.v
