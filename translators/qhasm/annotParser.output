@@ -1,0 +1,3528 @@
+   0  $accept : %entry% $end
+
+   1  annotations : annot annotations
+   2              | annot
+
+   3  annot : CONST consts
+   4        | AUXVAR auxvars
+   5        | PREDICATE predicates
+   6        | INV bexp
+   7        | ASSUME bexp
+   8        | ASSERT bexp
+   9        | CUT bexp
+  10        | CONST error
+  11        | INV error
+  12        | PREDICATE error
+  13        | ASSUME error
+  14        | ASSERT error
+  15        | CUT error
+  16        | error
+
+  17  consts : exp consts
+  18         | exp
+
+  19  auxvars : auxvar auxvars
+  20          | auxvar
+
+  21  auxvar : VAR EQ exp
+  22         | VAR LPAREN formals RPAREN EQ exp
+  23         | VAR LPAREN formals RPAREN EQ error
+  24         | VAR CAST
+  25         | VAR CAST EQ error
+
+  26  predicates : predicate predicates
+  27             | predicate
+
+  28  predicate : VAR LPAREN formals RPAREN EQ bexp
+
+  29  bexp : mix
+
+  30  exp : mix
+
+  31  mix : exp_logical
+  32      | exp_logical_b QUESTION exp_logical_e COLON exp_logical_e
+
+  33  exp_logical_b : exp_logical
+
+  34  exp_logical_e : exp_logical
+
+  35  exp_logical : exp_logical RARR exp_logical
+  36              | exp_logical DISJUNCTION exp_logical
+  37              | exp_logical CONJUNCTION exp_logical
+  38              | NOT atomic
+  39              | exp_compare
+
+  40  exp_compare : exp_arith lessop actuals bless
+  41              | exp_arith moreop actuals bmore
+  42              | exp_arith EQ exp_arith
+  43              | exp_arith NE exp_arith
+  44              | exp_arith
+
+  45  bless : lessop exp_arith
+  46        |
+
+  47  bmore : moreop exp_arith
+  48        |
+
+  49  exp_arith : atomic
+  50            | exp_arith PLUS exp_arith
+  51            | exp_arith MINUS exp_arith
+  52            | exp_arith MULT exp_arith
+  53            | exp_arith AND exp_arith
+  54            | exp_arith OR exp_arith
+  55            | exp_arith XOR exp_arith
+  56            | exp_arith SMOD exp_arith
+  57            | exp_arith UMOD exp_arith
+  58            | exp_arith SHIFTL exp_arith
+  59            | exp_arith USHIFTR exp_arith
+  60            | exp_arith SHIFTR exp_arith
+  61            | exp_arith POWER exp_arith
+  62            | MINUS exp_arith
+
+  63  atomic_e : atomic
+
+  64  atomic : big
+  65         | CARRY
+  66         | var
+  67         | TRUE
+  68         | LPAREN mix RPAREN
+  69         | LPAREN mix RPAREN SPLIT num
+  70         | atomic_e DOT atomic_e
+  71         | atomic_e CAST
+  72         | atomic_e LOW
+  73         | atomic_e HIGH
+  74         | atomic_e LSQUARE num COMMA num RSQUARE
+  75         | atomic_e LSQUARE num RSQUARE
+  76         | VAR LPAREN RPAREN
+  77         | VAR LPAREN actuals RPAREN
+  78         | atomic_e LSQUARE error
+
+  79  num : NUM
+
+  80  big : NUM
+
+  81  var : VAR
+  82      | typem LSQUARE qaddr RSQUARE
+  83      | typem LSQUARE VAR RSQUARE
+  84      | typem error
+
+  85  qaddr : qvar PLUS num
+  86        | qvar PLUS qvar
+  87        | qvar PLUS qvar MULT num
+  88        | qvar PLUS num PLUS qvar MULT num
+
+  89  qvar : VAR
+
+  90  formals : formals_rev
+  91          |
+
+  92  formals_rev : formals_rev COMMA fparam
+  93              | fparam
+
+  94  fparam : VAR CAST
+
+  95  actuals : actuals_rev
+
+  96  actuals_rev : actuals_rev COMMA exp_arith
+  97              | exp_arith
+
+  98  typem : MEM64
+  99        | MEM32
+
+ 100  lessop : ULT
+ 101         | ULE
+ 102         | SLT
+ 103         | SLE
+
+ 104  moreop : UGT
+ 105         | UGE
+ 106         | SGT
+ 107         | SGE
+
+ 108  %entry% : '\001' annotations
+
+state 0
+	$accept : . %entry% $end  (0)
+
+	'\001'  shift 1
+	.  error
+
+	%entry%  goto 2
+
+
+state 1
+	%entry% : '\001' . annotations  (108)
+
+	error  shift 3
+	AUXVAR  shift 4
+	CONST  shift 5
+	INV  shift 6
+	ASSUME  shift 7
+	ASSERT  shift 8
+	CUT  shift 9
+	PREDICATE  shift 10
+	.  error
+
+	annotations  goto 11
+	annot  goto 12
+
+
+state 2
+	$accept : %entry% . $end  (0)
+
+	$end  accept
+
+
+state 3
+	annot : error .  (16)
+
+	.  reduce 16
+
+
+state 4
+	annot : AUXVAR . auxvars  (4)
+
+	VAR  shift 13
+	.  error
+
+	auxvars  goto 14
+	auxvar  goto 15
+
+
+state 5
+	annot : CONST . consts  (3)
+	annot : CONST . error  (10)
+
+	error  shift 16
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	consts  goto 26
+	exp  goto 27
+	mix  goto 28
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 6
+	annot : INV . bexp  (6)
+	annot : INV . error  (11)
+
+	error  shift 38
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	bexp  goto 39
+	mix  goto 40
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 7
+	annot : ASSUME . bexp  (7)
+	annot : ASSUME . error  (13)
+
+	error  shift 41
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	bexp  goto 42
+	mix  goto 40
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 8
+	annot : ASSERT . bexp  (8)
+	annot : ASSERT . error  (14)
+
+	error  shift 43
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	bexp  goto 44
+	mix  goto 40
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 9
+	annot : CUT . bexp  (9)
+	annot : CUT . error  (15)
+
+	error  shift 45
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	bexp  goto 46
+	mix  goto 40
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 10
+	annot : PREDICATE . predicates  (5)
+	annot : PREDICATE . error  (12)
+
+	error  shift 47
+	VAR  shift 48
+	.  error
+
+	predicates  goto 49
+	predicate  goto 50
+
+
+state 11
+	%entry% : '\001' annotations .  (108)
+
+	.  reduce 108
+
+
+state 12
+	annotations : annot . annotations  (1)
+	annotations : annot .  (2)
+
+	error  shift 3
+	AUXVAR  shift 4
+	CONST  shift 5
+	INV  shift 6
+	ASSUME  shift 7
+	ASSERT  shift 8
+	CUT  shift 9
+	PREDICATE  shift 10
+	$end  reduce 2
+
+	annotations  goto 51
+	annot  goto 12
+
+
+state 13
+	auxvar : VAR . EQ exp  (21)
+	auxvar : VAR . LPAREN formals RPAREN EQ exp  (22)
+	auxvar : VAR . LPAREN formals RPAREN EQ error  (23)
+	auxvar : VAR . CAST  (24)
+	auxvar : VAR . CAST EQ error  (25)
+
+	CAST  shift 52
+	LPAREN  shift 53
+	EQ  shift 54
+	.  error
+
+
+state 14
+	annot : AUXVAR auxvars .  (4)
+
+	.  reduce 4
+
+
+state 15
+	auxvars : auxvar . auxvars  (19)
+	auxvars : auxvar .  (20)
+
+	VAR  shift 13
+	$end  reduce 20
+	error  reduce 20
+	AUXVAR  reduce 20
+	CONST  reduce 20
+	INV  reduce 20
+	ASSUME  reduce 20
+	ASSERT  reduce 20
+	CUT  reduce 20
+	PREDICATE  reduce 20
+
+	auxvars  goto 55
+	auxvar  goto 15
+
+
+state 16
+	annot : CONST error .  (10)
+
+	.  reduce 10
+
+
+state 17
+	big : NUM .  (80)
+
+	.  reduce 80
+
+
+state 18
+	atomic : VAR . LPAREN RPAREN  (76)
+	atomic : VAR . LPAREN actuals RPAREN  (77)
+	var : VAR .  (81)
+
+	LPAREN  shift 56
+	$end  reduce 81
+	error  reduce 81
+	NUM  reduce 81
+	VAR  reduce 81
+	CAST  reduce 81
+	RPAREN  reduce 81
+	LSQUARE  reduce 81
+	COMMA  reduce 81
+	COLON  reduce 81
+	AUXVAR  reduce 81
+	CONST  reduce 81
+	INV  reduce 81
+	ASSUME  reduce 81
+	ASSERT  reduce 81
+	CUT  reduce 81
+	PREDICATE  reduce 81
+	SMOD  reduce 81
+	UMOD  reduce 81
+	POWER  reduce 81
+	CONJUNCTION  reduce 81
+	DISJUNCTION  reduce 81
+	RARR  reduce 81
+	PLUS  reduce 81
+	MINUS  reduce 81
+	MULT  reduce 81
+	AND  reduce 81
+	OR  reduce 81
+	XOR  reduce 81
+	QUESTION  reduce 81
+	EQ  reduce 81
+	NE  reduce 81
+	DOT  reduce 81
+	SLT  reduce 81
+	SGT  reduce 81
+	SLE  reduce 81
+	SGE  reduce 81
+	ULT  reduce 81
+	UGT  reduce 81
+	ULE  reduce 81
+	UGE  reduce 81
+	CARRY  reduce 81
+	NOT  reduce 81
+	SHIFTL  reduce 81
+	SHIFTR  reduce 81
+	USHIFTR  reduce 81
+	LOW  reduce 81
+	HIGH  reduce 81
+	MEM64  reduce 81
+	MEM32  reduce 81
+	TRUE  reduce 81
+
+
+state 19
+	atomic : LPAREN . mix RPAREN  (68)
+	atomic : LPAREN . mix RPAREN SPLIT num  (69)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	mix  goto 57
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 20
+	exp_arith : MINUS . exp_arith  (62)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 58
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 21
+	atomic : CARRY .  (65)
+
+	.  reduce 65
+
+
+state 22
+	exp_logical : NOT . atomic  (38)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 59
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 23
+	typem : MEM64 .  (98)
+
+	.  reduce 98
+
+
+state 24
+	typem : MEM32 .  (99)
+
+	.  reduce 99
+
+
+state 25
+	atomic : TRUE .  (67)
+
+	.  reduce 67
+
+
+state 26
+	annot : CONST consts .  (3)
+
+	.  reduce 3
+
+
+state 27
+	consts : exp . consts  (17)
+	consts : exp .  (18)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	$end  reduce 18
+	error  reduce 18
+	AUXVAR  reduce 18
+	CONST  reduce 18
+	INV  reduce 18
+	ASSUME  reduce 18
+	ASSERT  reduce 18
+	CUT  reduce 18
+	PREDICATE  reduce 18
+
+	consts  goto 60
+	exp  goto 27
+	mix  goto 28
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 28
+	exp : mix .  (30)
+
+	.  reduce 30
+
+
+state 29
+	mix : exp_logical .  (31)
+	exp_logical_b : exp_logical .  (33)
+	exp_logical : exp_logical . RARR exp_logical  (35)
+	exp_logical : exp_logical . DISJUNCTION exp_logical  (36)
+	exp_logical : exp_logical . CONJUNCTION exp_logical  (37)
+
+	CONJUNCTION  shift 61
+	DISJUNCTION  shift 62
+	RARR  shift 63
+	$end  reduce 31
+	error  reduce 31
+	NUM  reduce 31
+	VAR  reduce 31
+	LPAREN  reduce 31
+	RPAREN  reduce 31
+	AUXVAR  reduce 31
+	CONST  reduce 31
+	INV  reduce 31
+	ASSUME  reduce 31
+	ASSERT  reduce 31
+	CUT  reduce 31
+	PREDICATE  reduce 31
+	MINUS  reduce 31
+	QUESTION  reduce 33
+	CARRY  reduce 31
+	NOT  reduce 31
+	MEM64  reduce 31
+	MEM32  reduce 31
+	TRUE  reduce 31
+
+
+state 30
+	mix : exp_logical_b . QUESTION exp_logical_e COLON exp_logical_e  (32)
+
+	QUESTION  shift 64
+	.  error
+
+
+state 31
+	exp_arith : atomic .  (49)
+	atomic_e : atomic .  (63)
+
+	$end  reduce 49
+	error  reduce 49
+	NUM  reduce 49
+	VAR  reduce 49
+	CAST  reduce 63
+	LPAREN  reduce 49
+	RPAREN  reduce 49
+	LSQUARE  reduce 63
+	COMMA  reduce 49
+	COLON  reduce 49
+	AUXVAR  reduce 49
+	CONST  reduce 49
+	INV  reduce 49
+	ASSUME  reduce 49
+	ASSERT  reduce 49
+	CUT  reduce 49
+	PREDICATE  reduce 49
+	SMOD  reduce 49
+	UMOD  reduce 49
+	POWER  reduce 49
+	CONJUNCTION  reduce 49
+	DISJUNCTION  reduce 49
+	RARR  reduce 49
+	PLUS  reduce 49
+	MINUS  reduce 49
+	MULT  reduce 49
+	AND  reduce 49
+	OR  reduce 49
+	XOR  reduce 49
+	QUESTION  reduce 49
+	EQ  reduce 49
+	NE  reduce 49
+	DOT  reduce 63
+	SLT  reduce 49
+	SGT  reduce 49
+	SLE  reduce 49
+	SGE  reduce 49
+	ULT  reduce 49
+	UGT  reduce 49
+	ULE  reduce 49
+	UGE  reduce 49
+	CARRY  reduce 49
+	NOT  reduce 49
+	SHIFTL  reduce 49
+	SHIFTR  reduce 49
+	USHIFTR  reduce 49
+	LOW  reduce 63
+	HIGH  reduce 63
+	MEM64  reduce 49
+	MEM32  reduce 49
+	TRUE  reduce 49
+
+
+state 32
+	exp_logical : exp_compare .  (39)
+
+	.  reduce 39
+
+
+33: shift/reduce conflict (shift 69, reduce 44) on MINUS
+state 33
+	exp_compare : exp_arith . lessop actuals bless  (40)
+	exp_compare : exp_arith . moreop actuals bmore  (41)
+	exp_compare : exp_arith . EQ exp_arith  (42)
+	exp_compare : exp_arith . NE exp_arith  (43)
+	exp_compare : exp_arith .  (44)
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	EQ  shift 74
+	NE  shift 75
+	SLT  shift 76
+	SGT  shift 77
+	SLE  shift 78
+	SGE  shift 79
+	ULT  shift 80
+	UGT  shift 81
+	ULE  shift 82
+	UGE  shift 83
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 44
+	error  reduce 44
+	NUM  reduce 44
+	VAR  reduce 44
+	LPAREN  reduce 44
+	RPAREN  reduce 44
+	COLON  reduce 44
+	AUXVAR  reduce 44
+	CONST  reduce 44
+	INV  reduce 44
+	ASSUME  reduce 44
+	ASSERT  reduce 44
+	CUT  reduce 44
+	PREDICATE  reduce 44
+	CONJUNCTION  reduce 44
+	DISJUNCTION  reduce 44
+	RARR  reduce 44
+	QUESTION  reduce 44
+	CARRY  reduce 44
+	NOT  reduce 44
+	MEM64  reduce 44
+	MEM32  reduce 44
+	TRUE  reduce 44
+
+	lessop  goto 87
+	moreop  goto 88
+
+
+state 34
+	atomic : atomic_e . DOT atomic_e  (70)
+	atomic : atomic_e . CAST  (71)
+	atomic : atomic_e . LOW  (72)
+	atomic : atomic_e . HIGH  (73)
+	atomic : atomic_e . LSQUARE num COMMA num RSQUARE  (74)
+	atomic : atomic_e . LSQUARE num RSQUARE  (75)
+	atomic : atomic_e . LSQUARE error  (78)
+
+	CAST  shift 89
+	LSQUARE  shift 90
+	DOT  shift 91
+	LOW  shift 92
+	HIGH  shift 93
+	.  error
+
+
+state 35
+	atomic : big .  (64)
+
+	.  reduce 64
+
+
+state 36
+	atomic : var .  (66)
+
+	.  reduce 66
+
+
+state 37
+	var : typem . LSQUARE qaddr RSQUARE  (82)
+	var : typem . LSQUARE VAR RSQUARE  (83)
+	var : typem . error  (84)
+
+	error  shift 94
+	LSQUARE  shift 95
+	.  error
+
+
+state 38
+	annot : INV error .  (11)
+
+	.  reduce 11
+
+
+state 39
+	annot : INV bexp .  (6)
+
+	.  reduce 6
+
+
+state 40
+	bexp : mix .  (29)
+
+	.  reduce 29
+
+
+state 41
+	annot : ASSUME error .  (13)
+
+	.  reduce 13
+
+
+state 42
+	annot : ASSUME bexp .  (7)
+
+	.  reduce 7
+
+
+state 43
+	annot : ASSERT error .  (14)
+
+	.  reduce 14
+
+
+state 44
+	annot : ASSERT bexp .  (8)
+
+	.  reduce 8
+
+
+state 45
+	annot : CUT error .  (15)
+
+	.  reduce 15
+
+
+state 46
+	annot : CUT bexp .  (9)
+
+	.  reduce 9
+
+
+state 47
+	annot : PREDICATE error .  (12)
+
+	.  reduce 12
+
+
+state 48
+	predicate : VAR . LPAREN formals RPAREN EQ bexp  (28)
+
+	LPAREN  shift 96
+	.  error
+
+
+state 49
+	annot : PREDICATE predicates .  (5)
+
+	.  reduce 5
+
+
+state 50
+	predicates : predicate . predicates  (26)
+	predicates : predicate .  (27)
+
+	VAR  shift 48
+	$end  reduce 27
+	error  reduce 27
+	AUXVAR  reduce 27
+	CONST  reduce 27
+	INV  reduce 27
+	ASSUME  reduce 27
+	ASSERT  reduce 27
+	CUT  reduce 27
+	PREDICATE  reduce 27
+
+	predicates  goto 97
+	predicate  goto 50
+
+
+state 51
+	annotations : annot annotations .  (1)
+
+	.  reduce 1
+
+
+state 52
+	auxvar : VAR CAST .  (24)
+	auxvar : VAR CAST . EQ error  (25)
+
+	EQ  shift 98
+	$end  reduce 24
+	error  reduce 24
+	VAR  reduce 24
+	AUXVAR  reduce 24
+	CONST  reduce 24
+	INV  reduce 24
+	ASSUME  reduce 24
+	ASSERT  reduce 24
+	CUT  reduce 24
+	PREDICATE  reduce 24
+
+
+state 53
+	auxvar : VAR LPAREN . formals RPAREN EQ exp  (22)
+	auxvar : VAR LPAREN . formals RPAREN EQ error  (23)
+	formals : .  (91)
+
+	VAR  shift 99
+	RPAREN  reduce 91
+
+	formals  goto 100
+	formals_rev  goto 101
+	fparam  goto 102
+
+
+state 54
+	auxvar : VAR EQ . exp  (21)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp  goto 103
+	mix  goto 28
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 55
+	auxvars : auxvar auxvars .  (19)
+
+	.  reduce 19
+
+
+state 56
+	atomic : VAR LPAREN . RPAREN  (76)
+	atomic : VAR LPAREN . actuals RPAREN  (77)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	RPAREN  shift 104
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 105
+	actuals  goto 106
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+	actuals_rev  goto 107
+
+
+state 57
+	atomic : LPAREN mix . RPAREN  (68)
+	atomic : LPAREN mix . RPAREN SPLIT num  (69)
+
+	RPAREN  shift 108
+	.  error
+
+
+state 58
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+	exp_arith : MINUS exp_arith .  (62)
+
+	.  reduce 62
+
+
+state 59
+	exp_logical : NOT atomic .  (38)
+	atomic_e : atomic .  (63)
+
+	$end  reduce 38
+	error  reduce 38
+	NUM  reduce 38
+	VAR  reduce 38
+	CAST  reduce 63
+	LPAREN  reduce 38
+	RPAREN  reduce 38
+	LSQUARE  reduce 63
+	COLON  reduce 38
+	AUXVAR  reduce 38
+	CONST  reduce 38
+	INV  reduce 38
+	ASSUME  reduce 38
+	ASSERT  reduce 38
+	CUT  reduce 38
+	PREDICATE  reduce 38
+	CONJUNCTION  reduce 38
+	DISJUNCTION  reduce 38
+	RARR  reduce 38
+	MINUS  reduce 38
+	QUESTION  reduce 38
+	DOT  reduce 63
+	CARRY  reduce 38
+	NOT  reduce 38
+	LOW  reduce 63
+	HIGH  reduce 63
+	MEM64  reduce 38
+	MEM32  reduce 38
+	TRUE  reduce 38
+
+
+state 60
+	consts : exp consts .  (17)
+
+	.  reduce 17
+
+
+state 61
+	exp_logical : exp_logical CONJUNCTION . exp_logical  (37)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp_logical  goto 109
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 62
+	exp_logical : exp_logical DISJUNCTION . exp_logical  (36)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp_logical  goto 110
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 63
+	exp_logical : exp_logical RARR . exp_logical  (35)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp_logical  goto 111
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 64
+	mix : exp_logical_b QUESTION . exp_logical_e COLON exp_logical_e  (32)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp_logical  goto 112
+	exp_logical_e  goto 113
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 65
+	exp_arith : exp_arith SMOD . exp_arith  (56)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 114
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 66
+	exp_arith : exp_arith UMOD . exp_arith  (57)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 115
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 67
+	exp_arith : exp_arith POWER . exp_arith  (61)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 116
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 68
+	exp_arith : exp_arith PLUS . exp_arith  (50)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 117
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 69
+	exp_arith : exp_arith MINUS . exp_arith  (51)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 118
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 70
+	exp_arith : exp_arith MULT . exp_arith  (52)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 119
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 71
+	exp_arith : exp_arith AND . exp_arith  (53)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 120
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 72
+	exp_arith : exp_arith OR . exp_arith  (54)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 121
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 73
+	exp_arith : exp_arith XOR . exp_arith  (55)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 122
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 74
+	exp_compare : exp_arith EQ . exp_arith  (42)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 123
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 75
+	exp_compare : exp_arith NE . exp_arith  (43)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 124
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 76
+	lessop : SLT .  (102)
+
+	.  reduce 102
+
+
+state 77
+	moreop : SGT .  (106)
+
+	.  reduce 106
+
+
+state 78
+	lessop : SLE .  (103)
+
+	.  reduce 103
+
+
+state 79
+	moreop : SGE .  (107)
+
+	.  reduce 107
+
+
+state 80
+	lessop : ULT .  (100)
+
+	.  reduce 100
+
+
+state 81
+	moreop : UGT .  (104)
+
+	.  reduce 104
+
+
+state 82
+	lessop : ULE .  (101)
+
+	.  reduce 101
+
+
+state 83
+	moreop : UGE .  (105)
+
+	.  reduce 105
+
+
+state 84
+	exp_arith : exp_arith SHIFTL . exp_arith  (58)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 125
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 85
+	exp_arith : exp_arith SHIFTR . exp_arith  (60)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 126
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 86
+	exp_arith : exp_arith USHIFTR . exp_arith  (59)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 127
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 87
+	exp_compare : exp_arith lessop . actuals bless  (40)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 105
+	actuals  goto 128
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+	actuals_rev  goto 107
+
+
+state 88
+	exp_compare : exp_arith moreop . actuals bmore  (41)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 105
+	actuals  goto 129
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+	actuals_rev  goto 107
+
+
+state 89
+	atomic : atomic_e CAST .  (71)
+
+	.  reduce 71
+
+
+state 90
+	atomic : atomic_e LSQUARE . num COMMA num RSQUARE  (74)
+	atomic : atomic_e LSQUARE . num RSQUARE  (75)
+	atomic : atomic_e LSQUARE . error  (78)
+
+	error  shift 130
+	NUM  shift 131
+	.  error
+
+	num  goto 132
+
+
+state 91
+	atomic : atomic_e DOT . atomic_e  (70)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 133
+	atomic_e  goto 134
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 92
+	atomic : atomic_e LOW .  (72)
+
+	.  reduce 72
+
+
+state 93
+	atomic : atomic_e HIGH .  (73)
+
+	.  reduce 73
+
+
+state 94
+	var : typem error .  (84)
+
+	.  reduce 84
+
+
+state 95
+	var : typem LSQUARE . qaddr RSQUARE  (82)
+	var : typem LSQUARE . VAR RSQUARE  (83)
+
+	VAR  shift 135
+	.  error
+
+	qaddr  goto 136
+	qvar  goto 137
+
+
+state 96
+	predicate : VAR LPAREN . formals RPAREN EQ bexp  (28)
+	formals : .  (91)
+
+	VAR  shift 99
+	RPAREN  reduce 91
+
+	formals  goto 138
+	formals_rev  goto 101
+	fparam  goto 102
+
+
+state 97
+	predicates : predicate predicates .  (26)
+
+	.  reduce 26
+
+
+state 98
+	auxvar : VAR CAST EQ . error  (25)
+
+	error  shift 139
+	.  error
+
+
+state 99
+	fparam : VAR . CAST  (94)
+
+	CAST  shift 140
+	.  error
+
+
+state 100
+	auxvar : VAR LPAREN formals . RPAREN EQ exp  (22)
+	auxvar : VAR LPAREN formals . RPAREN EQ error  (23)
+
+	RPAREN  shift 141
+	.  error
+
+
+state 101
+	formals : formals_rev .  (90)
+	formals_rev : formals_rev . COMMA fparam  (92)
+
+	COMMA  shift 142
+	RPAREN  reduce 90
+
+
+state 102
+	formals_rev : fparam .  (93)
+
+	.  reduce 93
+
+
+state 103
+	auxvar : VAR EQ exp .  (21)
+
+	.  reduce 21
+
+
+state 104
+	atomic : VAR LPAREN RPAREN .  (76)
+
+	.  reduce 76
+
+
+105: shift/reduce conflict (shift 69, reduce 97) on MINUS
+state 105
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+	actuals_rev : exp_arith .  (97)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 97
+	error  reduce 97
+	NUM  reduce 97
+	VAR  reduce 97
+	LPAREN  reduce 97
+	RPAREN  reduce 97
+	COMMA  reduce 97
+	COLON  reduce 97
+	AUXVAR  reduce 97
+	CONST  reduce 97
+	INV  reduce 97
+	ASSUME  reduce 97
+	ASSERT  reduce 97
+	CUT  reduce 97
+	PREDICATE  reduce 97
+	CONJUNCTION  reduce 97
+	DISJUNCTION  reduce 97
+	RARR  reduce 97
+	QUESTION  reduce 97
+	SLT  reduce 97
+	SGT  reduce 97
+	SLE  reduce 97
+	SGE  reduce 97
+	ULT  reduce 97
+	UGT  reduce 97
+	ULE  reduce 97
+	UGE  reduce 97
+	CARRY  reduce 97
+	NOT  reduce 97
+	MEM64  reduce 97
+	MEM32  reduce 97
+	TRUE  reduce 97
+
+
+state 106
+	atomic : VAR LPAREN actuals . RPAREN  (77)
+
+	RPAREN  shift 143
+	.  error
+
+
+state 107
+	actuals : actuals_rev .  (95)
+	actuals_rev : actuals_rev . COMMA exp_arith  (96)
+
+	COMMA  shift 144
+	$end  reduce 95
+	error  reduce 95
+	NUM  reduce 95
+	VAR  reduce 95
+	LPAREN  reduce 95
+	RPAREN  reduce 95
+	COLON  reduce 95
+	AUXVAR  reduce 95
+	CONST  reduce 95
+	INV  reduce 95
+	ASSUME  reduce 95
+	ASSERT  reduce 95
+	CUT  reduce 95
+	PREDICATE  reduce 95
+	CONJUNCTION  reduce 95
+	DISJUNCTION  reduce 95
+	RARR  reduce 95
+	MINUS  reduce 95
+	QUESTION  reduce 95
+	SLT  reduce 95
+	SGT  reduce 95
+	SLE  reduce 95
+	SGE  reduce 95
+	ULT  reduce 95
+	UGT  reduce 95
+	ULE  reduce 95
+	UGE  reduce 95
+	CARRY  reduce 95
+	NOT  reduce 95
+	MEM64  reduce 95
+	MEM32  reduce 95
+	TRUE  reduce 95
+
+
+state 108
+	atomic : LPAREN mix RPAREN .  (68)
+	atomic : LPAREN mix RPAREN . SPLIT num  (69)
+
+	SPLIT  shift 145
+	$end  reduce 68
+	error  reduce 68
+	NUM  reduce 68
+	VAR  reduce 68
+	CAST  reduce 68
+	LPAREN  reduce 68
+	RPAREN  reduce 68
+	LSQUARE  reduce 68
+	COMMA  reduce 68
+	COLON  reduce 68
+	AUXVAR  reduce 68
+	CONST  reduce 68
+	INV  reduce 68
+	ASSUME  reduce 68
+	ASSERT  reduce 68
+	CUT  reduce 68
+	PREDICATE  reduce 68
+	SMOD  reduce 68
+	UMOD  reduce 68
+	POWER  reduce 68
+	CONJUNCTION  reduce 68
+	DISJUNCTION  reduce 68
+	RARR  reduce 68
+	PLUS  reduce 68
+	MINUS  reduce 68
+	MULT  reduce 68
+	AND  reduce 68
+	OR  reduce 68
+	XOR  reduce 68
+	QUESTION  reduce 68
+	EQ  reduce 68
+	NE  reduce 68
+	DOT  reduce 68
+	SLT  reduce 68
+	SGT  reduce 68
+	SLE  reduce 68
+	SGE  reduce 68
+	ULT  reduce 68
+	UGT  reduce 68
+	ULE  reduce 68
+	UGE  reduce 68
+	CARRY  reduce 68
+	NOT  reduce 68
+	SHIFTL  reduce 68
+	SHIFTR  reduce 68
+	USHIFTR  reduce 68
+	LOW  reduce 68
+	HIGH  reduce 68
+	MEM64  reduce 68
+	MEM32  reduce 68
+	TRUE  reduce 68
+
+
+state 109
+	exp_logical : exp_logical . RARR exp_logical  (35)
+	exp_logical : exp_logical . DISJUNCTION exp_logical  (36)
+	exp_logical : exp_logical . CONJUNCTION exp_logical  (37)
+	exp_logical : exp_logical CONJUNCTION exp_logical .  (37)
+
+	.  reduce 37
+
+
+state 110
+	exp_logical : exp_logical . RARR exp_logical  (35)
+	exp_logical : exp_logical . DISJUNCTION exp_logical  (36)
+	exp_logical : exp_logical DISJUNCTION exp_logical .  (36)
+	exp_logical : exp_logical . CONJUNCTION exp_logical  (37)
+
+	CONJUNCTION  shift 61
+	$end  reduce 36
+	error  reduce 36
+	NUM  reduce 36
+	VAR  reduce 36
+	LPAREN  reduce 36
+	RPAREN  reduce 36
+	COLON  reduce 36
+	AUXVAR  reduce 36
+	CONST  reduce 36
+	INV  reduce 36
+	ASSUME  reduce 36
+	ASSERT  reduce 36
+	CUT  reduce 36
+	PREDICATE  reduce 36
+	DISJUNCTION  reduce 36
+	RARR  reduce 36
+	MINUS  reduce 36
+	QUESTION  reduce 36
+	CARRY  reduce 36
+	NOT  reduce 36
+	MEM64  reduce 36
+	MEM32  reduce 36
+	TRUE  reduce 36
+
+
+state 111
+	exp_logical : exp_logical . RARR exp_logical  (35)
+	exp_logical : exp_logical RARR exp_logical .  (35)
+	exp_logical : exp_logical . DISJUNCTION exp_logical  (36)
+	exp_logical : exp_logical . CONJUNCTION exp_logical  (37)
+
+	CONJUNCTION  shift 61
+	DISJUNCTION  shift 62
+	RARR  shift 63
+	$end  reduce 35
+	error  reduce 35
+	NUM  reduce 35
+	VAR  reduce 35
+	LPAREN  reduce 35
+	RPAREN  reduce 35
+	COLON  reduce 35
+	AUXVAR  reduce 35
+	CONST  reduce 35
+	INV  reduce 35
+	ASSUME  reduce 35
+	ASSERT  reduce 35
+	CUT  reduce 35
+	PREDICATE  reduce 35
+	MINUS  reduce 35
+	QUESTION  reduce 35
+	CARRY  reduce 35
+	NOT  reduce 35
+	MEM64  reduce 35
+	MEM32  reduce 35
+	TRUE  reduce 35
+
+
+state 112
+	exp_logical_e : exp_logical .  (34)
+	exp_logical : exp_logical . RARR exp_logical  (35)
+	exp_logical : exp_logical . DISJUNCTION exp_logical  (36)
+	exp_logical : exp_logical . CONJUNCTION exp_logical  (37)
+
+	CONJUNCTION  shift 61
+	DISJUNCTION  shift 62
+	RARR  shift 63
+	$end  reduce 34
+	error  reduce 34
+	NUM  reduce 34
+	VAR  reduce 34
+	LPAREN  reduce 34
+	RPAREN  reduce 34
+	COLON  reduce 34
+	AUXVAR  reduce 34
+	CONST  reduce 34
+	INV  reduce 34
+	ASSUME  reduce 34
+	ASSERT  reduce 34
+	CUT  reduce 34
+	PREDICATE  reduce 34
+	MINUS  reduce 34
+	CARRY  reduce 34
+	NOT  reduce 34
+	MEM64  reduce 34
+	MEM32  reduce 34
+	TRUE  reduce 34
+
+
+state 113
+	mix : exp_logical_b QUESTION exp_logical_e . COLON exp_logical_e  (32)
+
+	COLON  shift 146
+	.  error
+
+
+state 114
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith SMOD exp_arith .  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 56
+	error  reduce 56
+	NUM  reduce 56
+	VAR  reduce 56
+	LPAREN  reduce 56
+	RPAREN  reduce 56
+	COMMA  reduce 56
+	COLON  reduce 56
+	AUXVAR  reduce 56
+	CONST  reduce 56
+	INV  reduce 56
+	ASSUME  reduce 56
+	ASSERT  reduce 56
+	CUT  reduce 56
+	PREDICATE  reduce 56
+	SMOD  reduce 56
+	UMOD  reduce 56
+	CONJUNCTION  reduce 56
+	DISJUNCTION  reduce 56
+	RARR  reduce 56
+	PLUS  reduce 56
+	MINUS  reduce 56
+	MULT  reduce 56
+	AND  reduce 56
+	OR  reduce 56
+	XOR  reduce 56
+	QUESTION  reduce 56
+	EQ  reduce 56
+	NE  reduce 56
+	SLT  reduce 56
+	SGT  reduce 56
+	SLE  reduce 56
+	SGE  reduce 56
+	ULT  reduce 56
+	UGT  reduce 56
+	ULE  reduce 56
+	UGE  reduce 56
+	CARRY  reduce 56
+	NOT  reduce 56
+	SHIFTL  reduce 56
+	SHIFTR  reduce 56
+	USHIFTR  reduce 56
+	MEM64  reduce 56
+	MEM32  reduce 56
+	TRUE  reduce 56
+
+
+state 115
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith UMOD exp_arith .  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 57
+	error  reduce 57
+	NUM  reduce 57
+	VAR  reduce 57
+	LPAREN  reduce 57
+	RPAREN  reduce 57
+	COMMA  reduce 57
+	COLON  reduce 57
+	AUXVAR  reduce 57
+	CONST  reduce 57
+	INV  reduce 57
+	ASSUME  reduce 57
+	ASSERT  reduce 57
+	CUT  reduce 57
+	PREDICATE  reduce 57
+	SMOD  reduce 57
+	UMOD  reduce 57
+	CONJUNCTION  reduce 57
+	DISJUNCTION  reduce 57
+	RARR  reduce 57
+	PLUS  reduce 57
+	MINUS  reduce 57
+	MULT  reduce 57
+	AND  reduce 57
+	OR  reduce 57
+	XOR  reduce 57
+	QUESTION  reduce 57
+	EQ  reduce 57
+	NE  reduce 57
+	SLT  reduce 57
+	SGT  reduce 57
+	SLE  reduce 57
+	SGE  reduce 57
+	ULT  reduce 57
+	UGT  reduce 57
+	ULE  reduce 57
+	UGE  reduce 57
+	CARRY  reduce 57
+	NOT  reduce 57
+	SHIFTL  reduce 57
+	SHIFTR  reduce 57
+	USHIFTR  reduce 57
+	MEM64  reduce 57
+	MEM32  reduce 57
+	TRUE  reduce 57
+
+
+state 116
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+	exp_arith : exp_arith POWER exp_arith .  (61)
+
+	.  reduce 61
+
+
+state 117
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith PLUS exp_arith .  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 50
+	error  reduce 50
+	NUM  reduce 50
+	VAR  reduce 50
+	LPAREN  reduce 50
+	RPAREN  reduce 50
+	COMMA  reduce 50
+	COLON  reduce 50
+	AUXVAR  reduce 50
+	CONST  reduce 50
+	INV  reduce 50
+	ASSUME  reduce 50
+	ASSERT  reduce 50
+	CUT  reduce 50
+	PREDICATE  reduce 50
+	CONJUNCTION  reduce 50
+	DISJUNCTION  reduce 50
+	RARR  reduce 50
+	PLUS  reduce 50
+	MINUS  reduce 50
+	QUESTION  reduce 50
+	EQ  reduce 50
+	NE  reduce 50
+	SLT  reduce 50
+	SGT  reduce 50
+	SLE  reduce 50
+	SGE  reduce 50
+	ULT  reduce 50
+	UGT  reduce 50
+	ULE  reduce 50
+	UGE  reduce 50
+	CARRY  reduce 50
+	NOT  reduce 50
+	MEM64  reduce 50
+	MEM32  reduce 50
+	TRUE  reduce 50
+
+
+state 118
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith MINUS exp_arith .  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 51
+	error  reduce 51
+	NUM  reduce 51
+	VAR  reduce 51
+	LPAREN  reduce 51
+	RPAREN  reduce 51
+	COMMA  reduce 51
+	COLON  reduce 51
+	AUXVAR  reduce 51
+	CONST  reduce 51
+	INV  reduce 51
+	ASSUME  reduce 51
+	ASSERT  reduce 51
+	CUT  reduce 51
+	PREDICATE  reduce 51
+	CONJUNCTION  reduce 51
+	DISJUNCTION  reduce 51
+	RARR  reduce 51
+	PLUS  reduce 51
+	MINUS  reduce 51
+	QUESTION  reduce 51
+	EQ  reduce 51
+	NE  reduce 51
+	SLT  reduce 51
+	SGT  reduce 51
+	SLE  reduce 51
+	SGE  reduce 51
+	ULT  reduce 51
+	UGT  reduce 51
+	ULE  reduce 51
+	UGE  reduce 51
+	CARRY  reduce 51
+	NOT  reduce 51
+	MEM64  reduce 51
+	MEM32  reduce 51
+	TRUE  reduce 51
+
+
+state 119
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith MULT exp_arith .  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 52
+	error  reduce 52
+	NUM  reduce 52
+	VAR  reduce 52
+	LPAREN  reduce 52
+	RPAREN  reduce 52
+	COMMA  reduce 52
+	COLON  reduce 52
+	AUXVAR  reduce 52
+	CONST  reduce 52
+	INV  reduce 52
+	ASSUME  reduce 52
+	ASSERT  reduce 52
+	CUT  reduce 52
+	PREDICATE  reduce 52
+	SMOD  reduce 52
+	UMOD  reduce 52
+	CONJUNCTION  reduce 52
+	DISJUNCTION  reduce 52
+	RARR  reduce 52
+	PLUS  reduce 52
+	MINUS  reduce 52
+	MULT  reduce 52
+	AND  reduce 52
+	OR  reduce 52
+	XOR  reduce 52
+	QUESTION  reduce 52
+	EQ  reduce 52
+	NE  reduce 52
+	SLT  reduce 52
+	SGT  reduce 52
+	SLE  reduce 52
+	SGE  reduce 52
+	ULT  reduce 52
+	UGT  reduce 52
+	ULE  reduce 52
+	UGE  reduce 52
+	CARRY  reduce 52
+	NOT  reduce 52
+	SHIFTL  reduce 52
+	SHIFTR  reduce 52
+	USHIFTR  reduce 52
+	MEM64  reduce 52
+	MEM32  reduce 52
+	TRUE  reduce 52
+
+
+state 120
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith AND exp_arith .  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 53
+	error  reduce 53
+	NUM  reduce 53
+	VAR  reduce 53
+	LPAREN  reduce 53
+	RPAREN  reduce 53
+	COMMA  reduce 53
+	COLON  reduce 53
+	AUXVAR  reduce 53
+	CONST  reduce 53
+	INV  reduce 53
+	ASSUME  reduce 53
+	ASSERT  reduce 53
+	CUT  reduce 53
+	PREDICATE  reduce 53
+	SMOD  reduce 53
+	UMOD  reduce 53
+	CONJUNCTION  reduce 53
+	DISJUNCTION  reduce 53
+	RARR  reduce 53
+	PLUS  reduce 53
+	MINUS  reduce 53
+	MULT  reduce 53
+	AND  reduce 53
+	OR  reduce 53
+	XOR  reduce 53
+	QUESTION  reduce 53
+	EQ  reduce 53
+	NE  reduce 53
+	SLT  reduce 53
+	SGT  reduce 53
+	SLE  reduce 53
+	SGE  reduce 53
+	ULT  reduce 53
+	UGT  reduce 53
+	ULE  reduce 53
+	UGE  reduce 53
+	CARRY  reduce 53
+	NOT  reduce 53
+	SHIFTL  reduce 53
+	SHIFTR  reduce 53
+	USHIFTR  reduce 53
+	MEM64  reduce 53
+	MEM32  reduce 53
+	TRUE  reduce 53
+
+
+state 121
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith OR exp_arith .  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 54
+	error  reduce 54
+	NUM  reduce 54
+	VAR  reduce 54
+	LPAREN  reduce 54
+	RPAREN  reduce 54
+	COMMA  reduce 54
+	COLON  reduce 54
+	AUXVAR  reduce 54
+	CONST  reduce 54
+	INV  reduce 54
+	ASSUME  reduce 54
+	ASSERT  reduce 54
+	CUT  reduce 54
+	PREDICATE  reduce 54
+	SMOD  reduce 54
+	UMOD  reduce 54
+	CONJUNCTION  reduce 54
+	DISJUNCTION  reduce 54
+	RARR  reduce 54
+	PLUS  reduce 54
+	MINUS  reduce 54
+	MULT  reduce 54
+	AND  reduce 54
+	OR  reduce 54
+	XOR  reduce 54
+	QUESTION  reduce 54
+	EQ  reduce 54
+	NE  reduce 54
+	SLT  reduce 54
+	SGT  reduce 54
+	SLE  reduce 54
+	SGE  reduce 54
+	ULT  reduce 54
+	UGT  reduce 54
+	ULE  reduce 54
+	UGE  reduce 54
+	CARRY  reduce 54
+	NOT  reduce 54
+	SHIFTL  reduce 54
+	SHIFTR  reduce 54
+	USHIFTR  reduce 54
+	MEM64  reduce 54
+	MEM32  reduce 54
+	TRUE  reduce 54
+
+
+state 122
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith XOR exp_arith .  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 55
+	error  reduce 55
+	NUM  reduce 55
+	VAR  reduce 55
+	LPAREN  reduce 55
+	RPAREN  reduce 55
+	COMMA  reduce 55
+	COLON  reduce 55
+	AUXVAR  reduce 55
+	CONST  reduce 55
+	INV  reduce 55
+	ASSUME  reduce 55
+	ASSERT  reduce 55
+	CUT  reduce 55
+	PREDICATE  reduce 55
+	SMOD  reduce 55
+	UMOD  reduce 55
+	CONJUNCTION  reduce 55
+	DISJUNCTION  reduce 55
+	RARR  reduce 55
+	PLUS  reduce 55
+	MINUS  reduce 55
+	MULT  reduce 55
+	AND  reduce 55
+	OR  reduce 55
+	XOR  reduce 55
+	QUESTION  reduce 55
+	EQ  reduce 55
+	NE  reduce 55
+	SLT  reduce 55
+	SGT  reduce 55
+	SLE  reduce 55
+	SGE  reduce 55
+	ULT  reduce 55
+	UGT  reduce 55
+	ULE  reduce 55
+	UGE  reduce 55
+	CARRY  reduce 55
+	NOT  reduce 55
+	SHIFTL  reduce 55
+	SHIFTR  reduce 55
+	USHIFTR  reduce 55
+	MEM64  reduce 55
+	MEM32  reduce 55
+	TRUE  reduce 55
+
+
+state 123
+	exp_compare : exp_arith EQ exp_arith .  (42)
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 42
+	error  reduce 42
+	NUM  reduce 42
+	VAR  reduce 42
+	LPAREN  reduce 42
+	RPAREN  reduce 42
+	COLON  reduce 42
+	AUXVAR  reduce 42
+	CONST  reduce 42
+	INV  reduce 42
+	ASSUME  reduce 42
+	ASSERT  reduce 42
+	CUT  reduce 42
+	PREDICATE  reduce 42
+	CONJUNCTION  reduce 42
+	DISJUNCTION  reduce 42
+	RARR  reduce 42
+	QUESTION  reduce 42
+	CARRY  reduce 42
+	NOT  reduce 42
+	MEM64  reduce 42
+	MEM32  reduce 42
+	TRUE  reduce 42
+
+
+state 124
+	exp_compare : exp_arith NE exp_arith .  (43)
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 43
+	error  reduce 43
+	NUM  reduce 43
+	VAR  reduce 43
+	LPAREN  reduce 43
+	RPAREN  reduce 43
+	COLON  reduce 43
+	AUXVAR  reduce 43
+	CONST  reduce 43
+	INV  reduce 43
+	ASSUME  reduce 43
+	ASSERT  reduce 43
+	CUT  reduce 43
+	PREDICATE  reduce 43
+	CONJUNCTION  reduce 43
+	DISJUNCTION  reduce 43
+	RARR  reduce 43
+	QUESTION  reduce 43
+	CARRY  reduce 43
+	NOT  reduce 43
+	MEM64  reduce 43
+	MEM32  reduce 43
+	TRUE  reduce 43
+
+
+state 125
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith SHIFTL exp_arith .  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 58
+	error  reduce 58
+	NUM  reduce 58
+	VAR  reduce 58
+	LPAREN  reduce 58
+	RPAREN  reduce 58
+	COMMA  reduce 58
+	COLON  reduce 58
+	AUXVAR  reduce 58
+	CONST  reduce 58
+	INV  reduce 58
+	ASSUME  reduce 58
+	ASSERT  reduce 58
+	CUT  reduce 58
+	PREDICATE  reduce 58
+	SMOD  reduce 58
+	UMOD  reduce 58
+	CONJUNCTION  reduce 58
+	DISJUNCTION  reduce 58
+	RARR  reduce 58
+	PLUS  reduce 58
+	MINUS  reduce 58
+	MULT  reduce 58
+	AND  reduce 58
+	OR  reduce 58
+	XOR  reduce 58
+	QUESTION  reduce 58
+	EQ  reduce 58
+	NE  reduce 58
+	SLT  reduce 58
+	SGT  reduce 58
+	SLE  reduce 58
+	SGE  reduce 58
+	ULT  reduce 58
+	UGT  reduce 58
+	ULE  reduce 58
+	UGE  reduce 58
+	CARRY  reduce 58
+	NOT  reduce 58
+	SHIFTL  reduce 58
+	SHIFTR  reduce 58
+	USHIFTR  reduce 58
+	MEM64  reduce 58
+	MEM32  reduce 58
+	TRUE  reduce 58
+
+
+state 126
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith SHIFTR exp_arith .  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 60
+	error  reduce 60
+	NUM  reduce 60
+	VAR  reduce 60
+	LPAREN  reduce 60
+	RPAREN  reduce 60
+	COMMA  reduce 60
+	COLON  reduce 60
+	AUXVAR  reduce 60
+	CONST  reduce 60
+	INV  reduce 60
+	ASSUME  reduce 60
+	ASSERT  reduce 60
+	CUT  reduce 60
+	PREDICATE  reduce 60
+	SMOD  reduce 60
+	UMOD  reduce 60
+	CONJUNCTION  reduce 60
+	DISJUNCTION  reduce 60
+	RARR  reduce 60
+	PLUS  reduce 60
+	MINUS  reduce 60
+	MULT  reduce 60
+	AND  reduce 60
+	OR  reduce 60
+	XOR  reduce 60
+	QUESTION  reduce 60
+	EQ  reduce 60
+	NE  reduce 60
+	SLT  reduce 60
+	SGT  reduce 60
+	SLE  reduce 60
+	SGE  reduce 60
+	ULT  reduce 60
+	UGT  reduce 60
+	ULE  reduce 60
+	UGE  reduce 60
+	CARRY  reduce 60
+	NOT  reduce 60
+	SHIFTL  reduce 60
+	SHIFTR  reduce 60
+	USHIFTR  reduce 60
+	MEM64  reduce 60
+	MEM32  reduce 60
+	TRUE  reduce 60
+
+
+state 127
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith USHIFTR exp_arith .  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	POWER  shift 67
+	$end  reduce 59
+	error  reduce 59
+	NUM  reduce 59
+	VAR  reduce 59
+	LPAREN  reduce 59
+	RPAREN  reduce 59
+	COMMA  reduce 59
+	COLON  reduce 59
+	AUXVAR  reduce 59
+	CONST  reduce 59
+	INV  reduce 59
+	ASSUME  reduce 59
+	ASSERT  reduce 59
+	CUT  reduce 59
+	PREDICATE  reduce 59
+	SMOD  reduce 59
+	UMOD  reduce 59
+	CONJUNCTION  reduce 59
+	DISJUNCTION  reduce 59
+	RARR  reduce 59
+	PLUS  reduce 59
+	MINUS  reduce 59
+	MULT  reduce 59
+	AND  reduce 59
+	OR  reduce 59
+	XOR  reduce 59
+	QUESTION  reduce 59
+	EQ  reduce 59
+	NE  reduce 59
+	SLT  reduce 59
+	SGT  reduce 59
+	SLE  reduce 59
+	SGE  reduce 59
+	ULT  reduce 59
+	UGT  reduce 59
+	ULE  reduce 59
+	UGE  reduce 59
+	CARRY  reduce 59
+	NOT  reduce 59
+	SHIFTL  reduce 59
+	SHIFTR  reduce 59
+	USHIFTR  reduce 59
+	MEM64  reduce 59
+	MEM32  reduce 59
+	TRUE  reduce 59
+
+
+state 128
+	exp_compare : exp_arith lessop actuals . bless  (40)
+	bless : .  (46)
+
+	SLT  shift 76
+	SLE  shift 78
+	ULT  shift 80
+	ULE  shift 82
+	$end  reduce 46
+	error  reduce 46
+	NUM  reduce 46
+	VAR  reduce 46
+	LPAREN  reduce 46
+	RPAREN  reduce 46
+	COLON  reduce 46
+	AUXVAR  reduce 46
+	CONST  reduce 46
+	INV  reduce 46
+	ASSUME  reduce 46
+	ASSERT  reduce 46
+	CUT  reduce 46
+	PREDICATE  reduce 46
+	CONJUNCTION  reduce 46
+	DISJUNCTION  reduce 46
+	RARR  reduce 46
+	MINUS  reduce 46
+	QUESTION  reduce 46
+	CARRY  reduce 46
+	NOT  reduce 46
+	MEM64  reduce 46
+	MEM32  reduce 46
+	TRUE  reduce 46
+
+	lessop  goto 147
+	bless  goto 148
+
+
+state 129
+	exp_compare : exp_arith moreop actuals . bmore  (41)
+	bmore : .  (48)
+
+	SGT  shift 77
+	SGE  shift 79
+	UGT  shift 81
+	UGE  shift 83
+	$end  reduce 48
+	error  reduce 48
+	NUM  reduce 48
+	VAR  reduce 48
+	LPAREN  reduce 48
+	RPAREN  reduce 48
+	COLON  reduce 48
+	AUXVAR  reduce 48
+	CONST  reduce 48
+	INV  reduce 48
+	ASSUME  reduce 48
+	ASSERT  reduce 48
+	CUT  reduce 48
+	PREDICATE  reduce 48
+	CONJUNCTION  reduce 48
+	DISJUNCTION  reduce 48
+	RARR  reduce 48
+	MINUS  reduce 48
+	QUESTION  reduce 48
+	CARRY  reduce 48
+	NOT  reduce 48
+	MEM64  reduce 48
+	MEM32  reduce 48
+	TRUE  reduce 48
+
+	moreop  goto 149
+	bmore  goto 150
+
+
+state 130
+	atomic : atomic_e LSQUARE error .  (78)
+
+	.  reduce 78
+
+
+state 131
+	num : NUM .  (79)
+
+	.  reduce 79
+
+
+state 132
+	atomic : atomic_e LSQUARE num . COMMA num RSQUARE  (74)
+	atomic : atomic_e LSQUARE num . RSQUARE  (75)
+
+	RSQUARE  shift 151
+	COMMA  shift 152
+	.  error
+
+
+state 133
+	atomic_e : atomic .  (63)
+
+	.  reduce 63
+
+
+state 134
+	atomic : atomic_e . DOT atomic_e  (70)
+	atomic : atomic_e DOT atomic_e .  (70)
+	atomic : atomic_e . CAST  (71)
+	atomic : atomic_e . LOW  (72)
+	atomic : atomic_e . HIGH  (73)
+	atomic : atomic_e . LSQUARE num COMMA num RSQUARE  (74)
+	atomic : atomic_e . LSQUARE num RSQUARE  (75)
+	atomic : atomic_e . LSQUARE error  (78)
+
+	CAST  shift 89
+	LSQUARE  shift 90
+	LOW  shift 92
+	HIGH  shift 93
+	$end  reduce 70
+	error  reduce 70
+	NUM  reduce 70
+	VAR  reduce 70
+	LPAREN  reduce 70
+	RPAREN  reduce 70
+	COMMA  reduce 70
+	COLON  reduce 70
+	AUXVAR  reduce 70
+	CONST  reduce 70
+	INV  reduce 70
+	ASSUME  reduce 70
+	ASSERT  reduce 70
+	CUT  reduce 70
+	PREDICATE  reduce 70
+	SMOD  reduce 70
+	UMOD  reduce 70
+	POWER  reduce 70
+	CONJUNCTION  reduce 70
+	DISJUNCTION  reduce 70
+	RARR  reduce 70
+	PLUS  reduce 70
+	MINUS  reduce 70
+	MULT  reduce 70
+	AND  reduce 70
+	OR  reduce 70
+	XOR  reduce 70
+	QUESTION  reduce 70
+	EQ  reduce 70
+	NE  reduce 70
+	DOT  reduce 70
+	SLT  reduce 70
+	SGT  reduce 70
+	SLE  reduce 70
+	SGE  reduce 70
+	ULT  reduce 70
+	UGT  reduce 70
+	ULE  reduce 70
+	UGE  reduce 70
+	CARRY  reduce 70
+	NOT  reduce 70
+	SHIFTL  reduce 70
+	SHIFTR  reduce 70
+	USHIFTR  reduce 70
+	MEM64  reduce 70
+	MEM32  reduce 70
+	TRUE  reduce 70
+
+
+state 135
+	var : typem LSQUARE VAR . RSQUARE  (83)
+	qvar : VAR .  (89)
+
+	RSQUARE  shift 153
+	PLUS  reduce 89
+
+
+state 136
+	var : typem LSQUARE qaddr . RSQUARE  (82)
+
+	RSQUARE  shift 154
+	.  error
+
+
+state 137
+	qaddr : qvar . PLUS num  (85)
+	qaddr : qvar . PLUS qvar  (86)
+	qaddr : qvar . PLUS qvar MULT num  (87)
+	qaddr : qvar . PLUS num PLUS qvar MULT num  (88)
+
+	PLUS  shift 155
+	.  error
+
+
+state 138
+	predicate : VAR LPAREN formals . RPAREN EQ bexp  (28)
+
+	RPAREN  shift 156
+	.  error
+
+
+state 139
+	auxvar : VAR CAST EQ error .  (25)
+
+	.  reduce 25
+
+
+state 140
+	fparam : VAR CAST .  (94)
+
+	.  reduce 94
+
+
+state 141
+	auxvar : VAR LPAREN formals RPAREN . EQ exp  (22)
+	auxvar : VAR LPAREN formals RPAREN . EQ error  (23)
+
+	EQ  shift 157
+	.  error
+
+
+state 142
+	formals_rev : formals_rev COMMA . fparam  (92)
+
+	VAR  shift 99
+	.  error
+
+	fparam  goto 158
+
+
+state 143
+	atomic : VAR LPAREN actuals RPAREN .  (77)
+
+	.  reduce 77
+
+
+state 144
+	actuals_rev : actuals_rev COMMA . exp_arith  (96)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 159
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 145
+	atomic : LPAREN mix RPAREN SPLIT . num  (69)
+
+	NUM  shift 131
+	.  error
+
+	num  goto 160
+
+
+state 146
+	mix : exp_logical_b QUESTION exp_logical_e COLON . exp_logical_e  (32)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp_logical  goto 112
+	exp_logical_e  goto 161
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 147
+	bless : lessop . exp_arith  (45)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 162
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 148
+	exp_compare : exp_arith lessop actuals bless .  (40)
+
+	.  reduce 40
+
+
+state 149
+	bmore : moreop . exp_arith  (47)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	atomic  goto 31
+	exp_arith  goto 163
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 150
+	exp_compare : exp_arith moreop actuals bmore .  (41)
+
+	.  reduce 41
+
+
+state 151
+	atomic : atomic_e LSQUARE num RSQUARE .  (75)
+
+	.  reduce 75
+
+
+state 152
+	atomic : atomic_e LSQUARE num COMMA . num RSQUARE  (74)
+
+	NUM  shift 131
+	.  error
+
+	num  goto 164
+
+
+state 153
+	var : typem LSQUARE VAR RSQUARE .  (83)
+
+	.  reduce 83
+
+
+state 154
+	var : typem LSQUARE qaddr RSQUARE .  (82)
+
+	.  reduce 82
+
+
+state 155
+	qaddr : qvar PLUS . num  (85)
+	qaddr : qvar PLUS . qvar  (86)
+	qaddr : qvar PLUS . qvar MULT num  (87)
+	qaddr : qvar PLUS . num PLUS qvar MULT num  (88)
+
+	NUM  shift 131
+	VAR  shift 165
+	.  error
+
+	num  goto 166
+	qvar  goto 167
+
+
+state 156
+	predicate : VAR LPAREN formals RPAREN . EQ bexp  (28)
+
+	EQ  shift 168
+	.  error
+
+
+state 157
+	auxvar : VAR LPAREN formals RPAREN EQ . exp  (22)
+	auxvar : VAR LPAREN formals RPAREN EQ . error  (23)
+
+	error  shift 169
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	exp  goto 170
+	mix  goto 28
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 158
+	formals_rev : formals_rev COMMA fparam .  (92)
+
+	.  reduce 92
+
+
+159: shift/reduce conflict (shift 69, reduce 96) on MINUS
+state 159
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+	actuals_rev : actuals_rev COMMA exp_arith .  (96)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 96
+	error  reduce 96
+	NUM  reduce 96
+	VAR  reduce 96
+	LPAREN  reduce 96
+	RPAREN  reduce 96
+	COMMA  reduce 96
+	COLON  reduce 96
+	AUXVAR  reduce 96
+	CONST  reduce 96
+	INV  reduce 96
+	ASSUME  reduce 96
+	ASSERT  reduce 96
+	CUT  reduce 96
+	PREDICATE  reduce 96
+	CONJUNCTION  reduce 96
+	DISJUNCTION  reduce 96
+	RARR  reduce 96
+	QUESTION  reduce 96
+	SLT  reduce 96
+	SGT  reduce 96
+	SLE  reduce 96
+	SGE  reduce 96
+	ULT  reduce 96
+	UGT  reduce 96
+	ULE  reduce 96
+	UGE  reduce 96
+	CARRY  reduce 96
+	NOT  reduce 96
+	MEM64  reduce 96
+	MEM32  reduce 96
+	TRUE  reduce 96
+
+
+state 160
+	atomic : LPAREN mix RPAREN SPLIT num .  (69)
+
+	.  reduce 69
+
+
+state 161
+	mix : exp_logical_b QUESTION exp_logical_e COLON exp_logical_e .  (32)
+
+	.  reduce 32
+
+
+state 162
+	bless : lessop exp_arith .  (45)
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 45
+	error  reduce 45
+	NUM  reduce 45
+	VAR  reduce 45
+	LPAREN  reduce 45
+	RPAREN  reduce 45
+	COLON  reduce 45
+	AUXVAR  reduce 45
+	CONST  reduce 45
+	INV  reduce 45
+	ASSUME  reduce 45
+	ASSERT  reduce 45
+	CUT  reduce 45
+	PREDICATE  reduce 45
+	CONJUNCTION  reduce 45
+	DISJUNCTION  reduce 45
+	RARR  reduce 45
+	QUESTION  reduce 45
+	CARRY  reduce 45
+	NOT  reduce 45
+	MEM64  reduce 45
+	MEM32  reduce 45
+	TRUE  reduce 45
+
+
+state 163
+	bmore : moreop exp_arith .  (47)
+	exp_arith : exp_arith . PLUS exp_arith  (50)
+	exp_arith : exp_arith . MINUS exp_arith  (51)
+	exp_arith : exp_arith . MULT exp_arith  (52)
+	exp_arith : exp_arith . AND exp_arith  (53)
+	exp_arith : exp_arith . OR exp_arith  (54)
+	exp_arith : exp_arith . XOR exp_arith  (55)
+	exp_arith : exp_arith . SMOD exp_arith  (56)
+	exp_arith : exp_arith . UMOD exp_arith  (57)
+	exp_arith : exp_arith . SHIFTL exp_arith  (58)
+	exp_arith : exp_arith . USHIFTR exp_arith  (59)
+	exp_arith : exp_arith . SHIFTR exp_arith  (60)
+	exp_arith : exp_arith . POWER exp_arith  (61)
+
+	SMOD  shift 65
+	UMOD  shift 66
+	POWER  shift 67
+	PLUS  shift 68
+	MINUS  shift 69
+	MULT  shift 70
+	AND  shift 71
+	OR  shift 72
+	XOR  shift 73
+	SHIFTL  shift 84
+	SHIFTR  shift 85
+	USHIFTR  shift 86
+	$end  reduce 47
+	error  reduce 47
+	NUM  reduce 47
+	VAR  reduce 47
+	LPAREN  reduce 47
+	RPAREN  reduce 47
+	COLON  reduce 47
+	AUXVAR  reduce 47
+	CONST  reduce 47
+	INV  reduce 47
+	ASSUME  reduce 47
+	ASSERT  reduce 47
+	CUT  reduce 47
+	PREDICATE  reduce 47
+	CONJUNCTION  reduce 47
+	DISJUNCTION  reduce 47
+	RARR  reduce 47
+	QUESTION  reduce 47
+	CARRY  reduce 47
+	NOT  reduce 47
+	MEM64  reduce 47
+	MEM32  reduce 47
+	TRUE  reduce 47
+
+
+state 164
+	atomic : atomic_e LSQUARE num COMMA num . RSQUARE  (74)
+
+	RSQUARE  shift 171
+	.  error
+
+
+state 165
+	qvar : VAR .  (89)
+
+	.  reduce 89
+
+
+state 166
+	qaddr : qvar PLUS num .  (85)
+	qaddr : qvar PLUS num . PLUS qvar MULT num  (88)
+
+	PLUS  shift 172
+	RSQUARE  reduce 85
+
+
+state 167
+	qaddr : qvar PLUS qvar .  (86)
+	qaddr : qvar PLUS qvar . MULT num  (87)
+
+	MULT  shift 173
+	RSQUARE  reduce 86
+
+
+state 168
+	predicate : VAR LPAREN formals RPAREN EQ . bexp  (28)
+
+	NUM  shift 17
+	VAR  shift 18
+	LPAREN  shift 19
+	MINUS  shift 20
+	CARRY  shift 21
+	NOT  shift 22
+	MEM64  shift 23
+	MEM32  shift 24
+	TRUE  shift 25
+	.  error
+
+	bexp  goto 174
+	mix  goto 40
+	exp_logical  goto 29
+	exp_logical_b  goto 30
+	atomic  goto 31
+	exp_compare  goto 32
+	exp_arith  goto 33
+	atomic_e  goto 34
+	big  goto 35
+	var  goto 36
+	typem  goto 37
+
+
+state 169
+	auxvar : VAR LPAREN formals RPAREN EQ error .  (23)
+
+	.  reduce 23
+
+
+state 170
+	auxvar : VAR LPAREN formals RPAREN EQ exp .  (22)
+
+	.  reduce 22
+
+
+state 171
+	atomic : atomic_e LSQUARE num COMMA num RSQUARE .  (74)
+
+	.  reduce 74
+
+
+state 172
+	qaddr : qvar PLUS num PLUS . qvar MULT num  (88)
+
+	VAR  shift 165
+	.  error
+
+	qvar  goto 175
+
+
+state 173
+	qaddr : qvar PLUS qvar MULT . num  (87)
+
+	NUM  shift 131
+	.  error
+
+	num  goto 176
+
+
+state 174
+	predicate : VAR LPAREN formals RPAREN EQ bexp .  (28)
+
+	.  reduce 28
+
+
+state 175
+	qaddr : qvar PLUS num PLUS qvar . MULT num  (88)
+
+	MULT  shift 177
+	.  error
+
+
+state 176
+	qaddr : qvar PLUS qvar MULT num .  (87)
+
+	.  reduce 87
+
+
+state 177
+	qaddr : qvar PLUS num PLUS qvar MULT . num  (88)
+
+	NUM  shift 131
+	.  error
+
+	num  goto 178
+
+
+state 178
+	qaddr : qvar PLUS num PLUS qvar MULT num .  (88)
+
+	.  reduce 88
+
+
+State 33 contains 1 shift/reduce conflict.
+State 105 contains 1 shift/reduce conflict.
+State 159 contains 1 shift/reduce conflict.
+
+
+65 terminals, 34 nonterminals
+109 grammar rules, 179 states
