@@ -90,6 +90,13 @@ Section ZLemmas.
       exact: (Z.lt_le_incl _ _ H).
   Qed.
 
+  Lemma Zminus_plus : forall n m : Z, n - m + m = n.
+  Proof.
+    move=> n m.
+    rewrite -Z.add_assoc (Z.add_comm (-m) m) Z.add_opp_diag_r Z.add_0_r.
+    reflexivity.
+  Qed.
+
 End ZLemmas.
 
 
@@ -209,8 +216,10 @@ Canonical Z_comRing := Eval hnf in ComRingType Z ZRing.zmulC.
 
 Section EqualityModulo.
 
+  Local Open Scope Z_scope.
+
   Definition eqmb (x y p : Z) : bool :=
-    (x mod p)%Z == (y mod p)%Z.
+    x mod p == y mod p.
 
   Lemma eqmP : forall x y p, reflect (eqm p x y) (eqmb x y p).
   Proof.
@@ -224,6 +233,98 @@ Section EqualityModulo.
       by rewrite Hxy.
   Qed.
 
+  Definition modulo (x y p : Z) := exists k : Z, x - y = k * p.
+
+  Lemma Zminus_mod_mod :
+    forall x p : Z,
+      p <> 0 ->
+      (x - (x mod p)) mod p = 0.
+  Proof.
+    move=> x p Hp.
+    rewrite Zminus_mod_idemp_r.
+    rewrite Z.sub_diag.
+    exact: Zmod_0_l.
+  Qed.
+
+  Lemma Zminus_mod_div_mul :
+    forall x p : Z,
+      p <> 0 ->
+      (x - (x mod p)) / p * p = x - (x mod p).
+  Proof.
+    move=> x p Hp.
+    rewrite (Z_div_exact_full_2 _ _ Hp (Zminus_mod_mod _ Hp)).
+    move: (Zdiv_mult_cancel_l ((x - x mod p) / p) 1 p Hp) => Heq.
+    rewrite Z.mul_1_r Z.div_1_r in Heq.
+    rewrite Heq.
+    rewrite Z.mul_comm.
+    reflexivity.
+  Qed.
+
+  Lemma eqm_modulo :
+    forall x y p : Z,
+      p <> 0 -> eqm p x y -> modulo x y p.
+  Proof.
+    move=> x y p Hp Hm.
+    exists ((x - (x mod p)) / p - (y - (y mod p)) / p).
+    rewrite Z.mul_sub_distr_r 2!(Zminus_mod_div_mul _ Hp) Hm Zminus_plus_simpl_r.
+    reflexivity.
+  Qed.
+
+  Lemma modulo_eqm :
+    forall x y p : Z,
+      p <> 0 -> modulo x y p -> eqm p x y.
+  Proof.
+    move=> x y p Hp [k Heq].
+    move: (Zplus_eq_compat _ _ _ _ Heq (Logic.eq_refl y)) => {Heq}.
+    rewrite (Z.add_comm (k * p) y) Zminus_plus => Heq.
+    rewrite Heq /eqm Z_mod_plus_full.
+    reflexivity.
+  Qed.
+
+  Lemma eqmb_modulo :
+    forall x y p : Z,
+      p <> 0 -> eqmb x y p -> modulo x y p.
+  Proof.
+    move=> x y p Hp Hm.
+    move/eqmP: Hm.
+    exact: eqm_modulo.
+  Qed.
+
+  Lemma modulo_eqmb :
+    forall x y p : Z,
+      p <> 0 -> modulo x y p -> eqmb x y p.
+  Proof.
+    move=> x y p Hp Hm.
+    apply/eqmP.
+    exact: modulo_eqm.
+  Qed.
+
+  Lemma modulo_inj : forall x y p z,
+      (z <> 0)%Z ->
+      modulo (z * x) (z * y) (z * p) ->
+      modulo x y p.
+  Proof.
+    move=> x y p z Hz [k H].
+    exists k.
+    rewrite -Z.mul_sub_distr_l Z.mul_assoc (Z.mul_comm k z) -Z.mul_assoc in H.
+    exact (Z.mul_reg_l _ _ z Hz H).
+  Qed.
+
 End EqualityModulo.
 
 Notation "x === y # p" := (eqmb x y p) (at level 70, no associativity).
+
+(**
+ * Prove
+ *   forall x1 ... xn : Z,
+ *     P1 -> ... -> Pn -> modulo f g p
+ * with modulo_inj and another proved lemma H
+ *   forall x1 ... xn y z : Z,
+ *     P1 -> ... -> Pn -> y = z^2 + 1 -> modulo (y * f) (y * g) (y * p).
+ *)
+Ltac modulo_inj_pow2add1 H :=
+  intros;
+  apply (modulo_inj (z:=2%Z)); [
+    discriminate |
+    apply H with 1%Z; first [assumption | reflexivity]
+  ].
