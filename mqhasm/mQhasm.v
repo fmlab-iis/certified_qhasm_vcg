@@ -3,7 +3,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import ZAriths Env Var Store.
+From Common Require Import ZAriths Var Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -19,9 +19,6 @@ Local Open Scope mqhasm_scope.
 
 Section Syntax.
 
-  Variable E : SEnv.t.
-  Notation pvar := (SEnv.pvar E).
-
   Inductive unop : Set :=
   | QNeg.
 
@@ -31,14 +28,14 @@ Section Syntax.
   | QMul.
 
   Inductive exp : Set :=
-  | QVar : pvar -> exp
+  | QVar : var -> exp
   | QConst : Z -> exp
   | QUnop : unop -> exp -> exp
   | QBinop : binop -> exp -> exp -> exp.
 
   Inductive instr : Set :=
-  | QAssign : pvar -> exp -> instr
-  | QSplit : pvar -> pvar -> exp -> positive -> instr.
+  | QAssign : var -> exp -> instr
+  | QSplit : var -> var -> exp -> positive -> instr.
 
   Definition program : Set := seq instr.
 
@@ -212,9 +209,6 @@ End State.
 
 Section Semantics.
 
-  Variable E : SEnv.t.
-  Notation pvar_var := (SEnv.pvar_var).
-
   Definition eval_unop (op : unop) (v : value) : value :=
     match op with
     | QNeg => (-v)%Z
@@ -227,12 +221,12 @@ Section Semantics.
     | QMul => (v1 * v2)%Z
     end.
 
-  Inductive eval_exp : exp E -> value -> State.t -> Prop :=
+  Inductive eval_exp : exp -> value -> State.t -> Prop :=
   | EQVar :
       forall v n s,
-        State.acc (pvar_var v) s = Some n ->
+        State.acc v s = Some n ->
         eval_exp (QVar v) n s
-  | EQConst : forall n s, eval_exp (QConst E n) n s
+  | EQConst : forall n s, eval_exp (QConst n) n s
   | EQUnop :
       forall op e n m s,
         eval_exp e n s ->
@@ -245,20 +239,20 @@ Section Semantics.
         eval_binop op v1 v2 = n ->
         eval_exp (QBinop op e1 e2) n s.
 
-  Inductive eval_instr : State.t -> instr E -> State.t -> Prop :=
+  Inductive eval_instr : State.t -> instr -> State.t -> Prop :=
   | EQAssign :
       forall v e n s1 s2,
         eval_exp e n s1 ->
-        State.Upd (pvar_var v) n s1 s2 ->
+        State.Upd v n s1 s2 ->
         eval_instr s1 (QAssign v e) s2
   | EQSplit :
       forall v1 v2 e i n1 n2 n s1 s2,
         eval_exp e n s1 ->
-        State.Upd2 (pvar_var v1) n1 (pvar_var v2) n2 s1 s2 ->
+        State.Upd2 v1 n1 v2 n2 s1 s2 ->
         (n1 * 2^(Zpos i) + n2 = n)%Z ->
         eval_instr s1 (QSplit v1 v2 e i) s2.
 
-  Inductive eval_program : State.t -> program E -> State.t -> Prop :=
+  Inductive eval_program : State.t -> program -> State.t -> Prop :=
   | EQEmpty : forall s, eval_program s nil s
   | EQCons :
       forall hd tl s1 s2 s3,
@@ -273,14 +267,14 @@ Section Semantics.
     move=> e Hn Hm.
     inversion_clear Hn.
     inversion_clear Hm.
-    move: H H0; case: (State.acc (pvar_var v) s).
+    move: H H0; case: (State.acc v s).
     + move=> u [] Hun [] Hum.
       rewrite -Hun -Hum; exact: eqxx.
     + discriminate.
   Qed.
 
   Lemma eval_qconst_unique v n m s :
-    let e := QConst E v in
+    let e := QConst v in
     eval_exp e n s -> eval_exp e m s -> n == m.
   Proof.
     move=> e Hn Hm.
@@ -294,7 +288,7 @@ Section Semantics.
   Qed.
 
   Lemma eval_qunop_unique :
-    forall (op : unop) (e : exp E),
+    forall (op : unop) (e : exp),
       (forall (n m : value) (s : State.t),
           eval_exp e n s -> eval_exp e m s -> n == m) ->
       forall (n m : value) (s : State.t),
@@ -311,10 +305,10 @@ Section Semantics.
   Qed.
 
   Lemma eval_qbinop_unique :
-    forall (op : binop) (e1 : exp E),
+    forall (op : binop) (e1 : exp),
       (forall (n m : value) (s : State.t),
           eval_exp e1 n s -> eval_exp e1 m s -> n == m) ->
-      forall e2 : exp E,
+      forall e2 : exp,
         (forall (n m : value) (s : State.t),
             eval_exp e2 n s -> eval_exp e2 m s -> n == m) ->
         forall (n m : value) (s : State.t),
@@ -349,7 +343,7 @@ Section Semantics.
   Qed.
 
   Lemma eval_program_singleton :
-    forall (i : instr E) (s1 s2 : State.t),
+    forall (i : instr) (s1 s2 : State.t),
       eval_program s1 ([:: i]) s2 ->
       eval_instr s1 i s2.
   Proof.
@@ -360,7 +354,7 @@ Section Semantics.
   Qed.
 
   Lemma eval_program_cons :
-    forall (hd : instr E) (tl : program E) (s1 s2 : State.t),
+    forall (hd : instr) (tl : program) (s1 s2 : State.t),
       eval_program s1 (hd::tl) s2 ->
       exists s3 : State.t,
         eval_instr s1 hd s3 /\ eval_program s3 tl s2.
@@ -371,7 +365,7 @@ Section Semantics.
   Qed.
 
   Lemma eval_program_concat :
-    forall (p1 p2 : program E) (s1 s2 s3 : State.t),
+    forall (p1 p2 : program) (s1 s2 s3 : State.t),
       eval_program s1 p1 s2 ->
       eval_program s2 p2 s3 ->
       eval_program s1 (p1 ++ p2) s3.
@@ -389,7 +383,7 @@ Section Semantics.
   Qed.
 
   Lemma eval_program_split :
-    forall (p1 p2 : program E) (s1 s2 : State.t),
+    forall (p1 p2 : program) (s1 s2 : State.t),
       eval_program s1 (p1 ++ p2) s2 ->
       exists s3 : State.t,
         eval_program s1 p1 s3 /\ eval_program s3 p2 s2.
@@ -415,11 +409,9 @@ End Semantics.
 
 Section Specification.
 
-  Variable E : SEnv.t.
-
   Inductive bexp : Set :=
-  | QEq : exp E -> exp E -> bexp
-  | QCong : exp E -> exp E -> positive -> bexp
+  | QEq : exp -> exp -> bexp
+  | QCong : exp -> exp -> positive -> bexp
   | QAnd : bexp -> bexp -> bexp.
 
   Inductive eval_bexp : bexp -> bool -> State.t -> Prop :=
@@ -446,13 +438,13 @@ Section Specification.
     forall s : State.t,
       eval_bexp f true s -> eval_bexp g true s.
 
-  Definition spec (f : bexp) (p : program E) (g : bexp) : Prop :=
+  Definition spec (f : bexp) (p : program) (g : bexp) : Prop :=
     forall s1 s2,
       eval_bexp f true s1 ->
       eval_program s1 p s2 ->
       eval_bexp g true s2.
 
-  Definition counterexample (f : bexp) (p : program E) (g : bexp) (s : State.t) : Prop :=
+  Definition counterexample (f : bexp) (p : program) (g : bexp) (s : State.t) : Prop :=
     eval_bexp f true s /\
     exists s' : State.t, eval_program s p s' /\ eval_bexp g false s'.
 
