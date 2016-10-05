@@ -149,9 +149,16 @@ Module Type PSTORE.
         x != y ->
         acc x (unset y s) = acc x s.
 
+    Parameter Empty : t value -> Prop.
+
     Parameter Upd : var -> value -> t value -> t value -> Prop.
 
     Parameter Unset : var -> t value -> t value -> Prop.
+
+    Parameter Empty_acc :
+      forall x s,
+        Empty s ->
+        acc x s = None.
 
     Parameter Upd_upd :
       forall x v s,
@@ -258,11 +265,22 @@ Module MakePStore (X : SsrOrderedType) <: PSTORE.
       by rewrite (eqP Heq).
     Qed.
 
+    Definition Empty (s : t) : Prop := M.Empty s.
+
     Definition Upd x v s1 s2 : Prop :=
       forall y, acc y s2 = acc y (upd x v s1).
 
     Definition Unset x s1 s2 : Prop :=
       forall y, acc y s2 = acc y (unset x s1).
+
+    Lemma Empty_acc :
+      forall x s,
+        Empty s ->
+        acc x s = None.
+    Proof.
+      move=> x s Hemp.
+      exact: (L.Empty_find _ Hemp).
+    Qed.
 
     Lemma Upd_upd :
       forall x v s,
@@ -357,71 +375,79 @@ Module PStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
     move=> x y v s.
     exact: S.acc_upd_neq.
   Qed.
-    Lemma acc_empty :
-      forall x, acc x empty = None.
-    Proof.
-      exact: S.acc_empty.
-    Qed.
-    Lemma acc_unset_eq :
-      forall x y s,
-        x == y ->
-        acc x (unset y s) = None.
-    Proof.
-      exact: S.acc_unset_eq.
-    Qed.
-    Lemma acc_unset_neq :
-      forall x y s,
-        x != y ->
-        acc x (unset y s) = acc x s.
-    Proof.
-      exact: S.acc_unset_neq.
-    Qed.
-    Definition Upd x v (s1 s2 : t) : Prop := S.Upd x v s1 s2.
-    Definition Unset x (s1 s2 : t) : Prop := S.Unset x s1 s2.
-    Lemma Upd_upd :
-      forall x v s,
-        Upd x v s (upd x v s).
-    Proof.
-      exact: S.Upd_upd.
-    Qed.
-    Lemma Unset_unset :
-      forall x s,
-        Unset x s (unset x s).
-    Proof.
-      exact: S.Unset_unset.
-    Qed.
-    Lemma acc_Upd_eq :
-      forall x y v s1 s2,
-        x == y ->
-        Upd y v s1 s2 ->
-        acc x s2 = Some v.
-    Proof.
-      exact: S.acc_Upd_eq.
-    Qed.
-    Lemma acc_Upd_neq :
-      forall x y v s1 s2,
-        x != y ->
-        Upd y v s1 s2 ->
-        acc x s2 = acc x s1.
-    Proof.
-      exact: S.acc_Upd_neq.
-    Qed.
-    Lemma acc_Unset_eq :
-      forall x y s1 s2,
-        x == y ->
-        Unset y s1 s2 ->
-        acc x s2 = None.
-    Proof.
-      exact: S.acc_Unset_eq.
-    Qed.
-    Lemma acc_Unset_neq :
-      forall x y s1 s2,
-        x != y ->
-        Unset y s1 s2 ->
-        acc x s2 = acc x s1.
-    Proof.
-      exact: S.acc_Unset_neq.
-    Qed.
+  Lemma acc_empty :
+    forall x, acc x empty = None.
+  Proof.
+    exact: S.acc_empty.
+  Qed.
+  Lemma acc_unset_eq :
+    forall x y s,
+      x == y ->
+      acc x (unset y s) = None.
+  Proof.
+    exact: S.acc_unset_eq.
+  Qed.
+  Lemma acc_unset_neq :
+    forall x y s,
+      x != y ->
+      acc x (unset y s) = acc x s.
+  Proof.
+    exact: S.acc_unset_neq.
+  Qed.
+  Definition Empty (s : t) : Prop := S.Empty s.
+  Definition Upd x v (s1 s2 : t) : Prop := S.Upd x v s1 s2.
+  Definition Unset x (s1 s2 : t) : Prop := S.Unset x s1 s2.
+  Lemma Empty_acc :
+    forall x s,
+      Empty s ->
+      acc x s = None.
+  Proof.
+    exact: S.Empty_acc.
+  Qed.
+  Lemma Upd_upd :
+    forall x v s,
+      Upd x v s (upd x v s).
+  Proof.
+    exact: S.Upd_upd.
+  Qed.
+  Lemma Unset_unset :
+    forall x s,
+      Unset x s (unset x s).
+  Proof.
+    exact: S.Unset_unset.
+  Qed.
+  Lemma acc_Upd_eq :
+    forall x y v s1 s2,
+      x == y ->
+      Upd y v s1 s2 ->
+      acc x s2 = Some v.
+  Proof.
+    exact: S.acc_Upd_eq.
+  Qed.
+  Lemma acc_Upd_neq :
+    forall x y v s1 s2,
+      x != y ->
+      Upd y v s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    exact: S.acc_Upd_neq.
+  Qed.
+  Lemma acc_Unset_eq :
+    forall x y s1 s2,
+      x == y ->
+      Unset y s1 s2 ->
+      acc x s2 = None.
+  Proof.
+    exact: S.acc_Unset_eq.
+  Qed.
+  Lemma acc_Unset_neq :
+    forall x y s1 s2,
+      x != y ->
+      Unset y s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    exact: S.acc_Unset_neq.
+  Qed.
 End PStoreAdapter.
 
 Module VStore := MakePStore NatOrder.

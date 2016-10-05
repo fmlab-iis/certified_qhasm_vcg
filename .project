@@ -33,3 +33,4 @@ sqhasm/IProg.v
 sqhasm/MiniQhasmPlusAMD64.v
 # Integer programs as mini Qhasm+
 mqhasm/mQhasm.v
+mqhasm/SSA.v

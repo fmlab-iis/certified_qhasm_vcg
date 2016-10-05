@@ -3,6 +3,12 @@ From Coq Require Import OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
 Require Import Types.
 
+Set Implicit Arguments.
+Unset Strict Implicit.
+Import Prenex Implicits.
+
+
+
 Section NatLemmas.
 
   Lemma subn_gtn : forall n m r, n < m - r -> r < m.
@@ -47,44 +53,68 @@ Section NatLemmas.
     exact: (lt_subr_addl n m 1).
   Qed.
 
+  Lemma addr_subK : forall n m : nat, n + m - m = n.
+  Proof.
+    move=> n; elim: n.
+    - move=> m.
+      rewrite add0n subnn.
+      reflexivity.
+    - move=> n IH m.
+      rewrite -(addnA 1 n m) -addnBA.
+      + rewrite IH.
+        reflexivity.
+      + exact: leq_addl.
+  Qed.
+
+  Lemma addl_subK : forall n m : nat, m + n - m = n.
+  Proof.
+    move=> n m.
+    rewrite addnC.
+    exact: addr_subK.
+  Qed.
+
+  Lemma gt0_sub1F :
+    forall n : nat, n > 0 -> n = n - 1 -> False.
+  Proof.
+    move=> n; elim: n.
+    - done.
+    - move=> n IH Hgt Heq.
+      rewrite -add1n addl_subK add1n in Heq.
+      apply: IH.
+      + rewrite -Heq.
+        assumption.
+      + rewrite -{2}Heq -add1n addl_subK.
+        reflexivity.
+  Qed.
+
 End NatLemmas.
+
+
+
+(** EQTYPE modules. *)
+
+Module NatEqtype <: EQTYPE.
+  Definition t := nat_eqType.
+End NatEqtype.
+
+Module OptionNatEqtype <: EQTYPE.
+  Module OptionNat := MakeOptionReflectable(NatEqtype).
+  Definition t := OptionNat.option_eqType.
+End OptionNatEqtype.
 
 
 
 (** An ordered type for nat with a Boolean equality in mathcomp. *)
 
-Module NatOrder <: SsrOrderedType <: OrderedType.
+Module NatOrderMinimal <: SsrOrderedTypeMinimal.
 
-  Definition T : eqType := nat_eqType.
+  Definition t : eqType := nat_eqType.
 
-  Definition t : Type := T.
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
 
-  Definition eq : t -> t -> Prop := fun x y : t => x == y.
-
-  Definition lt : t -> t -> Prop := fun x y => x < y.
+  Definition lt : t -> t -> bool := fun x y => x < y.
 
   Hint Unfold eq lt.
-
-  Lemma eq_refl : forall x : t, eq x x.
-  Proof.
-    exact: eq_refl.
-  Qed.
-
-  Lemma eq_sym : forall x y : t, eq x y -> eq y x.
-  Proof.
-    move=> x y.
-    by rewrite /eq eq_sym.
-  Qed.
-
-  Lemma eq_trans : forall x y z : t, eq x y -> eq y z -> eq x z.
-  Proof.
-    move=> x y z.
-    rewrite /eq => Hxy Hyz.
-    move/eqP: Hxy => Hxy.
-    move/eqP: Hyz => Hyz.
-    apply/eqP.
-    by rewrite Hxy Hyz.
-  Qed.
 
   Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
   Proof.
@@ -92,33 +122,32 @@ Module NatOrder <: SsrOrderedType <: OrderedType.
     exact: ltn_trans.
   Qed.
 
-  Lemma lt_not_eq : forall x y : t, lt x y -> ~ eq x y.
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
   Proof.
     move=> x y Hlt.
-    move/eqP => Heq.
+    apply/negP => Heq.
     apply/idP: Hlt.
-    by rewrite Heq ltnn.
+    by rewrite /lt (eqP Heq) ltnn.
   Qed.
 
   Lemma compare : forall x y : t, Compare lt eq x y.
   Proof.
-    elim.
-    - elim.
-      + by apply: EQ.
-      + move=> n Hc; by apply: LT.
-    - move=> n Hn [].
-      + by apply: GT.
-      + move=> m.
-        case: (Hn m) => Hc.
-        * by apply: LT.
-        * by apply: EQ.
-        * by apply: GT.
+    move=> x y.
+    case H: (Nat.compare x y).
+    - apply: EQ.
+      move: (PeanoNat.Nat.compare_eq_iff x y) => [Hc _].
+      apply/eqP.
+      exact: (Hc H).
+    - apply: LT.
+      move: (PeanoNat.Nat.compare_lt_iff x y) => [Hc _].
+      apply/ltP.
+      exact: (Hc H).
+    - apply: GT.
+      move: (PeanoNat.Nat.compare_gt_iff x y) => [Hc _].
+      apply/ltP.
+      exact: (Hc H).
   Defined.
 
-  Lemma eq_dec : forall x y : t, {eq x y} + {~ eq x y}.
-  Proof.
-    move=> x y.
-    apply: eq_comparable.
-  Qed.
+End NatOrderMinimal.
 
-End NatOrder.
+Module NatOrder <: SsrOrderedType := MakeSsrOrderedType NatOrderMinimal.

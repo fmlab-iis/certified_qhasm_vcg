@@ -13,6 +13,8 @@ Import Prenex Implicits.
 
 Definition var : Set := nat.
 
+Module VarOrder := NatOrder.
+
 (* Variable sets. *)
 
 Module VS.

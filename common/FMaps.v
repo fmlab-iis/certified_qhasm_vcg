@@ -140,6 +140,32 @@ Module FMapLemmas (M : FMapInterface.S).
       rewrite Hfind; discriminate.
     Qed.
 
+    Lemma Empty_In (m : M.t elt) (x : key) :
+      M.Empty m -> ~ (M.In x m).
+    Proof.
+      move=> Hemp Hin.
+      case: Hin => [v Hmapsto].
+      exact: (Hemp x v Hmapsto).
+    Qed.
+
+    Lemma Empty_mem (m : M.t elt) (x : key) :
+      M.Empty m -> ~~ (M.mem x m).
+    Proof.
+      move=> Hemp.
+      apply/negP => Hmem.
+      move/memP: Hmem.
+      exact: Empty_In.
+    Qed.
+
+    Lemma Empty_find (m : M.t elt) (x : key) :
+      M.Empty m -> M.find x m = None.
+    Proof.
+      move=> Hemp.
+      move: (not_find_in_iff m x) => [H _].
+      apply: H => H.
+      exact: (Empty_In Hemp H).
+    Qed.
+
   End FMapLemmas.
 
 End FMapLemmas.

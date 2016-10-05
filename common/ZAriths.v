@@ -1,10 +1,212 @@
 
-From Coq Require Import ZArith.
+From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat ssralg ssrfun choice eqtype.
+From Common Require Import Types Nats.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
+
+
+
+(** Positive is an eqType, a choiceType, and a countType. *)
+
+Section PositiveEqType.
+
+  Definition map_pos_to_nat (n : positive) : nat :=
+    (Pos.to_nat n) - 1.
+
+  Definition map_nat_to_pos (n : nat) : positive :=
+    Pos.of_nat (n + 1).
+
+  Lemma cancel_map_nat_pos : cancel map_pos_to_nat map_nat_to_pos.
+  Proof.
+    move=> n.
+    rewrite /map_pos_to_nat /map_nat_to_pos.
+    move: (Pos2Nat.is_succ n) => [m Hm].
+    rewrite Hm (addl_subK m 1).
+    rewrite (addnC m 1) add1n -Hm.
+    exact: Pos2Nat.id.
+  Qed.
+
+  Definition pos_eqMixin := CanEqMixin cancel_map_nat_pos.
+  Definition pos_countMixin := CanCountMixin cancel_map_nat_pos.
+  Definition pos_choiceMixin := CountChoiceMixin pos_countMixin.
+  Canonical pos_eqType := Eval hnf in EqType positive pos_eqMixin.
+  Canonical pos_choiceType := Eval hnf in ChoiceType positive pos_choiceMixin.
+  Canonical pos_countType := Eval hnf in CountType positive pos_countMixin.
+
+End PositiveEqType.
+
+Lemma pos_ltP : forall x y : positive, reflect (Pos.lt x y) (Pos.ltb x y).
+Proof.
+  move=> x y.
+  move: (Pos.ltb_lt x y) => [H1 H2].
+  case H: (Pos.ltb x y).
+  - apply: ReflectT.
+    exact: (H1 H).
+  - apply: ReflectF.
+    move=> Hlt.
+    move: (H2 Hlt).
+    by rewrite H.
+Qed.
+
+
+
+(** N is an eqType, a choiceType, and a countType. *)
+
+Section NEqType.
+
+  Definition nat_of_N (n : N) : nat := N.to_nat n.
+
+  Definition N_of_nat (n : nat) : N := N.of_nat n.
+
+  Lemma nat_of_NK : cancel nat_of_N N_of_nat.
+  Proof.
+    move=> n.
+    exact: Nnat.N2Nat.id.
+  Qed.
+
+  Definition N_eqMixin := CanEqMixin nat_of_NK.
+  Definition N_countMixin := CanCountMixin nat_of_NK.
+  Definition N_choiceMixin := CountChoiceMixin N_countMixin.
+  Canonical N_eqType := Eval hnf in EqType N N_eqMixin.
+  Canonical N_choiceType := Eval hnf in ChoiceType N N_choiceMixin.
+  Canonical N_countType := Eval hnf in CountType N N_countMixin.
+
+End NEqType.
+
+Lemma N_ltP : forall x y : N, reflect (N.lt x y) (N.ltb x y).
+Proof.
+  move=> x y.
+  move: (N.ltb_lt x y) => [H1 H2].
+  case H: (N.ltb x y).
+  - apply: ReflectT.
+    exact: (H1 H).
+  - apply: ReflectF.
+    move=> Hlt.
+    move: (H2 Hlt).
+    by rewrite H.
+Qed.
+
+
+
+(** Z is an eqType, a choiceType, and a countType. *)
+
+Section ZEqType.
+
+  Definition natsum_of_Z (n : Z) : nat + nat :=
+    match n with
+    | Z0 => inl 0
+    | Zpos m => inl (Pos.to_nat m)
+    | Zneg m => inr (Pos.to_nat m)
+    end.
+
+  Definition Z_of_natsum (n : nat + nat) : Z :=
+    match n with
+    | inl O => Z0
+    | inl (S _ as m) => Zpos (Pos.of_nat m)
+    | inr m => Zneg (Pos.of_nat m)
+    end.
+
+  Lemma natsum_of_ZK : cancel natsum_of_Z Z_of_natsum.
+  Proof.
+    move=> n.
+    elim: n => /=.
+    - reflexivity.
+    - move=> p.
+      rewrite Pos2Nat.id.
+      case H: (Pos.to_nat p).
+      + move: (Pos2Nat.is_pos p) => Hp.
+        rewrite H in Hp.
+          by inversion Hp.
+      + reflexivity.
+    - move=> p.
+      rewrite Pos2Nat.id.
+      reflexivity.
+  Qed.
+
+  Definition Z_eqMixin := CanEqMixin natsum_of_ZK.
+  Definition Z_countMixin := CanCountMixin natsum_of_ZK.
+  Definition Z_choiceMixin := CountChoiceMixin Z_countMixin.
+  Canonical Z_eqType := Eval hnf in EqType Z Z_eqMixin.
+  Canonical Z_choiceType := Eval hnf in ChoiceType Z Z_choiceMixin.
+  Canonical Z_countType := Eval hnf in CountType Z Z_countMixin.
+
+End ZEqType.
+
+Lemma Z_ltP : forall x y : Z, reflect (Z.lt x y) (Z.ltb x y).
+Proof.
+  move=> x y.
+  move: (Z.ltb_lt x y) => [H1 H2].
+  case H: (Z.ltb x y).
+  - apply: ReflectT.
+    exact: (H1 H).
+  - apply: ReflectF.
+    move=> Hlt.
+    move: (H2 Hlt).
+    by rewrite H.
+Qed.
+
+
+
+(** Z is a ZmodType *)
+
+Module ZZmod.
+
+  Definition zopp (n : Z) : Z := -n.
+
+  Definition zaddA : associative Z.add := Z.add_assoc.
+  Definition zaddC : commutative Z.add := Z.add_comm.
+  Definition zadd0 : left_id 0%Z Z.add := Z.add_0_l.
+  Lemma zaddN : left_inverse 0%Z zopp Z.add.
+  Proof.
+    move=> n.
+    rewrite /zopp.
+    rewrite zaddC.
+    exact: Z.add_opp_diag_r.
+  Qed.
+
+  Definition Mixin := ZmodMixin zaddA zaddC zadd0 zaddN.
+
+End ZZmod.
+
+Canonical Z_ZmodType := ZmodType Z ZZmod.Mixin.
+
+
+
+(** Z is a ring. *)
+
+Module ZRing.
+
+  Definition zmulA : associative Z.mul := Z.mul_assoc.
+  Definition zmulC : commutative Z.mul := Z.mul_comm.
+  Definition zmul1 : left_id 1%Z Z.mul := Z.mul_1_l.
+  Definition zmul_addl : left_distributive Z.mul Z.add := Z.mul_add_distr_r.
+  Definition znonzero1 : (1 != 0)%Z := is_true_true.
+
+  Definition comMixin := ComRingMixin zmulA zmulC zmul1 zmul_addl znonzero1.
+
+End ZRing.
+
+Canonical Z_Ring := Eval hnf in RingType Z ZRing.comMixin.
+Canonical Z_comRing := Eval hnf in ComRingType Z ZRing.zmulC.
+
+
+
+(** EQTYPE modules. *)
+
+Module PositiveEqtype <: EQTYPE.
+  Definition t := pos_eqType.
+End PositiveEqtype.
+
+Module NEqtype <: EQTYPE.
+  Definition t := N_eqType.
+End NEqtype.
+
+Module ZEqtype <: EQTYPE.
+  Definition t := Z_eqType.
+End ZEqtype.
 
 
 
@@ -97,118 +299,205 @@ Section ZLemmas.
     reflexivity.
   Qed.
 
+  Lemma Zsplit_l :
+    forall h l n p,
+      0 <= l < 2^p ->
+      h * 2^p + l = n ->
+      l = n mod (2^p).
+  Proof.
+    move=> h l n p Hl Heq.
+    apply: (Zmod_unique_full _ _ h).
+    - by left.
+    - by rewrite Z.mul_comm Heq.
+  Qed.
+
+  Lemma Zsplit_h :
+    forall h l n p,
+      0 <= l < 2^p ->
+      h * 2^p + l = n ->
+      h = n / (2^p).
+  Proof.
+    move=> h l n p Hl Heq.
+    apply: (Zdiv_unique _ _ _ l).
+    - exact: Hl.
+    - by rewrite Z.mul_comm Heq.
+  Qed.
+
 End ZLemmas.
 
 
 
-(** Z is an eqType, a choiceType, and a countType. *)
+(** An ordered type for positive with a Boolean equality in mathcomp. *)
 
-Section ZEqType.
+Module PositiveOrderMinimal <: SsrOrderedTypeMinimal.
 
-  (*
-(** Z is an eqType. *)
+  Local Open Scope positive_scope.
 
-Definition zeq (n m : Z) : bool :=
-  match Z.eq_dec n m with
-  | left _ => true
-  | right _ => false
-  end.
+  Definition t : eqType := pos_eqType.
 
-Lemma z_eqP : Equality.axiom zeq.
-Proof.
-  move=> n m.
-  rewrite /zeq; case: (Z.eq_dec n m) => Hnm.
-  - apply: ReflectT; exact: Hnm.
-  - apply: ReflectF; exact: Hnm.
-Qed.
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
 
-Canonical Z_eqMixin := EqMixin z_eqP.
-Canonical Z_eqType := Eval hnf in EqType Z Z_eqMixin.
-   *)
+  Definition lt : t -> t -> bool := fun x y => Pos.ltb x y.
 
-  Definition natsum_of_Z (n : Z) : nat + nat :=
-    match n with
-    | Z0 => inl 0
-    | Zpos m => inl (Pos.to_nat m)
-    | Zneg m => inr (Pos.to_nat m)
-    end.
+  Hint Unfold eq lt.
 
-  Definition Z_of_natsum (n : nat + nat) : Z :=
-    match n with
-    | inl O => Z0
-    | inl (S _ as m) => Zpos (Pos.of_nat m)
-    | inr m => Zneg (Pos.of_nat m)
-    end.
-
-  Lemma natsum_of_ZK : cancel natsum_of_Z Z_of_natsum.
+  Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
   Proof.
-    move=> n.
-    elim: n => /=.
-    - reflexivity.
-    - move=> p.
-      rewrite Pos2Nat.id.
-      case H: (Pos.to_nat p).
-      + move: (Pos2Nat.is_pos p) => Hp.
-        rewrite H in Hp.
-          by inversion Hp.
-      + reflexivity.
-    - move=> p.
-      rewrite Pos2Nat.id.
-      reflexivity.
+    move=> x y z Hxy Hyz.
+    move/pos_ltP: Hxy; move/pos_ltP: Hyz => Hyz Hxy.
+    apply/pos_ltP.
+    exact: (Pos.lt_trans _ _ _ Hxy Hyz).
   Qed.
 
-  Definition Z_eqMixin := CanEqMixin natsum_of_ZK.
-  Definition Z_countMixin := CanCountMixin natsum_of_ZK.
-  Definition Z_choiceMixin := CountChoiceMixin Z_countMixin.
-  Canonical Z_eqType := Eval hnf in EqType Z Z_eqMixin.
-  Canonical Z_choiceType := Eval hnf in ChoiceType Z Z_choiceMixin.
-  Canonical Z_countType := Eval hnf in CountType Z Z_countMixin.
-
-End ZEqType.
-
-
-
-(** Z is a ZmodType *)
-
-Module ZZmod.
-
-  Definition zopp (n : Z) : Z := -n.
-
-  Definition zaddA : associative Z.add := Z.add_assoc.
-  Definition zaddC : commutative Z.add := Z.add_comm.
-  Definition zadd0 : left_id 0%Z Z.add := Z.add_0_l.
-  Lemma zaddN : left_inverse 0%Z zopp Z.add.
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
   Proof.
-    move=> n.
-    rewrite /zopp.
-    rewrite zaddC.
-    exact: Z.add_opp_diag_r.
+    move=> x y Hlt.
+    apply/negP => Heq.
+    rewrite (eqP Heq) in Hlt.
+    apply: (Pos.lt_irrefl y).
+    apply/pos_ltP.
+    assumption.
   Qed.
 
-  Definition Mixin := ZmodMixin zaddA zaddC zadd0 zaddN.
+  Lemma compare : forall x y : t, Compare lt eq x y.
+  Proof.
+    move=> x y.
+    case H: (Pos.compare x y).
+    - apply: EQ.
+      move: (Pos.compare_eq_iff x y) => [Hc _].
+      apply/eqP.
+      exact: (Hc H).
+    - apply: LT.
+      move: (Pos.compare_lt_iff x y) => [Hc _].
+      apply/pos_ltP.
+      exact: (Hc H).
+    - apply: GT.
+      move: (Pos.compare_gt_iff x y) => [Hc _].
+      apply/pos_ltP.
+      exact: (Hc H).
+  Defined.
 
-End ZZmod.
+  Local Close Scope positive_scope.
 
-Canonical Z_ZmodType := ZmodType Z ZZmod.Mixin.
+End PositiveOrderMinimal.
+
+Module PositiveOrder <: SsrOrderedType := MakeSsrOrderedType PositiveOrderMinimal.
 
 
 
-(** Z is a ring. *)
+(** An ordered type for N with a Boolean equality in mathcomp. *)
 
-Module ZRing.
+Module NOrderMinimal <: SsrOrderedTypeMinimal.
 
-  Definition zmulA : associative Z.mul := Z.mul_assoc.
-  Definition zmulC : commutative Z.mul := Z.mul_comm.
-  Definition zmul1 : left_id 1%Z Z.mul := Z.mul_1_l.
-  Definition zmul_addl : left_distributive Z.mul Z.add := Z.mul_add_distr_r.
-  Definition znonzero1 : (1 != 0)%Z := is_true_true.
+  Local Open Scope N_scope.
 
-  Definition comMixin := ComRingMixin zmulA zmulC zmul1 zmul_addl znonzero1.
+  Definition t : eqType := N_eqType.
 
-End ZRing.
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
 
-Canonical Z_Ring := Eval hnf in RingType Z ZRing.comMixin.
-Canonical Z_comRing := Eval hnf in ComRingType Z ZRing.zmulC.
+  Definition lt : t -> t -> bool := fun x y => N.ltb x y.
+
+  Hint Unfold eq lt.
+
+  Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+  Proof.
+    move=> x y z Hxy Hyz.
+    move/N_ltP: Hxy; move/N_ltP: Hyz => Hyz Hxy.
+    apply/N_ltP.
+    exact: (N.lt_trans _ _ _ Hxy Hyz).
+  Qed.
+
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
+  Proof.
+    move=> x y Hlt.
+    apply/negP => Heq.
+    rewrite (eqP Heq) in Hlt.
+    apply: (N.lt_irrefl y).
+    apply/N_ltP.
+    assumption.
+  Qed.
+
+  Lemma compare : forall x y : t, Compare lt eq x y.
+  Proof.
+    move=> x y.
+    case H: (N.compare x y).
+    - apply: EQ.
+      move: (N.compare_eq_iff x y) => [Hc _].
+      apply/eqP.
+      exact: (Hc H).
+    - apply: LT.
+      move: (N.compare_lt_iff x y) => [Hc _].
+      apply/N_ltP.
+      exact: (Hc H).
+    - apply: GT.
+      move: (N.compare_gt_iff x y) => [Hc _].
+      apply/N_ltP.
+      exact: (Hc H).
+  Defined.
+
+  Local Close Scope N_scope.
+
+End NOrderMinimal.
+
+Module NOrder <: SsrOrderedType := MakeSsrOrderedType NOrderMinimal.
+
+
+
+(** An ordered type for Z with a Boolean equality in mathcomp. *)
+
+Module ZOrderMinimal <: SsrOrderedTypeMinimal.
+
+  Local Open Scope Z_scope.
+
+  Definition t : eqType := Z_eqType.
+
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
+
+  Definition lt : t -> t -> bool := fun x y => Z.ltb x y.
+
+  Hint Unfold eq lt.
+
+  Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+  Proof.
+    move=> x y z Hxy Hyz.
+    move/Z_ltP: Hxy; move/Z_ltP: Hyz => Hyz Hxy.
+    apply/Z_ltP.
+    exact: (Z.lt_trans _ _ _ Hxy Hyz).
+  Qed.
+
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
+  Proof.
+    move=> x y Hlt.
+    apply/negP => Heq.
+    rewrite (eqP Heq) in Hlt.
+    apply: (Z.lt_irrefl y).
+    apply/Z_ltP.
+    assumption.
+  Qed.
+
+  Lemma compare : forall x y : t, Compare lt eq x y.
+  Proof.
+    move=> x y.
+    case H: (Z.compare x y).
+    - apply: EQ.
+      move: (Z.compare_eq_iff x y) => [Hc _].
+      apply/eqP.
+      exact: (Hc H).
+    - apply: LT.
+      move: (Z.compare_lt_iff x y) => [Hc _].
+      apply/Z_ltP.
+      exact: (Hc H).
+    - apply: GT.
+      move: (Z.compare_gt_iff x y) => [Hc _].
+      apply/Z_ltP.
+      exact: (Hc H).
+  Defined.
+
+  Local Close Scope Z_scope.
+
+End ZOrderMinimal.
+
+Module ZOrder <: SsrOrderedType := MakeSsrOrderedType ZOrderMinimal.
 
 
 
