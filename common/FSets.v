@@ -3,6 +3,7 @@
 
 From Coq Require Import FSets OrderedType.
 From mathcomp Require Import ssreflect ssrbool eqtype.
+From Common Require Import Types.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -53,3 +54,9 @@ Module FSetLemmas (S : FSetInterface.S).
   Qed.
 
 End FSetLemmas.
+
+Module Make (V : SsrOrderedType).
+  Module S := FSetList.Make V.
+  Module Lemmas := FSetLemmas(S).
+  Include S.
+End Make.

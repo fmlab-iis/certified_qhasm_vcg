@@ -5,6 +5,7 @@
 
 From Coq Require Import FMaps OrderedType.
 From mathcomp Require Import ssreflect ssrbool.
+From Common Require Import Types.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -169,3 +170,9 @@ Module FMapLemmas (M : FMapInterface.S).
   End FMapLemmas.
 
 End FMapLemmas.
+
+Module Make (V : SsrOrderedType).
+  Module M := FMapList.Make V.
+  Module Lemmas := FMapLemmas(M).
+  Include M.
+End Make.
