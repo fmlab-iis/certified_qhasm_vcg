@@ -15,7 +15,10 @@ Local Open Scope mqhasm_scope.
 
 
 
-Reserved Notation "{{ f }} p {{ g }}" (at level 82).
+Reserved Notation "s |= f" (at level 74, no associativity).
+Reserved Notation "f ===> g" (at level 82, no associativity).
+Reserved Notation "{{ f }} p {{ g }}" (at level 82, no associativity).
+Reserved Notation "|= s" (at level 83, no associativity).
 
 Module MakeQhasm (V : SsrOrderedType).
 
@@ -500,10 +503,10 @@ Module MakeQhasm (V : SsrOrderedType).
     forall s : State.t,
       eval_bexp f true s -> eval_bexp g true s.
 
-  Definition spec : Type := (bexp * program * bexp).
-  Definition spre (s : spec) := fst (fst s).
-  Definition sprog (s : spec) := snd (fst s).
-  Definition spost (s : spec) := snd s.
+  Record spec : Type :=
+    mkSpec { spre : bexp;
+             sprog : program;
+             spost : bexp }.
 
   Definition valid_spec (s : spec) : Prop :=
     forall s1 s2,
@@ -511,7 +514,11 @@ Module MakeQhasm (V : SsrOrderedType).
       eval_program s1 (sprog s) s2 ->
       eval_bexp (spost s) true s2.
 
-  Notation "{{ f }} p {{ g }}" := (valid_spec (f, p, g)) (at level 82).
+  Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity).
+  Notation "f ===> g" := (entails f g) (at level 82, no associativity).
+  Notation "{{ f }} p {{ g }}" :=
+    ({| spre := f; sprog := p; spost := g |}) (at level 82).
+  Notation "|= s" := (valid_spec s) (at level 83).
 
   Definition counterexample (sp : spec) (s : State.t) : Prop :=
     eval_bexp (spre sp) true s /\
@@ -541,7 +548,7 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_empty :
     forall f g,
-      {{ f }} [::] {{ g }} -> entails f g.
+      |= {{ f }} [::] {{ g }} -> entails f g.
   Proof.
     move=> f g He s Hf.
     apply: (He s _ Hf).
@@ -550,7 +557,7 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_strengthing :
     forall f g h p,
-      entails f g -> {{ g }} p {{ h }} -> {{ f }} p {{ h }}.
+      entails f g -> |= {{ g }} p {{ h }} -> |= {{ f }} p {{ h }}.
   Proof.
     move=> f g h p Hfg Hgh s1 s2 Hf Hp.
     apply: (Hgh _ _ _ Hp).
@@ -559,7 +566,7 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_weakening :
     forall f g h p,
-      {{ f }} p {{ g }} -> entails g h -> {{ f }} p {{ h }}.
+      |= {{ f }} p {{ g }} -> entails g h -> |= {{ f }} p {{ h }}.
   Proof.
     move=> f g h p Hfg Hgh s1 s2 Hf Hp.
     apply: Hgh.
@@ -568,8 +575,8 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_cons :
     forall f g h hd tl,
-      {{ f }} [::hd] {{ g }} -> {{ g }} tl {{ h }} ->
-      {{ f }} (hd::tl) {{ h }}.
+      |= {{ f }} [::hd] {{ g }} -> |= {{ g }} tl {{ h }} ->
+      |= {{ f }} (hd::tl) {{ h }}.
   Proof.
     move=> f g h hd tl Hhd Htl s1 s2 Hf Hp.
     inversion_clear Hp.
@@ -581,9 +588,9 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_split_post :
     forall f g1 g2 p,
-      {{ f }} p {{ g1 }} ->
-      {{ f }} p {{ g2 }} ->
-      {{ f }} p {{ QAnd g1 g2 }}.
+      |= {{ f }} p {{ g1 }} ->
+      |= {{ f }} p {{ g2 }} ->
+      |= {{ f }} p {{ QAnd g1 g2 }}.
   Proof.
     move=> f g1 g2 p Hg1 Hg2 s1 s2 Hf Hp.
     move: (Hg1 s1 s2 Hf Hp) => {Hg1} Hg1.
@@ -598,4 +605,5 @@ Export Qhasm.
 
 Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : mqhasm_scope.
 Notation "f ===> g" := (entails f g) (at level 82, no associativity) : mqhasm_scope.
-Notation "{{ f }} p {{ g }}" := (valid_spec (f, p, g)) (at level 82) : mqhasm_scope.
+Notation "{{ f }} p {{ g }}" := ({| spre := f; sprog := p; spost := g |}) (at level 82, no associativity) : mqhasm_scope.
+Notation "|= s" := (valid_spec s) (at level 83, no associativity) : mqhasm_scope.

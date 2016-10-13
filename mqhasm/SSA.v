@@ -24,8 +24,8 @@ Module SSA := MakeSSA VarOrder NatOrder.
 
 Notation "s |= f" := (SSA.eval_bexp f true s) (at level 74, no associativity) : ssa_scope.
 Notation "f ===> g" := (SSA.entails f g) (at level 82, no associativity) : ssa_scope.
-Notation "{{ f }} p {{ g }}" := (SSA.valid_spec (f, p, g)) (at level 82) : ssa_scope.
-
+Notation "{{ f }} p {{ g }}" := ({| SSA.spre := f; SSA.sprog := p; SSA.spost := g |}) (at level 82, no associativity) : ssa_scope.
+Notation "|= s" := (valid_spec s) (at level 83, no associativity).
 
 
 (** Conversion to SSA *)
@@ -111,7 +111,7 @@ Definition ssa_spec (s : spec) : SSA.spec :=
   let f := ssa_bexp m (spre s) in
   let (m, p) := ssa_program m (sprog s) in
   let g := ssa_bexp m (spost s) in
-  (f, p, g).
+  {| SSA.spre := f; SSA.sprog := p; SSA.spost := g |}.
 
 Lemma ssa_qassign :
   forall m1 m2 v e si,
@@ -182,11 +182,10 @@ Lemma ssa_spec_unfold s :
             (m, SSA.sprog (ssa_spec s)) = ssa_program empty_vmap (sprog s) /\
             SSA.spost (ssa_spec s) = ssa_bexp m (spost s).
 Proof.
-  destruct s as [[f p] g].
-  rewrite /ssa_spec /spre /sprog /spost /=.
+  destruct s as [f p g] => /=.
+  rewrite /ssa_spec /=.
   set tmp := ssa_program empty_vmap p.
-  destruct tmp as [m sp].
-  rewrite /SSA.spre /SSA.sprog /SSA.spost /=.
+  destruct tmp as [m sp] => /=.
   exists m; split; [idtac | split]; reflexivity.
 Qed.
 
@@ -895,13 +894,12 @@ Qed.
 Theorem ssa_spec_sound (s : spec) :
   SSA.valid_spec (ssa_spec s) -> valid_spec s.
 Proof.
-  destruct s as ((f, p), g).
-  rewrite /ssa_spec /spre /spost /sprog /=.
+  destruct s as [f p g].
+  rewrite /ssa_spec /=.
   set t := ssa_program empty_vmap p.
   have: (t = ssa_program empty_vmap p) by reflexivity.
   destruct t as [m ssa_p].
-  move=> Hp Hspec s1 s2.
-  rewrite /spre /sprog /spost /= => Hf Hep.
+  move=> Hp Hspec s1 s2 /= Hf Hep.
   pose ss1 := ssa_state empty_vmap s1.
   pose Heq1 := (ssa_state_equiv empty_vmap s1).
   move: (ssa_eval_program_succ (Logic.eq_sym Hp) Heq1 Hep) => [ss2 [Hesp Heq2]].
@@ -913,13 +911,12 @@ Qed.
 Theorem ssa_spec_complete (s : spec) :
   valid_spec s -> SSA.valid_spec (ssa_spec s).
 Proof.
-  destruct s as ((f, p), g).
-  rewrite /ssa_spec /spre /spost /sprog /=.
+  destruct s as [f p g].
+  rewrite /ssa_spec /=.
   set t := ssa_program empty_vmap p.
   have: (t = ssa_program empty_vmap p) by reflexivity.
   destruct t as [m ssa_p].
-  move=> Hp Hspec ss1 ss2.
-  rewrite /SSA.spre /SSA.sprog /SSA.spost /= => Hsf Hesp.
+  move=> Hp Hspec ss1 ss2 /= Hsf Hesp.
   pose s1 := dessa_state empty_vmap ss1.
   pose Heq1 := (dessa_state_equiv empty_vmap ss1).
   move: (dessa_eval_program_succ (Logic.eq_sym Hp) Heq1 Hesp) => [s2 [Hep Heq2]].
