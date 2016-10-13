@@ -38,7 +38,8 @@ Module MakeQhasm (V : SsrOrderedType).
   | QVar : var -> exp
   | QConst : Z -> exp
   | QUnop : unop -> exp -> exp
-  | QBinop : binop -> exp -> exp -> exp.
+  | QBinop : binop -> exp -> exp -> exp
+  | QPow : exp -> positive -> exp.
 
   Inductive instr : Type :=
   | QAssign : var -> exp -> instr
@@ -54,6 +55,7 @@ Module MakeQhasm (V : SsrOrderedType).
     | QConst _ => VS.empty
     | QUnop _ e => vars_exp e
     | QBinop _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | QPow e _ => vars_exp e
     end.
 
   Fixpoint vars_instr (i : instr) : VS.t :=
@@ -272,7 +274,11 @@ Module MakeQhasm (V : SsrOrderedType).
         eval_exp e1 v1 s ->
         eval_exp e2 v2 s ->
         eval_binop op v1 v2 = n ->
-        eval_exp (QBinop op e1 e2) n s.
+        eval_exp (QBinop op e1 e2) n s
+  | EQPow :
+      forall e n m s,
+        eval_exp e m s ->
+        eval_exp (QPow e n) (m^(Zpos n)) s.
 
   Inductive eval_instr : State.t -> instr -> State.t -> Prop :=
   | EQAssign :
@@ -361,14 +367,30 @@ Module MakeQhasm (V : SsrOrderedType).
     exact: eqxx.
   Qed.
 
+  Lemma eval_qpow_unique :
+    forall e : exp,
+      (forall (n m : value) (s : State.t),
+          eval_exp e n s -> eval_exp e m s -> n == m) ->
+      forall (p : positive) (n m : value) (s : State.t),
+        eval_exp (QPow e p) n s ->
+        eval_exp (QPow e p) m s ->
+        n == m.
+  Proof.
+    move=> e IH p n m s Hn Hm.
+    inversion_clear Hn; inversion_clear Hm.
+    rewrite (eqP (IH _ _ _ H H0)).
+    exact: eqxx.
+  Qed.
+
   Lemma eval_exp_unique :
-    forall e n m s, eval_exp e n s -> eval_exp e m s -> n == m.
+          forall e n m s, eval_exp e n s -> eval_exp e m s -> n == m.
   Proof.
     move=> e; elim: e.
     - exact: eval_qvar_unique.
     - exact: eval_qconst_unique.
     - exact: eval_qunop_unique.
     - exact: eval_qbinop_unique.
+    - exact: eval_qpow_unique.
   Qed.
 
   Lemma eval_program_empty :

@@ -73,6 +73,7 @@ Fixpoint ssa_exp (m : vmap) (e : exp) : SSA.exp :=
   | QConst c => SSA.QConst c
   | QUnop op e => SSA.QUnop (ssa_unop op) (ssa_exp m e)
   | QBinop op e1 e2 => SSA.QBinop (ssa_binop op) (ssa_exp m e1) (ssa_exp m e2)
+  | QPow e n => SSA.QPow (ssa_exp m e) n
   end.
 
 Definition ssa_instr (m : vmap) (i : instr) : vmap * SSA.instr :=
@@ -392,6 +393,10 @@ Proof.
     + exact: (IH2 _ H0).
     + rewrite ssa_eval_binop.
       exact: H1.
+  - move=> e IH p n Hn.
+    inversion_clear Hn.
+    apply: SSA.EQPow.
+    exact: (IH _ H).
 Qed.
 
 Lemma ssa_eval_exp_eq m s ss e n sn :
@@ -618,6 +623,10 @@ Proof.
     + exact: (IH2 _ H0).
     + rewrite -ssa_eval_binop.
       exact: H1.
+  - move=> e IH p n He.
+    inversion_clear He.
+    apply: EQPow.
+    exact: (IH _ H).
 Qed.
 
 Lemma dessa_eval_bexp m s ss e b :
@@ -1137,6 +1146,8 @@ Proof.
     move: {Hin} (SSA.VS.union_1 Hin); case => /SSA.VSLemmas.memP Hmem.
     + apply: (IH1 _ _ _ Hmem); reflexivity.
     + apply: (IH2 _ _ _ Hmem); reflexivity.
+  - move=> e IH p n v i /= Hmem.
+    exact: (IH _ _ _ Hmem).
 Qed.
 
 Lemma ssa_bexp_var_index m e v i :
