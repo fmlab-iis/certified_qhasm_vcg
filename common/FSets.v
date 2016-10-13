@@ -53,6 +53,28 @@ Module FSetLemmas (S : FSetInterface.S).
     assumption.
   Qed.
 
+  Lemma mem_in_elements :
+    forall x s,
+      S.mem x s ->
+      InA S.E.eq x (S.elements s).
+  Proof.
+    move=> x s Hmem.
+    apply: S.elements_1.
+    apply/memP.
+    assumption.
+  Qed.
+
+  Lemma in_elements_mem :
+    forall x s,
+      InA S.E.eq x (S.elements s) ->
+      S.mem x s.
+  Proof.
+    move=> x s Hin.
+    apply/memP.
+    apply: S.elements_2.
+    assumption.
+  Qed.
+
 End FSetLemmas.
 
 Module Make (V : SsrOrderedType).

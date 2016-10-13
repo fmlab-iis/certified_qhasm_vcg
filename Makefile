@@ -121,6 +121,7 @@ VFILES:=lib/CompCert/Coqlib.v\
   common/Lists.v\
   common/FMaps.v\
   common/FSets.v\
+  common/Bools.v\
   common/Nats.v\
   common/ZAriths.v\
   common/Bits.v\

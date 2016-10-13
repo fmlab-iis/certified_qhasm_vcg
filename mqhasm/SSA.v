@@ -961,12 +961,11 @@ Fixpoint ssa_well_formed_program (p : SSA.program) : bool :=
   match p with
   | [::] => true
   | hd::tl =>
+    (ssa_well_formed_program tl) &&
     match hd with
     | SSA.QAssign v _ => (ssa_var_unchanged_program v tl)
-                           && (ssa_well_formed_program tl)
     | SSA.QSplit vh vl _ _ => (ssa_var_unchanged_program vh tl)
                                 && (ssa_var_unchanged_program vl tl)
-                                && (ssa_well_formed_program tl)
     end
   end.
 
@@ -1054,6 +1053,136 @@ Proof.
   split; reflexivity.
 Qed.
 
+Lemma ssa_unchanged_program_mem v vs p :
+  ssa_vars_unchanged_program (SSA.VS.elements vs) p ->
+  SSA.VS.mem v vs ->
+  ssa_var_unchanged_program v p.
+Proof.
+  move=> Hunch Hmem.
+  move: (SSA.VSLemmas.mem_in_elements Hmem) Hunch => {Hmem}.
+  set vl := SSA.VS.elements vs.
+  elim: vl v p.
+  - move=> v p Hin Hunch.
+    by inversion_clear Hin.
+  - move=> hd tl IH v p Hin /andP [Hhd Htl].
+    inversion_clear Hin.
+    + by rewrite (eqP H).
+    + exact: (IH _ _ H Htl).
+Qed.
+
+Lemma ssa_unchanged_program_local s p :
+  (forall v, SSA.VS.mem v s -> ssa_var_unchanged_program v p) ->
+  ssa_vars_unchanged_program (SSA.VS.elements s) p.
+Proof.
+  move=> H.
+  have: forall v, SetoidList.InA SSA.VS.E.eq v (SSA.VS.elements s) -> ssa_var_unchanged_program v p by move=> v Hin; apply: H; exact: (SSA.VSLemmas.in_elements_mem Hin).
+  move=> {H}.
+  set vl := SSA.VS.elements s.
+  elim: vl p.
+  - done.
+  - move=> hd tl IH p H.
+    apply/andP; split.
+    + apply: H.
+      exact: SetoidList.InA_cons_hd.
+    + apply: IH.
+      move=> v Hin.
+      apply: H.
+      exact: (SetoidList.InA_cons_tl _ Hin).
+Qed.
+
+Lemma ssa_unchanged_program_global s p :
+  ssa_vars_unchanged_program (SSA.VS.elements s) p ->
+  (forall v, SSA.VS.mem v s -> ssa_var_unchanged_program v p).
+Proof.
+  move=> H v Hmem.
+  exact: (ssa_unchanged_program_mem H Hmem).
+Qed.
+
+Lemma ssa_unchanged_program_union s1 s2 p :
+  ssa_vars_unchanged_program (SSA.VS.elements (SSA.VS.union s1 s2)) p ->
+  ssa_vars_unchanged_program (SSA.VS.elements s1) p /\
+  ssa_vars_unchanged_program (SSA.VS.elements s2) p.
+Proof.
+  move=> Hun.
+  move: (ssa_unchanged_program_global Hun) => {Hun} Hun.
+  split; apply: ssa_unchanged_program_local => v Hmem.
+  - apply: Hun.
+    rewrite SSA.VSLemmas.union_b.
+    by rewrite Hmem.
+  - apply: Hun.
+    rewrite SSA.VSLemmas.union_b.
+    rewrite Hmem.
+    by case: (SSA.VS.mem v s1).
+Qed.
+
+Lemma ssa_unchanged_program_eval_exp e n s1 s2 p :
+  ssa_vars_unchanged_program (SSA.VS.elements (SSA.vars_exp e)) p ->
+  SSA.eval_program s1 p s2 ->
+  SSA.eval_exp e n s1 ->
+  SSA.eval_exp e n s2.
+Proof.
+  elim: e n => /=.
+  - move=> v n /andP [Hunch _] Hp He1.
+    inversion_clear He1.
+    apply: SSA.EQVar.
+    rewrite (acc_unchanged_program Hunch Hp); assumption.
+  - move=> c n _ Hp He1.
+    inversion_clear He1.
+    exact: SSA.EQConst.
+  - move=> op e IH n Hunch Hp He1.
+    inversion_clear He1.
+    move: (IH _ Hunch Hp H) => He2.
+    exact: (SSA.EQUnop He2 H0).
+  - move=> op e1 IH1 e2 IH2 n Hunch Hp He1.
+    move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
+    inversion_clear He1.
+    apply: (SSA.EQBinop _ _ H1).
+    + exact: (IH1 _ Hunch1 Hp H).
+    + exact: (IH2 _ Hunch2 Hp H0).
+  - move=> e IH i n Hunch Hp He1.
+    inversion_clear He1.
+    apply: SSA.EQPow.
+    exact: (IH _ Hunch Hp H).
+Qed.
+
+Lemma ssa_unchanged_program_eval_bexp e b s1 s2 p :
+  ssa_vars_unchanged_program (SSA.VS.elements (SSA.vars_bexp e)) p ->
+  SSA.eval_program s1 p s2 ->
+  SSA.eval_bexp e b s1 ->
+  SSA.eval_bexp e b s2.
+Proof.
+  elim: e b => /=.
+  - move=> b _ Hp He1.
+    inversion_clear He1.
+    exact: SSA.EQTrue.
+  - move=> e e2 b Hunch Hp He1.
+    move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
+    inversion_clear He1.
+    apply: SSA.EQEq.
+    + exact: (ssa_unchanged_program_eval_exp Hunch1 Hp H).
+    + exact: (ssa_unchanged_program_eval_exp Hunch2 Hp H0).
+  - move=> e1 e2 i b Hunch Hp He1.
+    move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
+    inversion_clear He1.
+    apply: SSA.EQCong.
+    + exact: (ssa_unchanged_program_eval_exp Hunch1 Hp H).
+    + exact: (ssa_unchanged_program_eval_exp Hunch2 Hp H0).
+  - move=> e1 IH1 e2 IH2 b Hunch Hp He1.
+    move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
+    inversion_clear He1.
+    apply: SSA.EQAnd.
+    + exact: (IH1 _ Hunch1 Hp H).
+    + exact: (IH2 _ Hunch2 Hp H0).
+Qed.
+
+Lemma well_formed_program_tl hd tl :
+  ssa_well_formed_program (hd::tl) ->
+  ssa_well_formed_program tl.
+Proof.
+  move=> /andP [H _].
+  assumption.
+Qed.
+
 Lemma ssa_instr_le_unchanged m1 m2 i si :
   forall v iv,
     iv <= get_index m1 v ->
@@ -1113,26 +1242,25 @@ Proof.
   - move=> hd tl IH m1 m2 sp Hsp.
     move: (ssa_program_cons Hsp) => {Hsp} [m3 [shd [stl [Hshd [Hstl Hsp]]]]].
     rewrite Hsp => {Hsp sp}.
-    case: hd Hshd.
-    + move=> v e Hshd.
-      move: (ssa_qassign Hshd) => {Hshd} [iv [Hupd Hshd]].
-      rewrite Hshd /= => {Hshd shd}.
-      apply/andP; split.
-      * apply: (ssa_program_le_unchanged _ Hstl).
+    apply/andP; split.
+    + exact: (IH _ _ _ Hstl).
+    + case: hd Hshd.
+      * move=> v e Hshd.
+        move: (ssa_qassign Hshd) => {Hshd} [iv [Hupd Hshd]].
+        rewrite Hshd /= => {Hshd shd}.
+        apply: (ssa_program_le_unchanged _ Hstl).
         rewrite (get_upd_index_eq Hupd).
         exact: leqnn.
-      * exact: (IH _ _ _ Hstl).
-    + move=> vh vl e p Hshd.
-      move: (ssa_qsplit Hshd) => {Hshd} [ih [il [m4 [Hupdh [Hupdl Hshd]]]]].
-      rewrite Hshd /= => {Hshd shd}.
-      apply/andP; split; [apply/andP; split | idtac].
-      * apply: (ssa_program_le_unchanged _ Hstl).
-        rewrite -(get_upd_index_eq Hupdh).
-        exact: (get_upd_index_le vh Hupdl).
-      * apply: (ssa_program_le_unchanged _ Hstl).
-        rewrite (get_upd_index_eq Hupdl).
-        exact: leqnn.
-      * exact: (IH _ _ _ Hstl).
+      * move=> vh vl e p Hshd.
+        move: (ssa_qsplit Hshd) => {Hshd} [ih [il [m4 [Hupdh [Hupdl Hshd]]]]].
+        rewrite Hshd /= => {Hshd shd}.
+        apply/andP; split.
+        -- apply: (ssa_program_le_unchanged _ Hstl).
+           rewrite -(get_upd_index_eq Hupdh).
+           exact: (get_upd_index_le vh Hupdl).
+        -- apply: (ssa_program_le_unchanged _ Hstl).
+           rewrite (get_upd_index_eq Hupdl).
+           exact: leqnn.
 Qed.
 
 Lemma ssa_exp_var_index m e v i :
