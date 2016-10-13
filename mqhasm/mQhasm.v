@@ -14,7 +14,16 @@ Delimit Scope mqhasm_scope with mqhasm.
 Local Open Scope mqhasm_scope.
 
 
-
+Reserved Notation "@- x" (at level 35, right associativity).
+Reserved Notation "x @+ y" (at level 50, left associativity).
+Reserved Notation "x @- y" (at level 50, left associativity).
+Reserved Notation "x @* y" (at level 40, left associativity).
+Reserved Notation "x @^ y" (at level 30, right associativity).
+Reserved Notation "x @:= y" (at level 70, no associativity).
+Reserved Notation "x ++ y @:= z # p" (at level 70, no associativity).
+Reserved Notation "x @= y" (at level 70, no associativity).
+Reserved Notation "x @= y 'mod' z" (at level 70, y at next level, no associativity).
+Reserved Notation "x @&& y" (at level 70, no associativity).
 Reserved Notation "s |= f" (at level 74, no associativity).
 Reserved Notation "f ===> g" (at level 82, no associativity).
 Reserved Notation "{{ f }} p {{ g }}" (at level 82, no associativity).
@@ -514,11 +523,11 @@ Module MakeQhasm (V : SsrOrderedType).
       eval_program s1 (sprog s) s2 ->
       eval_bexp (spost s) true s2.
 
-  Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity).
-  Notation "f ===> g" := (entails f g) (at level 82, no associativity).
-  Notation "{{ f }} p {{ g }}" :=
+  Local Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity).
+  Local Notation "f ===> g" := (entails f g) (at level 82, no associativity).
+  Local Notation "{{ f }} p {{ g }}" :=
     ({| spre := f; sprog := p; spost := g |}) (at level 82).
-  Notation "|= s" := (valid_spec s) (at level 83).
+  Local Notation "|= s" := (valid_spec s) (at level 83).
 
   Definition counterexample (sp : spec) (s : State.t) : Prop :=
     eval_bexp (spre sp) true s /\
@@ -548,7 +557,7 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_empty :
     forall f g,
-      |= {{ f }} [::] {{ g }} -> entails f g.
+      |= {{ f }} [::] {{ g }} -> f ===> g.
   Proof.
     move=> f g He s Hf.
     apply: (He s _ Hf).
@@ -566,7 +575,7 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Lemma spec_weakening :
     forall f g h p,
-      |= {{ f }} p {{ g }} -> entails g h -> |= {{ f }} p {{ h }}.
+      |= {{ f }} p {{ g }} -> g ===> h -> |= {{ f }} p {{ h }}.
   Proof.
     move=> f g h p Hfg Hgh s1 s2 Hf Hp.
     apply: Hgh.
@@ -602,6 +611,17 @@ End MakeQhasm.
 
 Module Qhasm := MakeQhasm VarOrder.
 Export Qhasm.
+
+Notation "@- x" := (QNeg x) (at level 35, right associativity) : mqhasm_scope.
+Notation "x @+ y" := (QBinop QAdd x y) (at level 50, left associativity) : mqhasm_scope.
+Notation "x @- y" := (QBinop QSub x y)  (at level 50, left associativity) : mqhasm_scope.
+Notation "x @* y" := (QBinop QMul x y)  (at level 40, left associativity) : mqhasm_scope.
+Notation "x @^ y" := (QPow x y)  (at level 30, right associativity) : mqhasm_scope.
+Notation "x @:= y" := (QAssign x y) (at level 70, no associativity) : mqhasm_scope.
+Notation "x ++ y @:= z # p" := (QSplit x y z p) (at level 70, no associativity) : mqhasm_scope.
+Notation "x @= y" := (QEq x y) (at level 70, no associativity) : mqhasm_scope.
+Notation "x @= y 'mod' z" := (QCong x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
+Notation "x @&& y" := (QAnd x y) (at level 70, no associativity) : mqhasm_scope.
 
 Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : mqhasm_scope.
 Notation "f ===> g" := (entails f g) (at level 82, no associativity) : mqhasm_scope.

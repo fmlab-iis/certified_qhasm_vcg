@@ -22,6 +22,16 @@ End MakeSSA.
 
 Module SSA := MakeSSA VarOrder NatOrder.
 
+Notation "@- x" := (SSA.QNeg x) (at level 35, right associativity) : ssa_scope.
+Notation "x @+ y" := (SSA.QBinop SSA.QAdd x y) (at level 50, left associativity) : ssa_scope.
+Notation "x @- y" := (SSA.QBinop SSA.QSub x y)  (at level 50, left associativity) : ssa_scope.
+Notation "x @* y" := (SSA.QBinop SSA.QMul x y)  (at level 40, left associativity) : ssa_scope.
+Notation "x @^ y" := (SSA.QPow x y)  (at level 30, right associativity) : ssa_scope.
+Notation "x @:= y" := (SSA.QAssign x y) (at level 70, no associativity) : ssa_scope.
+Notation "x ++ y @:= z # p" := (SSA.QSplit x y z p) (at level 70, no associativity) : ssa_scope.
+Notation "x @= y" := (SSA.QEq x y) (at level 70, no associativity) : ssa_scope.
+Notation "x @= y 'mod' z" := (SSA.QCong x y z) (at level 70, y at next level, no associativity) : ssa_scope.
+Notation "x @&& y" := (SSA.QAnd x y) (at level 70, no associativity) : mqhasm_scope.
 Notation "s |= f" := (SSA.eval_bexp f true s) (at level 74, no associativity) : ssa_scope.
 Notation "f ===> g" := (SSA.entails f g) (at level 82, no associativity) : ssa_scope.
 Notation "{{ f }} p {{ g }}" := ({| SSA.spre := f; SSA.sprog := p; SSA.spost := g |}) (at level 82, no associativity) : ssa_scope.
