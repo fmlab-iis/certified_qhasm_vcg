@@ -42,13 +42,13 @@ Module Type TSTORE.
 
 End TSTORE.
 
-Module MakeTStore (X : EQTYPE) <: TSTORE.
+Module MakeTStore (X : SsrOrderedType) <: TSTORE.
 
   Section TStore.
 
     Variable value : Type.
 
-    Definition var := X.t.
+    Definition var := X.T.
 
     Definition t : Type := var -> value.
 
@@ -79,7 +79,7 @@ Module MakeTStore (X : EQTYPE) <: TSTORE.
 
 End MakeTStore.
 
-Module TStoreAdapter (X : EQTYPE) (V : Equalities.Typ).
+Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Module S := MakeTStore X.
   Definition value := V.t.
   Definition var := S.var.

@@ -31,7 +31,7 @@ Definition program : Set := seq instr.
 
 (** Semantics *)
 
-Module State := TStoreAdapter NatEqtype ZType.
+Module State := TStoreAdapter NatOrder ZType.
 
 Fixpoint eval_exp (e : exp) (s : State.t) : Z :=
   match e with
