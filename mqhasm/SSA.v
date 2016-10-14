@@ -37,6 +37,11 @@ Notation "f ===> g" := (SSA.entails f g) (at level 82, no associativity) : ssa_s
 Notation "{{ f }} p {{ g }}" := ({| SSA.spre := f; SSA.sprog := p; SSA.spost := g |}) (at level 82, no associativity) : ssa_scope.
 Notation "|= s" := (valid_spec s) (at level 83, no associativity).
 
+Definition svar (x : SSA.V.t) := fst x.
+Definition sidx (x : SSA.V.t) := snd x.
+Hint Unfold svar sidx.
+
+
 
 (** Conversion to SSA *)
 
@@ -375,89 +380,67 @@ Proof.
   rewrite Hbd; exact: eqxx.
 Qed.
 
-Lemma ssa_eval_exp m s ss e n :
+Lemma ssa_eval_exp m s ss e :
   state_equiv m s ss ->
-  eval_exp e n s ->
-  SSA.eval_exp (ssa_exp m e) n ss.
+  SSA.eval_exp (ssa_exp m e) ss = eval_exp e s.
 Proof.
-  move=> Heq; elim: e n => /=.
-  - move=> v n He.
-    inversion_clear He.
-    apply: SSA.EQVar.
-    rewrite -Heq.
-    exact: H.
-  - move=> c n He.
-    inversion_clear He.
-    exact: SSA.EQConst.
-  - move=> op e IH n He.
-    inversion_clear He.
-    apply: SSA.EQUnop.
-    + exact: (IH _ H).
-    + rewrite ssa_eval_unop.
-      exact: H0.
-  - move=> op e1 IH1 e2 IH2 n He.
-    inversion_clear He.
-    apply: SSA.EQBinop.
-    + exact: (IH1 _ H).
-    + exact: (IH2 _ H0).
-    + rewrite ssa_eval_binop.
-      exact: H1.
-  - move=> e IH p n Hn.
-    inversion_clear Hn.
-    apply: SSA.EQPow.
-    exact: (IH _ H).
+  move=> Heq; elim: e => /=.
+  - move=> v.
+    rewrite (Heq v).
+    reflexivity.
+  - move=> c.
+    reflexivity.
+  - move=> op e IH.
+    rewrite ssa_eval_unop IH.
+    reflexivity.
+  - move=> op e1 IH1 e2 IH2.
+    rewrite ssa_eval_binop IH1 IH2.
+    reflexivity.
+  - move=> e IH p.
+    rewrite IH.
+    reflexivity.
 Qed.
 
-Lemma ssa_eval_exp_eq m s ss e n sn :
+Lemma ssa_eval_bexp m s ss e :
   state_equiv m s ss ->
-  eval_exp e n s ->
-  SSA.eval_exp (ssa_exp m e) sn ss ->
-  n = sn.
+  SSA.eval_bexp (ssa_bexp m e) ss <-> eval_bexp e s.
 Proof.
-  move=> Heq He Hes.
-  move: (ssa_eval_exp Heq He) => Hes'.
-  move: (SSA.eval_exp_unique Hes Hes') => H.
-  symmetry; exact: (eqP H).
+  move=> Heq; elim: e => /=.
+  - done.
+  - move=> e1 e2.
+    rewrite 2!(ssa_eval_exp _ Heq).
+    done.
+  - move=> e1 e2 p.
+    rewrite 2!(ssa_eval_exp _ Heq).
+    done.
+  - move=> e1 [IH11 IH12] e2 [IH21 IH22].
+    tauto.
 Qed.
 
-Lemma ssa_eval_bexp m s ss e b :
+Lemma ssa_eval_bexp1 m s ss e :
   state_equiv m s ss ->
-  eval_bexp e b s ->
-  SSA.eval_bexp (ssa_bexp m e) b ss.
+  SSA.eval_bexp (ssa_bexp m e) ss -> eval_bexp e s.
 Proof.
-  move=> Heq; elim: e b => /=.
-  - move=> b He.
-    inversion_clear He.
-    exact: SSA.EQTrue.
-  - move=> e1 e2 b He.
-    inversion_clear He.
-    exact: (SSA.EQEq (ssa_eval_exp Heq H) (ssa_eval_exp Heq H0)).
-  - move=> e1 e2 p b He.
-    inversion_clear He.
-    exact: (SSA.EQCong _ (ssa_eval_exp Heq H) (ssa_eval_exp Heq H0)).
-  - move=> e1 IH1 e2 IH2 b He.
-    inversion_clear He.
-    exact: (SSA.EQAnd (IH1 _ H) (IH2 _ H0)).
+  move=> Heq He.
+  move: (ssa_eval_bexp e Heq) => [H1 H2].
+  exact: (H1 He).
 Qed.
 
-Lemma ssa_eval_bexp_eq m s ss e b sb :
+Lemma ssa_eval_bexp2 m s ss e :
   state_equiv m s ss ->
-  eval_bexp e b s ->
-  SSA.eval_bexp (ssa_bexp m e) sb ss ->
-  b = sb.
+  eval_bexp e s -> SSA.eval_bexp (ssa_bexp m e) ss.
 Proof.
-  move=> Heq He Hes.
-  move: (ssa_eval_bexp Heq He) => Hes'.
-  move: (SSA.eval_bexp_unique Hes Hes') => H.
-  symmetry; exact: (eqP H).
+  move=> Heq He.
+  move: (ssa_eval_bexp e Heq) => [H1 H2].
+  exact: (H2 He).
 Qed.
 
 Lemma ssa_eval_instr :
   forall m1 m2 s1 s2 ss1 ss2 i si,
     ssa_instr m1 i = (m2, si) ->
     state_equiv m1 s1 ss1 ->
-    eval_instr s1 i s2 ->
-    SSA.eval_instr ss1 si ss2 ->
+    eval_instr s1 i = s2 ->
+    SSA.eval_instr ss1 si = ss2 ->
     state_equiv m2 s2 ss2.
 Proof.
   move=> m1 m2 s1 s2 ss1 ss2 i.
@@ -465,46 +448,40 @@ Proof.
   - move=> v e si Hsi Heq /= Hei Hesi.
     move: (ssa_qassign Hsi) => {Hsi} [idx [Hupd Hsi]].
     move=> x.
-    rewrite Hsi in Hesi.
-    inversion_clear Hei.
-    inversion_clear Hesi.
-    case Hxv: (x == v).
-    + rewrite (State.acc_Upd_eq Hxv H0).
-      rewrite (SSA.State.acc_Upd_eq _ H2).
-      * move: (ssa_eval_exp Heq H) => H3.
-        move: (SSA.eval_exp_unique H1 H3).
-        by move/eqP=> Hn; rewrite Hn.
-      * rewrite (eqP Hxv) (get_upd_index_eq Hupd).
-        exact: eqxx.
+    rewrite Hsi /= in Hesi => {Hsi}.
+    move: (get_upd_index_eq Hupd) => Hidx.
+    rewrite -Hei -Hesi => {Hei Hesi}.
+    case Hxv: (x == v) => /=.
+    + rewrite (State.acc_upd_eq _ _ Hxv).
+      rewrite (eqP Hxv) Hidx (SSA.State.acc_upd_eq _ _ (eqxx (v, idx))).
+      rewrite (ssa_eval_exp _ Heq).
+      reflexivity.
     + move/idP/negP: Hxv => Hxv.
+      rewrite (State.acc_upd_neq _ _ Hxv).
       rewrite (get_upd_index_neq Hxv Hupd).
-      rewrite (State.acc_Upd_neq Hxv H0).
-      rewrite (SSA.State.acc_Upd_neq _ H2).
-      * exact: (Heq x).
-      * exact: (pair_neq1 _ _ Hxv).
-  - move=> vh vl e p si Hsi Heq Hei Hesi.
+      rewrite (SSA.State.acc_upd_neq _ _ (pair_neq1 _ _ Hxv)).
+      exact: Heq.
+  - move=> vh vl e p si Hsi Heq /= Hei Hesi.
     move: (ssa_qsplit Hsi) => {Hsi} [ih [il [m3 [Hupdh [Hupdl Hsi]]]]].
-    inversion_clear Hei.
-    rewrite Hsi in Hesi; inversion_clear Hesi => {Hsi}.
-    move: (ssa_eval_exp_eq Heq H H3) => {H H3} Hnn4. (* n = n4 *)
-    rewrite Hnn4 in H1 H2.
-    rewrite -H1 in H5; rewrite -H2 in H6 => {H1 H2}. (* n0 = n1, n3 = n2 *)
+    rewrite Hsi /= in Hesi => {Hsi}.
+    rewrite (ssa_eval_exp _ Heq) in Hesi.
+    move: Hei Hesi; set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p);
+        destruct tmp as [q r] => Hei Hesi.
     move=> x.
-    rewrite H0 H4.
+    rewrite -Hei -Hesi => {Hei Hesi}.
     case Hxl: (x == vl); [idtac | case Hxh: (x == vh)].
     + rewrite (State.acc_upd_eq _ _ Hxl).
-      rewrite (eqP Hxl) (get_upd_index_eq Hupdl).
-      rewrite (SSA.State.acc_upd_eq _ _ (eqxx (vl, il))).
-      by rewrite H6.
+      rewrite (eqP Hxl) (get_upd_index_eq Hupdl)
+              (SSA.State.acc_upd_eq _ _ (eqxx (vl, il))).
+      reflexivity.
     + move/idP/negP: Hxl => Hxl.
-      rewrite (State.acc_upd_neq _ _ Hxl).
-      rewrite (State.acc_upd_eq _ _ Hxh).
+      rewrite (State.acc_upd_neq _ _ Hxl) (State.acc_upd_eq _ _ Hxh).
       rewrite (SSA.State.acc_upd_neq _ _ (pair_neq1 _ _ Hxl)).
       move: (get_upd_index_eq Hupdh) => Hidx.
       move: (get_upd_index_neq Hxl Hupdl) => Hidx'.
       rewrite -Hidx Hidx' (eqP Hxh).
       rewrite (SSA.State.acc_upd_eq _ _ (eqxx (vh, get_index m3 vh))).
-      by rewrite H5.
+      reflexivity.
     + move/idP/negP: Hxl => Hxl.
       move/idP/negP: Hxh => Hxh.
       rewrite (State.acc_upd_neq _ _ Hxl) (State.acc_upd_neq _ _ Hxh).
@@ -520,57 +497,33 @@ Lemma ssa_eval_instr_succ :
   forall m1 m2 s1 s2 ss1 i si,
     ssa_instr m1 i = (m2, si) ->
     state_equiv m1 s1 ss1 ->
-    eval_instr s1 i s2 ->
+    eval_instr s1 i = s2 ->
     exists ss2,
-      SSA.eval_instr ss1 si ss2 /\ state_equiv m2 s2 ss2.
+      SSA.eval_instr ss1 si = ss2 /\ state_equiv m2 s2 ss2.
 Proof.
   move=> m1 m2 s1 s2 ss1 i si Hi Heq Hei.
-  have: (exists ss2, SSA.eval_instr ss1 si ss2).
-  - elim: i si Hi Heq Hei.
-    + move=> v e si Hsi Heq Hei.
-      move: (ssa_qassign Hsi) => {Hsi} [idx [Hupd Hsi]].
-      inversion_clear Hei.
-      pose ss2 := SSA.State.upd (v, idx) n ss1.
-      exists ss2.
-      * rewrite Hsi; apply: (SSA.EQAssign (n:=n)).
-        -- exact: (ssa_eval_exp Heq H).
-        -- exact: SSA.State.Upd_upd.
-    + move=> vh vl e p si Hsi Heq Hei.
-      move: (ssa_qsplit Hsi) => {Hsi} [ih [il [m3 [Hupdh [Hupdl Hsi]]]]].
-      inversion_clear Hei.
-      pose ss2 := SSA.State.upd (vl, il) n2 (SSA.State.upd (vh, ih) n1 ss1).
-      exists ss2.
-      * rewrite Hsi; apply: (SSA.EQSplit (n1:=n1) (n2:=n2)).
-        -- exact: (ssa_eval_exp Heq H).
-        -- move=> x.
-           reflexivity.
-        -- assumption.
-        -- assumption.
-  - move=> [ss2 Hesi].
-    exists ss2; split; [exact: Hesi | idtac].
-    exact: (ssa_eval_instr Hi Heq Hei Hesi).
+  exists (SSA.eval_instr ss1 si); split.
+  - reflexivity.
+  - exact: (ssa_eval_instr Hi Heq Hei).
 Qed.
 
 Lemma ssa_eval_program :
   forall m1 m2 s1 s2 ss1 ss2 p sp,
     ssa_program m1 p = (m2, sp) ->
     state_equiv m1 s1 ss1 ->
-    eval_program s1 p s2 ->
-    SSA.eval_program ss1 sp ss2 ->
+    eval_program s1 p = s2 ->
+    SSA.eval_program ss1 sp = ss2 ->
     state_equiv m2 s2 ss2.
 Proof.
   move=> m1 m2 s1 s2 ss1 ss2 p.
-  elim: p m1 m2 s1 s2 ss1 ss2.
-  - move=> m1 m2 s1 s2 ss1 ss2 p Hsp Heq Hep Hesp.
-    rewrite ssa_program_empty in Hsp.
-    case: Hsp => Hm Hp.
+  elim: p m1 m2 s1 s2 ss1 ss2 => /=.
+  - move=> m1 m2 s1 s2 ss1 ss2 p [Hm Hp] Heq Hep Hesp.
     rewrite -Hp in Hesp.
-    move: (eval_program_empty Hep) => Hs.
-    move: (SSA.eval_program_empty Hesp) => Hss.
-    rewrite -Hs -Hss -Hm; exact: Heq.
+    rewrite -Hep -Hesp -Hm.
+    exact: Heq.
   - move=> hd tl IH m1 m2 s1 s2 ss1 ss2 sp Hsp Heq Hep Hesp.
-    move: (eval_program_cons Hep) => [s3 [Hehd Hetl]].
-    move: (ssa_program_cons Hsp) => [m3 [h [t [Hh [Ht Hht]]]]].
+    move: (eval_program_cons Hep) => {Hep} [s3 [Hehd Hetl]].
+    move: (ssa_program_cons Hsp) => {Hsp} [m3 [h [t [Hh [Ht Hht]]]]].
     rewrite Hht in Hesp.
     move: (SSA.eval_program_cons Hesp) => [ss3 [Heshd Hestl]].
     move: (ssa_eval_instr Hh Heq Hehd Heshd) => Heq'.
@@ -581,147 +534,44 @@ Lemma ssa_eval_program_succ :
   forall m1 m2 s1 s2 ss1 p sp,
     ssa_program m1 p = (m2, sp) ->
     state_equiv m1 s1 ss1 ->
-    eval_program s1 p s2 ->
+    eval_program s1 p = s2 ->
     exists ss2,
-      SSA.eval_program ss1 sp ss2 /\ state_equiv m2 s2 ss2.
+      SSA.eval_program ss1 sp = ss2 /\ state_equiv m2 s2 ss2.
 Proof.
   move=> m1 m2 s1 s2 ss1 p sp Hp Heq Hep.
-  have: (exists ss2, SSA.eval_program ss1 sp ss2).
-  - elim: p m1 m2 s1 s2 ss1 sp Hp Heq Hep.
-    + move=> m1 m2 s1 s2 ss1 sp Hsp Heq Hep.
-      rewrite ssa_program_empty in Hsp.
-      case: Hsp => Hm Hsp.
-      exists ss1.
-      rewrite -Hsp; exact: SSA.EQEmpty.
-    + move=> hd tl IH m1 m2 s1 s2 ss1 sp Hsp Heq Hep.
-      move: (eval_program_cons Hep) => [s3 [Hehd Hetl]].
-      move: (ssa_program_cons Hsp) => [m3 [h [t [Hh [Ht Hht]]]]].
-      move: (ssa_eval_instr_succ Hh Heq Hehd) => [ss3 [Heh Heqh]].
-      move: (IH m3 m2 _ _ _ t Ht Heqh Hetl) => [ss2 Het].
-      exists ss2.
-      rewrite Hht; exact: (SSA.EQCons Heh Het).
-  - move=> [ss2 Hesp].
-    exists ss2; split; [exact: Hesp | idtac].
-    exact: (ssa_eval_program Hp Heq Hep Hesp).
-Qed.
-
-Lemma dessa_eval_exp m s ss e n :
-  state_equiv m s ss ->
-  SSA.eval_exp (ssa_exp m e) n ss ->
-  eval_exp e n s.
-Proof.
-  move=> Heq; elim: e n => /=.
-  - move=> v n He.
-    inversion_clear He.
-    apply: EQVar.
-    rewrite Heq.
-    exact: H.
-  - move=> c n He.
-    inversion_clear He.
-    exact: EQConst.
-  - move=> op e IH n He.
-    inversion_clear He.
-    apply: EQUnop.
-    + exact: (IH _ H).
-    + rewrite -ssa_eval_unop.
-      exact: H0.
-  - move=> op e1 IH1 e2 IH2 n He.
-    inversion_clear He.
-    apply: EQBinop.
-    + exact: (IH1 _ H).
-    + exact: (IH2 _ H0).
-    + rewrite -ssa_eval_binop.
-      exact: H1.
-  - move=> e IH p n He.
-    inversion_clear He.
-    apply: EQPow.
-    exact: (IH _ H).
-Qed.
-
-Lemma dessa_eval_bexp m s ss e b :
-  state_equiv m s ss ->
-  SSA.eval_bexp (ssa_bexp m e) b ss ->
-  eval_bexp e b s.
-Proof.
-  move=> Heq; elim: e b => /=.
-  - move=> b He.
-    inversion_clear He.
-    exact: EQTrue.
-  - move=> e1 e2 b He.
-    inversion_clear He.
-    exact: (EQEq (dessa_eval_exp Heq H) (dessa_eval_exp Heq H0)).
-  - move=> e1 e2 p b He.
-    inversion_clear He.
-    exact: (EQCong _ (dessa_eval_exp Heq H) (dessa_eval_exp Heq H0)).
-  - move=> e1 IH1 e2 IH2 b He.
-    inversion_clear He.
-    exact: (EQAnd (IH1 _ H) (IH2 _ H0)).
+  exists (SSA.eval_program ss1 sp); split.
+  - reflexivity.
+  - exact: (ssa_eval_program Hp Heq Hep).
 Qed.
 
 Lemma dessa_eval_instr_succ :
   forall m1 m2 s1 ss1 ss2 i si,
     ssa_instr m1 i = (m2, si) ->
     state_equiv m1 s1 ss1 ->
-    SSA.eval_instr ss1 si ss2 ->
+    SSA.eval_instr ss1 si = ss2 ->
     exists s2,
-      eval_instr s1 i s2 /\ state_equiv m2 s2 ss2.
+      eval_instr s1 i = s2 /\ state_equiv m2 s2 ss2.
 Proof.
   move=> m1 m2 s1 ss1 ss2 i si Hi Heq Hesi.
-  have: (exists s2, eval_instr s1 i s2).
-  - elim: i si Hi Heq Hesi.
-    + move=> v e si Hsi Heq Hesi.
-      move: (ssa_qassign Hsi) => {Hsi} [idx [Hupd Hsi]].
-      rewrite Hsi in Hesi.
-      inversion_clear Hesi.
-      pose s2 := State.upd v n s1.
-      exists s2.
-      * apply: (EQAssign (n:=n)).
-        -- exact: (dessa_eval_exp Heq H).
-        -- exact: State.Upd_upd.
-    + move=> vh vl e p si Hsi Heq Hesi.
-      move: (ssa_qsplit Hsi) => {Hsi} [ih [il [m3 [Hupdh [Hupdl Hsi]]]]].
-      rewrite Hsi in Hesi.
-      inversion_clear Hesi.
-      pose s2 := State.upd vl n2 (State.upd vh n1 s1).
-      exists s2.
-      * apply: (EQSplit (n1:=n1) (n2:=n2)).
-        -- exact: (dessa_eval_exp Heq H).
-        -- move=> x.
-           reflexivity.
-        -- assumption.
-        -- assumption.
-  - move=> [s2 Hei].
-    exists s2; split; [exact: Hei | idtac].
-    exact: (ssa_eval_instr Hi Heq Hei Hesi).
+  exists (eval_instr s1 i); split.
+  - reflexivity.
+  - apply: (ssa_eval_instr Hi Heq _ Hesi).
+    reflexivity.
 Qed.
 
 Lemma dessa_eval_program_succ :
   forall m1 m2 s1 ss1 ss2 p sp,
     ssa_program m1 p = (m2, sp) ->
     state_equiv m1 s1 ss1 ->
-    SSA.eval_program ss1 sp ss2 ->
+    SSA.eval_program ss1 sp = ss2 ->
     exists s2,
-      eval_program s1 p s2 /\ state_equiv m2 s2 ss2.
+      eval_program s1 p = s2 /\ state_equiv m2 s2 ss2.
 Proof.
   move=> m1 m2 s1 ss1 ss2 p sp Hp Heq Hesp.
-  have: (exists s2, eval_program s1 p s2).
-  - elim: p m1 m2 s1 ss1 ss2 sp Hp Heq Hesp.
-    + move=> m1 m2 s1 ss1 ss2 sp Hsp Heq Hep.
-      rewrite ssa_program_empty in Hsp.
-      case: Hsp => Hm Hsp.
-      exists s1.
-      exact: EQEmpty.
-    + move=> hd tl IH m1 m2 s1 ss1 ss2 sp Hsp Heq Hesp.
-      move: (ssa_program_cons Hsp) => [m3 [h [t [Hh [Ht Hht]]]]].
-      rewrite Hht in Hesp.
-      move: (SSA.eval_program_cons Hesp) => [ss3 [Heshd Hestl]].
-      move: (dessa_eval_instr_succ Hh Heq Heshd) => [s3 [Heh Heqh]].
-      move: (IH m3 m2 _ _ _ t Ht Heqh Hestl) => [s4 Het].
-      exists s4.
-      exact: (EQCons Heh Het).
-  - move=> [s2 Hep].
-    exists s2; split; [exact: Hep | idtac].
-    exact: (ssa_eval_program Hp Heq Hep Hesp).
+  exists (eval_program s1 p); split.
+  - reflexivity.
+  - apply: (ssa_eval_program Hp Heq _ Hesp).
+    reflexivity.
 Qed.
 
 
@@ -729,24 +579,10 @@ Qed.
 (** Convert a Qhasm state to an SSA state. *)
 
 Definition ssa_state (m : vmap) (s : State.t) : SSA.State.t :=
-  Store.M.fold (fun x v t => SSA.State.upd (x, get_index m x) v t)
-               s
-               SSA.State.empty.
-
-Lemma ssa_state_empty :
-  forall m, ssa_state m State.empty = SSA.State.empty.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma ssa_state_Empty :
-  forall m s, State.Empty s -> SSA.State.Empty (ssa_state m s).
-Proof.
-  move=> m s Hemp.
-  rewrite /ssa_state.
-  rewrite (Store.L.P.fold_Empty RelationClasses.eq_equivalence _ _ Hemp).
-  exact: SSA.Store.M.empty_1.
-Qed.
+  fun v =>
+    if (sidx v) == get_index m (svar v)
+    then State.acc (svar v) s
+    else State.acc (svar v) State.empty.
 
 Lemma acc_ssa_state_eq :
   forall (m : vmap) (s : State.t) (v : var) (i : index),
@@ -754,51 +590,9 @@ Lemma acc_ssa_state_eq :
     SSA.State.acc (v, i) (ssa_state m s) = State.acc v s.
 Proof.
   move=> m s v i Heq.
-  rewrite /ssa_state.
-  eapply Store.L.P.fold_rec.
-  - move=> {s} s Hemp.
-    rewrite (State.Empty_acc _ Hemp).
-    exact: SSA.State.acc_empty.
-  - move=> x vx ss s1 s2 Hmapsto Hin Hadd Hacc => {Hmapsto s}.
-    case Hvx: (v == x).
-    + move/eqP: Hvx => Hvx.
-      rewrite (SSA.State.acc_upd_eq); rewrite Hvx;
-      [idtac | by rewrite (eqP Heq) Hvx].
-      rewrite /State.acc /Store.acc (Hadd x).
-      rewrite Store.L.find_add_eq; [reflexivity | exact: eqxx].
-    + move/eqP/eqP: Hvx => Hvx.
-      rewrite (SSA.State.acc_upd_neq).
-      * rewrite Hacc.
-        rewrite /State.acc /Store.acc (Hadd v).
-        rewrite Store.L.find_add_neq; first by reflexivity.
-        apply/negP.
-        exact: Hvx.
-      * apply/negP => H.
-        move/eqP: H => [] => H _.
-        rewrite H in Hvx.
-        apply: (negP Hvx).
-        exact: eqxx.
-Qed.
-
-Lemma acc_ssa_state_neq :
-  forall (m : vmap) (s : State.t) (v : var) (i : index),
-    i != get_index m v ->
-    SSA.State.acc (v, i) (ssa_state m s) = None.
-Proof.
-  move=> m s v i Hne.
-  rewrite /ssa_state.
-  eapply Store.L.P.fold_rec.
-  - move=> {s} s Hemp.
-    exact: SSA.State.acc_empty.
-  - move=> x vx ss s1 s2 Hmapsto Hin Hadd Hacc.
-    case H: ((v, i) == (x, get_index m x)).
-    + move/eqP: H; case => Heq1 Heq2.
-      rewrite Heq1 Heq2 in Hne.
-      apply: False_ind; apply: (negP Hne).
-      exact: eqxx.
-    + move/idP/negP: H => H.
-      rewrite (SSA.State.acc_upd_neq _ _ H).
-      exact: Hacc.
+  rewrite /ssa_state /SSA.State.acc /SSA.Store.acc /=.
+  rewrite Heq.
+  reflexivity.
 Qed.
 
 Lemma ssa_state_equiv :
@@ -814,70 +608,13 @@ Qed.
 (** Convert an SSA state to a Qhasm state. *)
 
 Definition dessa_state (m : vmap) (s : SSA.State.t) : State.t :=
-  SSA.Store.M.fold (fun x v t =>
-                      if snd x == get_index m (fst x) then State.upd (fst x) v t
-                      else t)
-                   s
-                   State.empty.
-
-Lemma acc_dessa_empty :
-  forall (m : vmap),
-    dessa_state m SSA.State.empty = State.empty.
-Proof.
-  reflexivity.
-Qed.
-
-Lemma dessa_state_Empty :
-  forall (m : vmap) (s : SSA.State.t),
-    SSA.State.Empty s -> State.Empty (dessa_state m s).
-Proof.
-  move=> m s Hemp.
-  rewrite /dessa_state.
-  rewrite (SSA.Store.L.P.fold_Empty RelationClasses.eq_equivalence _ _ Hemp).
-  exact: Store.M.empty_1.
-Qed.
+  fun v => SSA.State.acc (v, get_index m v) s.
 
 Lemma acc_dessa_state :
   forall (m : vmap) (s : SSA.State.t) (v : var),
     State.acc v (dessa_state m s) = SSA.State.acc (v, get_index m v) s.
 Proof.
-  move=> m s v.
-  rewrite /dessa_state.
-  eapply SSA.Store.L.P.fold_rec.
-  - move=> {s} s Hemp.
-    rewrite (SSA.State.Empty_acc _ Hemp).
-    exact: State.acc_empty.
-  - move=> x vx ss s1 s2 Hmapsto Hin Hadd Hacc => {Hmapsto s}.
-    destruct x as [x ix] => /=.
-    case Hix: (ix == get_index m x).
-    + case Hvx: (v == x).
-      * rewrite (eqP Hvx) (State.acc_upd_eq _ _ (eqxx x)).
-        rewrite -(eqP Hix).
-        rewrite /SSA.State.acc /SSA.Store.acc (Hadd (x, ix)).
-        rewrite (SSA.Store.L.find_add_eq _ _ (eqxx (x, ix))).
-        reflexivity.
-      * move/negP/idP: Hvx => Hvx.
-        rewrite (State.acc_upd_neq _ _ Hvx).
-        rewrite /SSA.State.acc /SSA.Store.acc (Hadd (v, get_index m v)).
-        rewrite SSA.Store.L.find_add_neq.
-        -- exact: Hacc.
-        -- move/eqP=> [] H _.
-           apply/idP/eqP: Hvx.
-           exact: H.
-    + case Hvx: (v == x).
-      * rewrite Hacc (eqP Hvx).
-        rewrite /SSA.State.acc /SSA.Store.acc (Hadd (x, get_index m x)).
-        rewrite SSA.Store.L.find_add_neq.
-        -- reflexivity.
-        -- move/eqP=> [] H.
-           move/eqP: Hix.
-           apply; by rewrite H.
-      * rewrite Hacc /SSA.State.acc /SSA.Store.acc (Hadd (v, get_index m v)).
-        rewrite SSA.Store.L.find_add_neq.
-        -- reflexivity.
-        -- move/eqP=> [] H _.
-           apply/negPf: Hvx.
-           rewrite H; exact: eqxx.
+  reflexivity.
 Qed.
 
 Lemma ssa_dessaK :
@@ -913,9 +650,9 @@ Proof.
   pose ss1 := ssa_state empty_vmap s1.
   pose Heq1 := (ssa_state_equiv empty_vmap s1).
   move: (ssa_eval_program_succ (Logic.eq_sym Hp) Heq1 Hep) => [ss2 [Hesp Heq2]].
-  move: (ssa_eval_bexp Heq1 Hf) => Hsf.
+  move: (ssa_eval_bexp2 Heq1 Hf) => Hsf.
   move: (Hspec ss1 ss2 Hsf Hesp) => /= Hsg.
-  exact: (dessa_eval_bexp Heq2 Hsg).
+  exact: (ssa_eval_bexp1 Heq2 Hsg).
 Qed.
 
 Theorem ssa_spec_complete (s : spec) :
@@ -930,9 +667,9 @@ Proof.
   pose s1 := dessa_state empty_vmap ss1.
   pose Heq1 := (dessa_state_equiv empty_vmap ss1).
   move: (dessa_eval_program_succ (Logic.eq_sym Hp) Heq1 Hesp) => [s2 [Hep Heq2]].
-  move: (dessa_eval_bexp Heq1 Hsf) => Hf.
+  move: (ssa_eval_bexp1 Heq1 Hsf) => Hf.
   move: (Hspec s1 s2 Hf Hep) => /= Hg.
-  exact: (ssa_eval_bexp Heq2 Hg).
+  exact: (ssa_eval_bexp2 Heq2 Hg).
 Qed.
 
 
@@ -976,29 +713,30 @@ Definition ssa_well_formed_spec (sp : SSA.spec) : bool :=
 
 Lemma acc_unchanged_instr v i s1 s2 :
   ssa_var_unchanged_instr v i ->
-  SSA.eval_instr s1 i s2 ->
+  SSA.eval_instr s1 i = s2 ->
   SSA.State.acc v s2 = SSA.State.acc v s1.
 Proof.
   elim: i.
   - move=> v' e /= Hne Hei.
-    inversion_clear Hei.
-    rewrite (H0 v) (SSA.State.acc_upd_neq _ _ Hne).
+    rewrite -Hei (SSA.State.acc_upd_neq _ _ Hne).
     reflexivity.
   - move=> vh vl e p /= /andP [Hneh Hnel] Hei.
-    inversion_clear Hei.
-    rewrite (H0 v) (SSA.State.acc_upd_neq _ _ Hnel)
+    rewrite -Hei => {Hei}.
+    set tmp := Z.div_eucl (SSA.eval_exp e s1) (Z.pow_pos 2 p);
+        destruct tmp as [q r].
+    rewrite (SSA.State.acc_upd_neq _ _ Hnel)
             (SSA.State.acc_upd_neq _ _ Hneh).
     reflexivity.
 Qed.
 
 Lemma acc_unchanged_program v p s1 s2 :
   ssa_var_unchanged_program v p ->
-  SSA.eval_program s1 p s2 ->
-  SSA.State.acc v s2 = SSA.State.acc v s1.
+  SSA.eval_program s1 p = s2 ->
+  SSA.State.acc v s1 = SSA.State.acc v s2.
 Proof.
   elim: p s1 s2.
   - move=> s1 s2 _ Hep.
-    rewrite (SSA.eval_program_empty Hep).
+    rewrite -Hep.
     reflexivity.
   - move=> hd tl IH s1 s2 /andP [Huchd Huctl] Hep.
     move: (SSA.eval_program_cons Hep) => {Hep} [s3 [Hehd Hetl]].
@@ -1028,28 +766,28 @@ Qed.
 
 Lemma acc_unchanged_program_cons v hd tl s1 s2 s3 :
   ssa_var_unchanged_program v (hd::tl) ->
-  SSA.eval_instr s1 hd s2 ->
-  SSA.eval_program s2 tl s3 ->
+  SSA.eval_instr s1 hd = s2 ->
+  SSA.eval_program s2 tl = s3 ->
   SSA.State.acc v s2 = SSA.State.acc v s1 /\
   SSA.State.acc v s3 = SSA.State.acc v s1.
 Proof.
   move=> /andP [Hunhd Huntl] Hehd Hetl.
   move: (acc_unchanged_instr Hunhd Hehd) (acc_unchanged_program Huntl Hetl) =>
     H21 H32.
-  rewrite H32 H21.
+  rewrite -H32 -H21.
   split; reflexivity.
 Qed.
 
 Lemma acc_unchanged_program_concat v p1 p2 s1 s2 s3 :
   ssa_var_unchanged_program v (p1 ++ p2) ->
-  SSA.eval_program s1 p1 s2 ->
-  SSA.eval_program s2 p2 s3 ->
+  SSA.eval_program s1 p1 = s2 ->
+  SSA.eval_program s2 p2 = s3 ->
   SSA.State.acc v s2 = SSA.State.acc v s1 /\
   SSA.State.acc v s3 = SSA.State.acc v s1.
 Proof.
   move=> Hun12 Hep1 Hep2.
   move: (ssa_var_unchanged_program_concat Hun12) => {Hun12} [Hun1 Hun2].
-  rewrite (acc_unchanged_program Hun2 Hep2) (acc_unchanged_program Hun1 Hep1).
+  rewrite -(acc_unchanged_program Hun2 Hep2) -(acc_unchanged_program Hun1 Hep1).
   split; reflexivity.
 Qed.
 
@@ -1075,7 +813,9 @@ Lemma ssa_unchanged_program_local s p :
   ssa_vars_unchanged_program (SSA.VS.elements s) p.
 Proof.
   move=> H.
-  have: forall v, SetoidList.InA SSA.VS.E.eq v (SSA.VS.elements s) -> ssa_var_unchanged_program v p by move=> v Hin; apply: H; exact: (SSA.VSLemmas.in_elements_mem Hin).
+  have: forall v, SetoidList.InA SSA.VS.E.eq v (SSA.VS.elements s) ->
+                  ssa_var_unchanged_program v p by
+        move=> v Hin; apply: H; exact: (SSA.VSLemmas.in_elements_mem Hin).
   move=> {H}.
   set vl := SSA.VS.elements s.
   elim: vl p.
@@ -1115,64 +855,69 @@ Proof.
     by case: (SSA.VS.mem v s1).
 Qed.
 
-Lemma ssa_unchanged_program_eval_exp e n s1 s2 p :
+Lemma ssa_unchanged_program_eval_exp e s1 s2 p :
   ssa_vars_unchanged_program (SSA.VS.elements (SSA.vars_exp e)) p ->
-  SSA.eval_program s1 p s2 ->
-  SSA.eval_exp e n s1 ->
-  SSA.eval_exp e n s2.
+  SSA.eval_program s1 p = s2 ->
+  SSA.eval_exp e s1 = SSA.eval_exp e s2.
 Proof.
-  elim: e n => /=.
-  - move=> v n /andP [Hunch _] Hp He1.
-    inversion_clear He1.
-    apply: SSA.EQVar.
-    rewrite (acc_unchanged_program Hunch Hp); assumption.
-  - move=> c n _ Hp He1.
-    inversion_clear He1.
-    exact: SSA.EQConst.
-  - move=> op e IH n Hunch Hp He1.
-    inversion_clear He1.
-    move: (IH _ Hunch Hp H) => He2.
-    exact: (SSA.EQUnop He2 H0).
-  - move=> op e1 IH1 e2 IH2 n Hunch Hp He1.
+  elim: e => /=.
+  - move=> v /andP [Hunch _] Hp.
+    exact: (acc_unchanged_program Hunch Hp).
+  - move=> c _ Hp.
+    reflexivity.
+  - move=> op e IH Hunch Hp.
+    rewrite (IH Hunch Hp).
+    reflexivity.
+  - move=> op e1 IH1 e2 IH2 Hunch Hp.
     move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
-    inversion_clear He1.
-    apply: (SSA.EQBinop _ _ H1).
-    + exact: (IH1 _ Hunch1 Hp H).
-    + exact: (IH2 _ Hunch2 Hp H0).
-  - move=> e IH i n Hunch Hp He1.
-    inversion_clear He1.
-    apply: SSA.EQPow.
-    exact: (IH _ Hunch Hp H).
+    rewrite (IH1 Hunch1 Hp) (IH2 Hunch2 Hp).
+    reflexivity.
+  - move=> e IH i Hunch Hp.
+    rewrite (IH Hunch Hp).
+    reflexivity.
 Qed.
 
-Lemma ssa_unchanged_program_eval_bexp e b s1 s2 p :
+Lemma ssa_unchanged_program_eval_bexp e s1 s2 p :
   ssa_vars_unchanged_program (SSA.VS.elements (SSA.vars_bexp e)) p ->
-  SSA.eval_program s1 p s2 ->
-  SSA.eval_bexp e b s1 ->
-  SSA.eval_bexp e b s2.
+  SSA.eval_program s1 p = s2 ->
+  SSA.eval_bexp e s1 <-> SSA.eval_bexp e s2.
 Proof.
-  elim: e b => /=.
-  - move=> b _ Hp He1.
-    inversion_clear He1.
-    exact: SSA.EQTrue.
-  - move=> e e2 b Hunch Hp He1.
+  elim: e => /=.
+  - done.
+  - move=> e1 e2 Hunch Hp.
     move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
-    inversion_clear He1.
-    apply: SSA.EQEq.
-    + exact: (ssa_unchanged_program_eval_exp Hunch1 Hp H).
-    + exact: (ssa_unchanged_program_eval_exp Hunch2 Hp H0).
-  - move=> e1 e2 i b Hunch Hp He1.
+    rewrite (ssa_unchanged_program_eval_exp Hunch1 Hp)
+            (ssa_unchanged_program_eval_exp Hunch2 Hp).
+    done.
+  - move=> e1 e2 i Hunch Hp.
     move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
-    inversion_clear He1.
-    apply: SSA.EQCong.
-    + exact: (ssa_unchanged_program_eval_exp Hunch1 Hp H).
-    + exact: (ssa_unchanged_program_eval_exp Hunch2 Hp H0).
-  - move=> e1 IH1 e2 IH2 b Hunch Hp He1.
+    rewrite (ssa_unchanged_program_eval_exp Hunch1 Hp)
+            (ssa_unchanged_program_eval_exp Hunch2 Hp).
+    done.
+  - move=> e1 IH1 e2 IH2 Hunch Hp.
     move: (ssa_unchanged_program_union Hunch) => {Hunch} [Hunch1 Hunch2].
-    inversion_clear He1.
-    apply: SSA.EQAnd.
-    + exact: (IH1 _ Hunch1 Hp H).
-    + exact: (IH2 _ Hunch2 Hp H0).
+    rewrite (IH1 Hunch1 Hp) (IH2 Hunch2 Hp).
+    done.
+Qed.
+
+Lemma ssa_unchanged_program_eval_bexp1 e s1 s2 p :
+  ssa_vars_unchanged_program (SSA.VS.elements (SSA.vars_bexp e)) p ->
+  SSA.eval_program s1 p = s2 ->
+  SSA.eval_bexp e s1 -> SSA.eval_bexp e s2.
+Proof.
+  move=> Hunch Hp He.
+  move: (ssa_unchanged_program_eval_bexp Hunch Hp) => [H1 H2].
+  exact: (H1 He).
+Qed.
+
+Lemma ssa_unchanged_program_eval_bexp2 e s1 s2 p :
+  ssa_vars_unchanged_program (SSA.VS.elements (SSA.vars_bexp e)) p ->
+  SSA.eval_program s1 p = s2 ->
+  SSA.eval_bexp e s2 -> SSA.eval_bexp e s1.
+Proof.
+  move=> Hunch Hp He.
+  move: (ssa_unchanged_program_eval_bexp Hunch Hp) => [H1 H2].
+  exact: (H2 He).
 Qed.
 
 Lemma well_formed_program_tl hd tl :

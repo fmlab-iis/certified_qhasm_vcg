@@ -38,6 +38,24 @@ Module Type TSTORE.
         x != y ->
         acc x (upd y v s) = acc x s.
 
+    Parameter Upd : var -> value -> t value -> t value -> Prop.
+
+    Parameter Upd_upd :
+      forall x v s,
+        Upd x v s (upd x v s).
+
+    Parameter acc_Upd_eq :
+      forall x y v s1 s2,
+        x == y ->
+        Upd y v s1 s2 ->
+        acc x s2 = v.
+
+    Parameter acc_Upd_neq :
+      forall x y v s1 s2,
+        x != y ->
+        Upd y v s1 s2 ->
+        acc x s2 = acc x s1.
+
     End TStore.
 
 End TSTORE.
@@ -51,6 +69,8 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
     Definition var := X.T.
 
     Definition t : Type := var -> value.
+
+    Parameter empty : var -> value.
 
     Definition acc (x : var) (s : t) := s x.
 
@@ -73,6 +93,41 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
       rewrite {1}/acc /upd => Hxy.
       rewrite (negPf Hxy).
       reflexivity.
+    Qed.
+
+    Definition Upd x v (s1 s2 : t) : Prop :=
+      forall y, acc y s2 = acc y (upd x v s1).
+
+    Lemma Upd_upd :
+      forall x v s,
+        Upd x v s (upd x v s).
+    Proof.
+      move=> x v s y.
+      reflexivity.
+    Qed.
+
+    Lemma acc_Upd_eq :
+      forall x y v s1 s2,
+        x == y ->
+        Upd y v s1 s2 ->
+        acc x s2 = v.
+    Proof.
+      move=> x y v s1 s2 Hxy Hupd.
+      move: (Hupd x) => Hx.
+      rewrite (acc_upd_eq _ _ Hxy) in Hx.
+      assumption.
+    Qed.
+
+    Lemma acc_Upd_neq :
+      forall x y v s1 s2,
+        x != y ->
+        Upd y v s1 s2 ->
+        acc x s2 = acc x s1.
+    Proof.
+      move=> x y v s1 s2 Hxy Hupd.
+      move: (Hupd x) => Hx.
+      rewrite (acc_upd_neq _ _ Hxy) in Hx.
+      assumption.
     Qed.
 
   End TStore.
@@ -101,6 +156,32 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Proof.
     move=> x y v s.
     exact: S.acc_upd_neq.
+  Qed.
+  Definition Upd x v (s1 s2 : t) := S.Upd x v s1 s2.
+  Lemma Upd_upd :
+    forall x v s,
+      Upd x v s (upd x v s).
+  Proof.
+    move=> x v s y.
+    exact: S.Upd_upd.
+  Qed.
+  Lemma acc_Upd_eq :
+    forall x y v s1 s2,
+      x == y ->
+      Upd y v s1 s2 ->
+      acc x s2 = v.
+  Proof.
+    move=> x y v s1 s2.
+    exact: S.acc_Upd_eq.
+  Qed.
+  Lemma acc_Upd_neq :
+    forall x y v s1 s2,
+      x != y ->
+      Upd y v s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    move=> x y v s1 s2.
+    exact: S.acc_Upd_neq.
   Qed.
 End TStoreAdapter.
 
