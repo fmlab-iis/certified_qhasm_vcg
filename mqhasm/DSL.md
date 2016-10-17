@@ -7,6 +7,7 @@ An expression <exp> is of the form:
 * QBinop QAdd <exp> <exp>  - <exp> + <exp>
 * QBinop QSub <exp> <exp>  - <exp> - <exp>
 * QBinop QMul <exp> <exp>  - <exp> * <exp>
+* QBinop QPow <exp> <positive> - <exp> ** <positive>
 
 Two kinds of instructions <instr> are available:
 * QAssign <var id> <exp>  - assign <exp> to variable <var id>
