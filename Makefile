@@ -136,7 +136,12 @@ VFILES:=lib/CompCert/Coqlib.v\
   sqhasm/IProg.v\
   sqhasm/MiniQhasmPlusAMD64.v\
   mqhasm/mQhasm.v\
-  mqhasm/SSA.v
+  mqhasm/SSA.v\
+  fe25519/fe25519_add.v\
+  fe25519/fe25519_sub.v\
+  fe25519/fe25519_mul.v\
+  fe25519/fe25519_sq.v\
+  fe25519/muladd25519.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
