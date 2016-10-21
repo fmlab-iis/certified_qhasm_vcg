@@ -48,7 +48,7 @@ Ltac unfold_ispec :=
               exact: (ssa_spec_well_formed H) |
               clear H;
               progress repeat rewrite /valid_bexp_spec /=
-                       /ssa_var /get_index /initial_index /first_assigned_index /=;
+                       /ssa_var /get_index /initial_index /first_assigned_index;
               simplZ; intros; split_conjs; clear_true
             ]
           ]
