@@ -2,24 +2,26 @@ From Coq Require Import ZArith .
 From mQhasm Require Import mQhasm .
 From mathcomp Require Import seq .
 
-Definition fe25519_add : program :=
-  
-let            x0 :=   0 in 
-let            x1 :=   1 in 
-let            x2 :=   2 in 
-let            x3 :=   3 in 
-let            x4 :=   4 in 
+Open Scope mqhasm_scope.
 
-let            y0 :=   5 in 
-let            y1 :=   6 in 
-let            y2 :=   7 in 
-let            y3 :=   8 in 
-let            y4 :=   9 in 
+Definition fe25519_add : program :=
+
+let            x0 :=   0 in
+let            x1 :=   1 in
+let            x2 :=   2 in
+let            x3 :=   3 in
+let            x4 :=   4 in
+
+let            y0 :=   5 in
+let            y1 :=   6 in
+let            y2 :=   7 in
+let            y3 :=   8 in
+let            y4 :=   9 in
 
 let            r0 :=  20 in
-let            r1 :=  21 in 
-let            r2 :=  22 in 
-let            r3 :=  23 in 
+let            r1 :=  21 in
+let            r2 :=  22 in
+let            r3 :=  23 in
 let            r4 :=  24 in
 [::
       (* # CPU: Intel(R) Xeon(R) CPU X5675 @ 3.07GHz *)
@@ -74,3 +76,59 @@ QAssign r4 (QBinop QAdd (QVar r4) (QVar y4))
       (* #// assert (sum_r - (sum_x + sum_y)) % (2**255 - 19) = 0 && *)
       (* #//        0 <=u r0, r1, r2, r3, r4 <u 2**53 *)
 ] .
+
+Definition fe25519_add_inputs : VS.t :=
+let            x0 :=   0%nat in
+let            x1 :=   1%nat in
+let            x2 :=   2%nat in
+let            x3 :=   3%nat in
+let            x4 :=   4%nat in
+let            y0 :=   5%nat in
+let            y1 :=   6%nat in
+let            y2 :=   7%nat in
+let            y3 :=   8%nat in
+let            y4 :=   9%nat in
+VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4; y0; y1; y2; y3; y4].
+
+Definition fe25519_add_pre : bexp := QTrue.
+
+Definition fe25519_add_post : bexp :=
+let            x0 :=   0%nat in
+let            x1 :=   1%nat in
+let            x2 :=   2%nat in
+let            x3 :=   3%nat in
+let            x4 :=   4%nat in
+let            y0 :=   5%nat in
+let            y1 :=   6%nat in
+let            y2 :=   7%nat in
+let            y3 :=   8%nat in
+let            y4 :=   9%nat in
+let            r0 :=  20%nat in
+let            r1 :=  21%nat in
+let            r2 :=  22%nat in
+let            r3 :=  23%nat in
+let            r4 :=  24%nat in
+QCong
+  (
+    (limbs 51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    @+
+    (limbs 51 [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
+  )
+  (limbs 51 [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+  (2^255 - 19).
+
+Definition fe25519_add_spec :=
+  {| spre := fe25519_add_pre;
+     sprog := fe25519_add;
+     spost := fe25519_add_post |}.
+
+Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
+Add ML Path "../lib/gbarith/src/".
+From mathcomp Require Import eqtype ssrbool.
+From mQhasm Require Import Verify.
+
+Lemma valid_fe25519_add : valid_ispec (fe25519_add_inputs, fe25519_add_spec).
+Proof.
+  Time verify_ispec.
+  (* 52.519s *)
+Qed.
