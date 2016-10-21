@@ -323,6 +323,24 @@ Section ZLemmas.
     - by rewrite Z.mul_comm Heq.
   Qed.
 
+  Lemma Zpower_nat_gt0 n p :
+    n > 0 ->
+    Zpower_nat n p > 0.
+  Proof.
+    elim: p n => /=.
+    - done.
+    - move=> p IH n Hn.
+      exact: (Zmult_gt_0_compat _ _ Hn (IH _ Hn)).
+  Qed.
+
+  Lemma Zpow_pos_gt0 n p :
+    n > 0 ->
+    Z.pow_pos n p > 0.
+  Proof.
+    rewrite Zpower_pos_nat.
+    exact: Zpower_nat_gt0.
+  Qed.
+
 End ZLemmas.
 
 

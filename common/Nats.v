@@ -87,6 +87,16 @@ Section NatLemmas.
         reflexivity.
   Qed.
 
+  Lemma ltn_leq_trans n m p :
+    m < n -> n <= p -> m < p.
+  Proof.
+    move=> Hmn Hnp.
+    move/ltP: Hmn => Hmn.
+    move/leP: Hnp => Hnp.
+    apply/ltP.
+    exact: (Lt.lt_le_trans _ _ _ Hmn Hnp).
+  Qed.
+
 End NatLemmas.
 
 

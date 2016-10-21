@@ -20,7 +20,7 @@ Reserved Notation "x @- y" (at level 50, left associativity).
 Reserved Notation "x @* y" (at level 40, left associativity).
 Reserved Notation "x @^ y" (at level 30, right associativity).
 Reserved Notation "x @:= y" (at level 70, no associativity).
-Reserved Notation "x ++ y @:= z # p" (at level 70, no associativity).
+Reserved Notation "[ x , y ] @:= z # p" (at level 0, format "[ x , y ] @:= z # p", only parsing).
 Reserved Notation "x @= y" (at level 70, no associativity).
 Reserved Notation "x @= y 'mod' z" (at level 70, y at next level, no associativity).
 Reserved Notation "x @&& y" (at level 70, no associativity).
@@ -442,7 +442,7 @@ Module MakeQhasm (V : SsrOrderedType).
   Definition well_formed_instr (vs : VS.t) (i : instr) : bool :=
     match i with
     | QAssign v e => VS.subset (vars_exp e) vs
-    | QSplit vh vl e p => VS.subset (vars_exp e) vs
+    | QSplit vh vl e p => (vh != vl) && (VS.subset (vars_exp e) vs)
     end.
 
   Fixpoint well_formed_program (vs : VS.t) (p : program) : bool :=
@@ -450,8 +450,63 @@ Module MakeQhasm (V : SsrOrderedType).
     | [::] => true
     | hd::tl =>
       well_formed_instr vs hd &&
-                        well_formed_program (VS.union (lvals_instr hd) vs) tl
+      well_formed_program (VS.union (lvals_instr hd) vs) tl
     end.
+
+  Definition well_formed_spec (vs : VS.t) (s : spec) : bool :=
+    VS.subset (vars_bexp (spre s)) vs &&
+    well_formed_program vs (sprog s) &&
+    VS.subset (vars_bexp (spost s)) (VS.union vs (vars_program (sprog s))).
+
+  Lemma well_formed_instr_replace vs1 vs2 i :
+    VS.Equal vs1 vs2 ->
+    well_formed_instr vs1 i ->
+    well_formed_instr vs2 i.
+  Proof.
+    elim: i vs1 vs2 => /=.
+    - move=> _ e vs1 vs2 Heq Hsub1.
+      rewrite -Heq.
+      assumption.
+    - move=> vh vl e _ vs1 vs2 Heq H.
+      rewrite -Heq.
+      assumption.
+  Qed.
+
+  Lemma well_formed_program_replace vs1 vs2 p :
+    VS.Equal vs1 vs2 ->
+    well_formed_program vs1 p ->
+    well_formed_program vs2 p.
+  Proof.
+    elim: p vs1 vs2 => //=.
+    move=> hd tl IH vs1 vs2 Heq /andP [Hwell1 Hun1].
+    apply/andP; split.
+    - exact: well_formed_instr_replace.
+    - apply: (IH _ _ _ Hun1).
+      by rewrite Heq.
+  Qed.
+
+  Lemma well_formed_instr_vars vs i :
+    well_formed_instr vs i ->
+    VS.Equal (VS.union vs (vars_instr i)) (VS.union vs (lvals_instr i)).
+  Proof.
+    case: i => /=.
+    - move=> v e Hsub.
+      rewrite (VSLemmas.OP.P.union_sym vs (VS.add v (vars_exp e))).
+      rewrite VSLemmas.OP.P.union_add.
+      rewrite (VSLemmas.union_subset_equal Hsub).
+      rewrite (VSLemmas.OP.P.union_sym vs (VS.singleton v)).
+      rewrite -VSLemmas.OP.P.add_union_singleton.
+      reflexivity.
+    - move=> vh vl e _ /andP [Hhl Hsub].
+      rewrite (VSLemmas.OP.P.union_sym vs (VS.add vh (VS.add vl (vars_exp e)))).
+      rewrite VSLemmas.OP.P.union_add.
+      rewrite VSLemmas.OP.P.union_add.
+      rewrite (VSLemmas.union_subset_equal Hsub).
+      rewrite (VSLemmas.OP.P.union_sym vs (VS.add vh (VS.singleton vl))).
+      rewrite VSLemmas.OP.P.union_add.
+      rewrite -VSLemmas.OP.P.add_union_singleton.
+      reflexivity.
+  Qed.
 
 End MakeQhasm.
 
@@ -464,7 +519,7 @@ Notation "x @- y" := (QBinop QSub x y)  (at level 50, left associativity) : mqha
 Notation "x @* y" := (QBinop QMul x y)  (at level 40, left associativity) : mqhasm_scope.
 Notation "x @^ y" := (QPow x y)  (at level 30, right associativity) : mqhasm_scope.
 Notation "x @:= y" := (QAssign x y) (at level 70, no associativity) : mqhasm_scope.
-Notation "x ++ y @:= z # p" := (QSplit x y z p) (at level 70, no associativity) : mqhasm_scope.
+Notation "[ x , y ] @:= z # p" := (QSplit x y z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
 Notation "x @= y" := (QEq x y) (at level 70, no associativity) : mqhasm_scope.
 Notation "x @= y 'mod' z" := (QCong x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
 Notation "x @&& y" := (QAnd x y) (at level 70, no associativity) : mqhasm_scope.
