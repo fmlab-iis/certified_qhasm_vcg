@@ -84,6 +84,13 @@ Module MakeQhasm (V : SsrOrderedType).
     | hd::tl => VS.union (vars_instr hd) (vars_program tl)
     end.
 
+  Fixpoint limbs (radix : positive) (es : seq exp) : exp :=
+    match es with
+    | [::] => QConst 0
+    | hd::tl =>
+      QBinop QAdd hd (QBinop QMul (limbs radix tl) (QPow (QConst 2) radix))
+    end.
+
 
 
   (** State *)
@@ -325,6 +332,8 @@ Module MakeQhasm (V : SsrOrderedType).
       + exact: He42.
   Qed.
 
+
+
   (** Specification *)
 
   Inductive bexp : Type :=
@@ -512,14 +521,15 @@ End MakeQhasm.
 
 Module Qhasm := MakeQhasm VarOrder.
 Export Qhasm.
+Arguments Qhasm.QVar v%nat.
 
 Notation "@- x" := (QNeg x) (at level 35, right associativity) : mqhasm_scope.
 Notation "x @+ y" := (QBinop QAdd x y) (at level 50, left associativity) : mqhasm_scope.
 Notation "x @- y" := (QBinop QSub x y)  (at level 50, left associativity) : mqhasm_scope.
 Notation "x @* y" := (QBinop QMul x y)  (at level 40, left associativity) : mqhasm_scope.
 Notation "x @^ y" := (QPow x y)  (at level 30, right associativity) : mqhasm_scope.
-Notation "x @:= y" := (QAssign x y) (at level 70, no associativity) : mqhasm_scope.
-Notation "[ x , y ] @:= z # p" := (QSplit x y z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
+Notation "x @:= y" := (QAssign x%nat y) (at level 70, no associativity) : mqhasm_scope.
+Notation "[ x , y ] @:= z # p" := (QSplit x%nat y%nat z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
 Notation "x @= y" := (QEq x y) (at level 70, no associativity) : mqhasm_scope.
 Notation "x @= y 'mod' z" := (QCong x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
 Notation "x @&& y" := (QAnd x y) (at level 70, no associativity) : mqhasm_scope.

@@ -1,5 +1,6 @@
 -R . Top
 -R lib/CompCert CompCert
+-R lib/gbarith/src GBArith
 -R common Common
 -R qhasm Qhasm
 -R sqhasm sQhasm
@@ -36,3 +37,4 @@ sqhasm/MiniQhasmPlusAMD64.v
 mqhasm/mQhasm.v
 mqhasm/SSA.v
 mqhasm/PolyGen.v
+mqhasm/Verify.v

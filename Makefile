@@ -52,6 +52,7 @@ vo_to_obj = $(addsuffix .o,\
 COQLIBS?=\
   -R "." Top\
   -R "lib/CompCert" CompCert\
+  -R "lib/gbarith/src" GBArith\
   -R "common" Common\
   -R "qhasm" Qhasm\
   -R "sqhasm" sQhasm\
@@ -60,6 +61,7 @@ COQLIBS?=\
 COQCHKLIBS?=\
   -R "." Top\
   -R "lib/CompCert" CompCert\
+  -R "lib/gbarith/src" GBArith\
   -R "common" Common\
   -R "qhasm" Qhasm\
   -R "sqhasm" sQhasm\
@@ -67,6 +69,7 @@ COQCHKLIBS?=\
 COQDOCLIBS?=\
   -R "." Top\
   -R "lib/CompCert" CompCert\
+  -R "lib/gbarith/src" GBArith\
   -R "common" Common\
   -R "qhasm" Qhasm\
   -R "sqhasm" sQhasm\
@@ -137,7 +140,8 @@ VFILES:=lib/CompCert/Coqlib.v\
   sqhasm/MiniQhasmPlusAMD64.v\
   mqhasm/mQhasm.v\
   mqhasm/SSA.v\
-  mqhasm/PolyGen.v
+  mqhasm/PolyGen.v\
+  mqhasm/Verify.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
