@@ -3,7 +3,7 @@
 
 From Coq Require Import ZArith FMaps String OrderedType.
 From Coq Require Import Program Program.Tactics.
-From mathcomp Require Import ssreflect ssrbool ssrnat ssrfun seq eqtype.
+From mathcomp Require Import ssreflect ssrbool ssrfun seq eqtype.
 From CompCert Require Import Integers.
 From Common Require Import Notations Tactics Nats ZAriths Types Env Var Store Integers.
 From Qhasm Require Import IProg MiniQhasmPlusAMD64.

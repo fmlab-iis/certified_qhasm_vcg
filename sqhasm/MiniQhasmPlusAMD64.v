@@ -3,8 +3,8 @@
 
 From Coq Require Import ZArith FMaps String OrderedType.
 From Coq Require Import Program Program.Tactics.
-From mathcomp Require Import ssreflect ssrbool ssrnat ssrfun seq eqtype.
-From Common Require Import Tactics Arch Nats Bits ZAriths HList Var Env Store.
+From mathcomp Require Import ssreflect ssrbool ssrfun seq eqtype.
+From Common Require Import Tactics Arch Bits ZAriths HList Var Env Store.
 From sQhasm Require Import IProg.
 Import HEnv.
 
@@ -377,12 +377,14 @@ Fixpoint conv_program E (p : program E) : IProg.program :=
   | hd::tl => conv_instr hd ++ conv_program tl
   end.
 
+From mathcomp Require ssrnat.
+
 Program Definition state_eqmod E (qst : State.t E) (ist : IProg.State.t) : Prop :=
   (forall ty (x : pvar E ty),
-     (toZ (n:=(size_of_vtype ty).-1) (State.acc x qst))%Z == IProg.State.acc (pvar_var x) ist) /\
+     (toZ (n:=ssrnat.predn (size_of_vtype ty)) (State.acc x qst))%Z == IProg.State.acc (pvar_var x) ist) /\
   ((toZ (State.carry qst))%Z == IProg.State.acc (carry_var E) ist).
 Next Obligation.
-  rewrite prednK.
+  rewrite ssrnat.prednK.
   - reflexivity.
   - move=> {x qst ist}.
     by elim: ty.

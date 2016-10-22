@@ -1,9 +1,9 @@
 
 (** * Stores of variable values *)
 
-From Coq Require Import Program Program.Tactics FMaps.
-From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
-From Common Require Import Types HList FMaps Nats Env Var.
+From Coq Require Import Program Program.Tactics FMaps ZArith.
+From mathcomp Require Import ssreflect ssrbool eqtype.
+From Common Require Import Types HList FMaps ZAriths Env Var.
 Import HEnv.
 
 Set Implicit Arguments.
@@ -531,7 +531,7 @@ Module PStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Qed.
 End PStoreAdapter.
 
-Module VStore := MakePStore NatOrder.
+Module VStore := MakePStore NOrder.
 
 
 

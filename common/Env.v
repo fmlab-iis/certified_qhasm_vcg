@@ -1,9 +1,9 @@
 
 (** * Typing Environments *)
 
-From Coq Require Import Program Program.Tactics.
-From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
-Require Import HList Nats Var.
+From Coq Require Import Program Program.Tactics ZArith.
+From mathcomp Require Import ssreflect ssrbool eqtype.
+Require Import HList Var ZAriths.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -125,7 +125,7 @@ Module HEnv.
   Record t := mkEnv { vtypes : list T;
                       vmap : VM.t (entry vtypes);
                       lidx_disjoint :
-                        forall (x y : nat) (ex ey : entry vtypes),
+                        forall (x y : var) (ex ey : entry vtypes),
                           VM.find x vmap = Some ex ->
                           VM.find y vmap = Some ey ->
                           x != y ->

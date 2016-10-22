@@ -2,7 +2,7 @@ Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
 Add ML Path "../lib/gbarith/src/".
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
 From mQhasm Require Import mQhasm SSA PolyGen.
 
 Set Implicit Arguments.

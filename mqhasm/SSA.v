@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import Types Lists FSets Nats Bools ZAriths Var Store.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
+From Common Require Import Types Lists FSets Bools ZAriths Var Store.
 From mQhasm Require Import mQhasm.
 
 Set Implicit Arguments.
@@ -20,7 +20,9 @@ Module MakeSSA (VO : SsrOrderedType) (IO : SsrOrderedType).
   Include Q.
 End MakeSSA.
 
-Module SSA := MakeSSA VarOrder NatOrder.
+Module SSA := MakeSSA VarOrder NOrder.
+
+Arguments SSA.QVar v%N.
 
 Notation "@- x" := (SSA.QNeg x) (at level 35, right associativity) : ssa_scope.
 Notation "x @+ y" := (SSA.QBinop SSA.QAdd x y) (at level 50, left associativity) : ssa_scope.
@@ -45,9 +47,11 @@ Module M2 := Map2 VS SSA.VS.
 
 
 
+Open Scope N_scope.
+
 (** Conversion to SSA *)
 
-Definition index : Type := nat.
+Definition index : Type := N.
 
 (* A map from a Qhasm variable to its current index. *)
 Definition vmap : Type := VM.t index.
@@ -241,40 +245,38 @@ Qed.
 
 Lemma get_upd_index_gt0 :
   forall (m : vmap) (v : var),
-    get_index v (upd_index v m) > 0.
+    0 <? get_index v (upd_index v m).
 Proof.
   move=> m v; rewrite /upd_index.
   case: (VM.find v m) => /=.
   - move=> a.
     rewrite (get_index_add_eq _ _ (eqxx v)).
-    rewrite addn1.
-    exact: ltn0Sn.
+    exact: Nltn0Sn.
   - rewrite (get_index_add_eq _ _ (eqxx v)).
     done.
 Qed.
 
 Lemma get_upd_index_lt :
   forall (m : vmap) (v : var),
-    get_index v m < get_index v (upd_index v m).
+    get_index v m <? get_index v (upd_index v m).
 Proof.
   move=> m v; rewrite /upd_index /get_index.
   case: (VM.find v m) => /=.
   - move=> a.
     rewrite (VM.Lemmas.find_add_eq _ _ (eqxx v)).
-    rewrite addn1.
-    exact: ltnSn.
+    exact: NltnSn.
   - rewrite (VM.Lemmas.find_add_eq _ _ (eqxx v)).
     done.
 Qed.
 
 Lemma get_upd_index_leF :
   forall (m : vmap) (v : var),
-    get_index v (upd_index v m) <= get_index v m -> False.
+    get_index v (upd_index v m) <=? get_index v m -> False.
 Proof.
   move=> m v Hle.
   move: (get_upd_index_lt m v) => Hlt.
-  move: (leq_ltn_trans Hle Hlt).
-  rewrite ltnn.
+  move: (Nleq_ltn_trans Hle Hlt).
+  rewrite Nltnn.
   done.
 Qed.
 
@@ -312,22 +314,22 @@ Qed.
 
 Lemma get_upd_index_le :
   forall (m : vmap) (x v : var),
-    get_index x m <= get_index x (upd_index v m).
+    get_index x m <=? get_index x (upd_index v m).
 Proof.
   move=> m x v.
   case Hxv: (x == v).
   - move: (get_upd_index_lt m v) => Hlt.
     rewrite (eqP Hxv).
-    exact: (ltnW Hlt).
+    exact: (NltnW Hlt).
   - move/idP/negP: Hxv => Hxv.
     rewrite (get_upd_index_neq _ Hxv).
-    exact: leqnn.
+    exact: Nleqnn.
 Qed.
 
 Lemma ssa_instr_index_le :
   forall m1 m2 v i si,
     ssa_instr m1 i = (m2, si) ->
-    get_index v m1 <= get_index v m2.
+    get_index v m1 <=? get_index v m2.
 Proof.
   move=> m1 m2 v i si.
   elim: i m1 m2 v si.
@@ -340,25 +342,25 @@ Proof.
     rewrite Hupd.
     move: (get_upd_index_le m1 x vh) => Hle1.
     move: (get_upd_index_le (upd_index vh m1) x vl) => Hle2.
-    exact: (leq_trans Hle1 Hle2).
+    exact: (Nleq_trans Hle1 Hle2).
 Qed.
 
 Lemma ssa_program_index_le :
   forall m1 m2 v p sp,
     ssa_program m1 p = (m2, sp) ->
-    get_index v m1 <= get_index v m2.
+    get_index v m1 <=? get_index v m2.
 Proof.
   move=> m1 m2 v p sp.
   elim: p m1 m2 v sp.
   - move=> m1 m2 v sp Hsp.
     rewrite ssa_program_empty in Hsp.
     case: Hsp => Hm1 Hsp.
-    rewrite Hm1; exact: leqnn.
+    rewrite Hm1; exact: Nleqnn.
   - move=> hd tl IH m1 m2 v sp Hsp.
     move: (ssa_program_cons Hsp) => {Hsp} [m3 [shd [stl [Hshd [Hstl Hsp]]]]].
     move: (ssa_instr_index_le v Hshd) => Hle1.
     move: (IH _ _ v _ Hstl) => Hle2.
-    exact: (leq_trans Hle1 Hle2).
+    exact: (Nleq_trans Hle1 Hle2).
 Qed.
 
 Lemma ssa_eval_unop :
@@ -1601,7 +1603,7 @@ Qed.
 
 Lemma ssa_instr_le_unchanged m1 m2 i si :
   forall v iv,
-    iv <= get_index v m1 ->
+    iv <=? get_index v m1 ->
     ssa_instr m1 i = (m2, si) ->
     ssa_var_unchanged_instr (v, iv) si.
 Proof.
@@ -1627,15 +1629,15 @@ Proof.
       rewrite Hv Hi in Hiv => {Hv Hi v iv}.
       move: (get_upd_index_le m1 vl vh) => Hle.
       move: (get_upd_index_lt (upd_index vh m1) vl) => Hlt.
-      move: (leq_ltn_trans Hle Hlt) => {Hle Hlt} Hlt.
-      move: (leq_ltn_trans Hiv Hlt) => {Hiv Hlt} Hlt.
-      rewrite -Hupd ltnn in Hlt.
+      move: (Nleq_ltn_trans Hle Hlt) => {Hle Hlt} Hlt.
+      move: (Nleq_ltn_trans Hiv Hlt) => {Hiv Hlt} Hlt.
+      rewrite -Hupd Nltnn in Hlt.
       done.
 Qed.
 
 Lemma ssa_program_le_unchanged m1 m2 p sp :
   forall v i,
-    i <= get_index v m1 ->
+    i <=? get_index v m1 ->
     ssa_program m1 p = (m2, sp) ->
     ssa_var_unchanged_program (v, i) sp.
 Proof.
@@ -1648,7 +1650,7 @@ Proof.
     apply/andP; split.
     + exact: (ssa_instr_le_unchanged Hle Hshd).
     + move: (ssa_instr_index_le v Hshd) => Hle2.
-      move: (leq_trans Hle Hle2) => {Hle Hle2} Hle.
+      move: (Nleq_trans Hle Hle2) => {Hle Hle2} Hle.
       exact: (IH _ _ _ _ _ Hle Hstl).
 Qed.
 
@@ -1671,7 +1673,7 @@ Proof.
         rewrite Hshd /= => {Hshd shd}.
         apply: ssa_unchanged_program_singleton2.
         apply: (ssa_program_le_unchanged _ Hstl).
-        exact: leqnn.
+        exact: Nleqnn.
       * move=> vh vl e p Hshd.
         move: (ssa_qsplit Hshd) => {Hshd} [Hupd Hshd].
         rewrite Hshd /= => {Hshd shd}.
@@ -1681,7 +1683,7 @@ Proof.
            rewrite Hupd.
            exact: get_upd_index_le.
         -- apply: (ssa_program_le_unchanged _ Hstl).
-           exact: leqnn.
+           exact: Nleqnn.
     + exact: (IH _ _ _ Hstl).
 Qed.
 
@@ -1704,9 +1706,9 @@ Definition dclosed m ivs lvs svs : Prop :=
   (* Indices of unused variables should not be updated. *)
   (forall v, ~~ VS.mem v (VS.union ivs lvs) -> get_index v m = 0) /\
   (* The index of a variable in lvs should start from 1. *)
-  (forall v, VS.mem v lvs -> get_index v m > 0) /\
+  (forall v, VS.mem v lvs -> 0 <? get_index v m) /\
   (* svs contains all versions of ivs and lvs. *)
-  (forall v i, SSA.VS.mem (v, i) svs = (VS.mem v ivs) && (i <= get_index v m) || (VS.mem v lvs) && (0 < i <= get_index v m)).
+  (forall v i, SSA.VS.mem (v, i) svs = (VS.mem v ivs) && (i <=? get_index v m) || (VS.mem v lvs) && (0 <? i <=? get_index v m)).
 
 Lemma dclosed_not_mem m ivs lvs svs v :
   dclosed m ivs lvs svs ->
@@ -1720,8 +1722,8 @@ Qed.
 Lemma dclosed_mem1 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
   SSA.VS.mem (v, i) svs ->
-  (VS.mem v ivs) /\ (i <= get_index v m) \/
-                    (VS.mem v lvs) /\ (0 < i <= get_index v m).
+  (VS.mem v ivs) /\ (i <=? get_index v m) \/
+                    (VS.mem v lvs) /\ (0 <? i <=? get_index v m).
 Proof.
   move=> [_ [_ Hd]] Hmem.
   rewrite Hd in Hmem.
@@ -1732,7 +1734,7 @@ Qed.
 
 Lemma dclosed_mem2 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
-  VS.mem v ivs -> i <= get_index v m ->
+  VS.mem v ivs -> i <=? get_index v m ->
   SSA.VS.mem (v, i) svs.
 Proof.
   move=> [_ [_ Hd]] Hmem Hi.
@@ -1742,7 +1744,7 @@ Qed.
 
 Lemma dclosed_mem3 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
-  VS.mem v lvs -> 0 < i <= get_index v m ->
+  VS.mem v lvs -> 0 <? i <=? get_index v m ->
   SSA.VS.mem (v, i) svs.
 Proof.
   move=> [_ [_ Hd]] Hmem Hi.
@@ -1752,7 +1754,7 @@ Qed.
 
 Lemma dclosed_mem4 m ivs lvs svs v :
   dclosed m ivs lvs svs ->
-  VS.mem v lvs -> 0 < get_index v m.
+  VS.mem v lvs -> 0 <? get_index v m.
 Proof.
   move=> [_ [Hd _]] Hmem.
   exact: (Hd _ Hmem).
@@ -1760,7 +1762,7 @@ Qed.
 
 Lemma dclosed_mem5 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
-  0 < i <= get_index v m ->
+  0 <? i <=? get_index v m ->
   SSA.VS.mem (v, i) svs.
 Proof.
   move=> Hd Hi.
@@ -1772,8 +1774,8 @@ Proof.
   - move/idP/negP: Hmem => Hmem.
     rewrite (dclosed_not_mem Hd Hmem) in Hi.
     move/andP: Hi => [Hi1 Hi2].
-    rewrite leqn0 in Hi2.
-    rewrite (eqP Hi2) ltnn in Hi1.
+    rewrite Nleqn0 in Hi2.
+    rewrite (eqP Hi2) Nltnn in Hi1.
     discriminate.
 Qed.
 
@@ -1783,11 +1785,11 @@ Proof.
   split; first by reflexivity.
   split; first by discriminate.
   move=> v i.
-  case Hmem: (VS.mem v vs && (i <= get_index v empty_vmap)
-              || [&& VS.mem v VS.empty, 0 < i & i <= get_index v empty_vmap]).
+  case Hmem: (VS.mem v vs && (i <=? get_index v empty_vmap)
+              || [&& VS.mem v VS.empty, 0 <? i & i <=? get_index v empty_vmap]).
   - case: (orP Hmem) => {Hmem} /andP [Hmem Hidx].
     + apply: (ssa_vars_mem3 Hmem).
-      rewrite /leq get_index_empty subn0 in Hidx *.
+      rewrite get_index_empty Nleqn0 in Hidx *.
       exact: (eqP Hidx).
     + discriminate.
   - apply/negP => H.
@@ -1795,7 +1797,7 @@ Proof.
     move: (ssa_vars_mem2 H) => [y [[Hy Hidy] Hmemy]].
     apply/orP; left; apply/andP; split.
     + rewrite Hy; exact: Hmemy.
-    + rewrite Hidy Hy; exact: leqnn.
+    + rewrite Hidy Hy; exact: Nleqnn.
 Qed.
 
 Lemma dclosed_subset m ivs lvs svs :
@@ -1813,7 +1815,7 @@ Proof.
     move: (ssa_vars_mem2 Hmem) => [y [[Hxy Hidx] Hmemy]].
     apply/andP; split.
     + rewrite Hxy; exact: Hmemy.
-    + rewrite Hidx Hxy; exact: leqnn.
+    + rewrite Hidx Hxy; exact: Nleqnn.
   - right.
     move: (ssa_vars_mem2 Hmem) => [y [[Hxy Hidx] Hmemy]].
     apply/andP; split.
@@ -1821,7 +1823,7 @@ Proof.
     + move: (Hd2 _ Hmemy) => H.
       rewrite Hxy Hidx; apply/andP; split.
       * assumption.
-      * exact: leqnn.
+      * exact: Nleqnn.
 Qed.
 
 Lemma dclosed_instr_well_formed ivs lvs svs m1 m2 i si :
@@ -1849,17 +1851,17 @@ Qed.
 Lemma dclosed_upd1 m ivs lvs svs v x i :
   dclosed m ivs lvs svs ->
   VS.mem x ivs ->
-  i <= get_index x (upd_index v m) ->
+  i <=? get_index x (upd_index v m) ->
   SSA.VS.mem (x, i) (SSA.VS.add (ssa_var (upd_index v m) v) svs).
 Proof.
   move=> Hd Hmem Hi.
   case Hxv: (x == v).
   - rewrite (eqP Hxv) in Hmem Hi *.
-    rewrite leq_eqVlt in Hi.
+    rewrite Nleq_eqVlt in Hi.
     case: (orP Hi) => {Hi} Hi.
     + rewrite /ssa_var -(eqP Hi).
       exact: SSA.VSLemmas.mem_add2.
-    + rewrite get_upd_index_eq addn1 ltnS in Hi.
+    + rewrite get_upd_index_eq NltnS in Hi.
       apply: SSA.VSLemmas.mem_add3.
       exact: (dclosed_mem2 Hd Hmem Hi).
   - move/idP/negP: Hxv => Hxv.
@@ -1870,25 +1872,25 @@ Qed.
 
 Lemma dclosed_upd2 m ivs lvs svs v x i :
   dclosed m ivs lvs svs ->
-  0 < i <= get_index x (upd_index v m) ->
+  0 <? i <=? get_index x (upd_index v m) ->
   SSA.VS.mem (x, i) (SSA.VS.add (ssa_var (upd_index v m) v) svs).
 Proof.
   move=> Hd /andP [Hi1 Hi2].
   case Hxv: (x == v).
   - rewrite (eqP Hxv) in Hi2 * => {x Hxv}.
-    rewrite leq_eqVlt in Hi2.
+    rewrite Nleq_eqVlt in Hi2.
     case: (orP Hi2) => {Hi2} Hi2.
     + apply: SSA.VSLemmas.mem_add2.
       rewrite /ssa_var -(eqP Hi2).
       exact: eqxx.
-    + rewrite get_upd_index_eq addn1 ltnS in Hi2.
+    + rewrite get_upd_index_eq NltnS in Hi2.
       apply: SSA.VSLemmas.mem_add3.
-      have: 0 < i <= get_index v m by rewrite Hi1 Hi2.
+      have: 0 <? i <=? get_index v m by rewrite Hi1 Hi2.
       move=> Hi.
       exact: (dclosed_mem5 Hd Hi).
   - move/idP/negP: Hxv => Hxv.
     rewrite (get_upd_index_neq _ Hxv) in Hi2.
-    have: 0 < i <= get_index x m by rewrite Hi1 Hi2.
+    have: 0 <? i <=? get_index x m by rewrite Hi1 Hi2.
     move=> Hi.
     apply: SSA.VSLemmas.mem_add3.
     exact: (dclosed_mem5 Hd Hi).
@@ -1897,7 +1899,7 @@ Qed.
 Lemma dclosed_upd3 m ivs lvs svs vh vl x i :
   dclosed m ivs lvs svs ->
   VS.mem x ivs ->
-  i <= get_index x (upd_index vl (upd_index vh m)) ->
+  i <=? get_index x (upd_index vl (upd_index vh m)) ->
   SSA.VS.mem (x, i)
              (SSA.VS.add (ssa_var (upd_index vh m) vh)
                          (SSA.VS.add (ssa_var (upd_index vl (upd_index vh m)) vl) svs)).
@@ -1905,13 +1907,13 @@ Proof.
   move=> Hd Hmem Hi.
   case Hxl: (x == vl).
   - rewrite (eqP Hxl) in Hi Hmem * => {x Hxl}.
-    rewrite leq_eqVlt in Hi.
+    rewrite Nleq_eqVlt in Hi.
     case: (orP Hi) => {Hi} Hi.
     + apply: SSA.VSLemmas.mem_add3.
       apply: SSA.VSLemmas.mem_add2.
       rewrite /ssa_var -(eqP Hi).
       exact: eqxx.
-    + rewrite get_upd_index_eq addn1 ltnS in Hi.
+    + rewrite get_upd_index_eq NltnS in Hi.
       rewrite SSA.VSLemmas.OP.P.add_union_singleton.
       rewrite SSA.VSLemmas.OP.P.add_union_singleton.
       rewrite (SSA.VSLemmas.OP.P.union_sym _ svs).
@@ -1932,7 +1934,7 @@ Qed.
 
 Lemma dclosed_upd4 m ivs lvs svs vh vl x i :
   dclosed m ivs lvs svs ->
-  0 < i <= get_index x (upd_index vl (upd_index vh m)) ->
+  0 <? i <=? get_index x (upd_index vl (upd_index vh m)) ->
   SSA.VS.mem (x, i)
              (SSA.VS.add (ssa_var (upd_index vh m) vh)
                          (SSA.VS.add (ssa_var (upd_index vl (upd_index vh m)) vl) svs)).
@@ -1940,14 +1942,14 @@ Proof.
   move=> Hd /andP [Hi1 Hi2].
   case Hxl: (x == vl).
   - rewrite (eqP Hxl) in Hi2 * => {x Hxl}.
-    rewrite leq_eqVlt in Hi2.
+    rewrite Nleq_eqVlt in Hi2.
     case: (orP Hi2) => {Hi2} Hi2.
     + apply: SSA.VSLemmas.mem_add3.
       apply: SSA.VSLemmas.mem_add2.
       rewrite /ssa_var -(eqP Hi2).
       exact: eqxx.
-    + rewrite get_upd_index_eq addn1 ltnS in Hi2.
-      have: 0 < i <= get_index vl (upd_index vh m) by rewrite Hi1 Hi2.
+    + rewrite get_upd_index_eq NltnS in Hi2.
+      have: 0 <? i <=? get_index vl (upd_index vh m) by rewrite Hi1 Hi2.
       move=> Hi.
       rewrite SSA.VSLemmas.OP.P.add_union_singleton.
       rewrite SSA.VSLemmas.OP.P.add_union_singleton.
@@ -1958,7 +1960,7 @@ Proof.
       exact: (dclosed_upd2 Hd Hi).
   - move/idP/negP: Hxl => Hxl.
     rewrite (get_upd_index_neq _ Hxl) in Hi2.
-    have: 0 < i <= get_index x (upd_index vh m) by rewrite Hi1 Hi2.
+    have: 0 <? i <=? get_index x (upd_index vh m) by rewrite Hi1 Hi2.
     move=> Hi.
     rewrite SSA.VSLemmas.OP.P.add_union_singleton.
     rewrite SSA.VSLemmas.OP.P.add_union_singleton.
@@ -1996,9 +1998,9 @@ Proof.
       exact: get_upd_index_gt0.
     + move: (dclosed_mem4 Hd Hmem) => Hlt.
       rewrite -Hm.
-      exact: (ltn_leq_trans Hlt (get_upd_index_le m1 x v)).
+      exact: (Nltn_leq_trans Hlt (get_upd_index_le m1 x v)).
   - move=> x i.
-    case H: (VS.mem x ivs && (i <= get_index x m2) || [&& VS.mem x (VS.union (VS.singleton v) lvs), 0 < i & i <= get_index x m2]).
+    case H: (VS.mem x ivs && (i <=? get_index x m2) || [&& VS.mem x (VS.union (VS.singleton v) lvs), 0 <? i & i <=? get_index x m2]).
     + case: (orP H) => {H} /andP [Hmem Hi].
       * rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
         rewrite -Hm in Hi.
@@ -2014,19 +2016,19 @@ Proof.
         right; apply/andP; split.
         -- rewrite Hx; apply: VSLemmas.mem_union2;
            exact: VSLemmas.mem_singleton2.
-        -- rewrite Hx -Hm; apply/andP; split; last by rewrite Hi; exact: leqnn.
+        -- rewrite Hx -Hm; apply/andP; split; last by rewrite Hi; exact: Nleqnn.
            rewrite Hi.
            exact: (get_upd_index_gt0).
       * move: (dclosed_mem1 Hd Hmemx); case; move => [Hx Hi].
         -- left; apply/andP; split; first by exact: Hx.
            rewrite -Hm.
-           exact: (leq_trans Hi (get_upd_index_le m1 x v)).
+           exact: (Nleq_trans Hi (get_upd_index_le m1 x v)).
         -- right; apply/andP; split;
            first by apply: VSLemmas.mem_union3; exact: Hx.
            move/andP: Hi => [Hi1 Hi2].
            apply/andP; split; first by exact: Hi1.
            rewrite -Hm.
-           exact: (leq_trans Hi2 (get_upd_index_le m1 x v)).
+           exact: (Nleq_trans Hi2 (get_upd_index_le m1 x v)).
 Qed.
 
 Lemma dclosed_qsplit_succ :
@@ -2060,21 +2062,21 @@ Proof.
     + rewrite (eqP Hmem).
       move: (get_upd_index_le (upd_index vh m1) vh vl) => Hle.
       move: (get_upd_index_gt0 m1 vh) => Hlt.
-      exact: (ltn_leq_trans Hlt Hle).
+      exact: (Nltn_leq_trans Hlt Hle).
     + move: (VSLemmas.mem_singleton1 Hmem) => {Hmem} Heq.
       rewrite (eqP Heq).
       exact: (get_upd_index_gt0 _ vl).
     + move: (dclosed_mem4 Hd Hmem) => Hlt.
       move: (get_upd_index_le m1 v vh) => Hle.
-      move: (ltn_leq_trans Hlt Hle) => {Hlt Hle} Hlt.
+      move: (Nltn_leq_trans Hlt Hle) => {Hlt Hle} Hlt.
       move: (get_upd_index_le (upd_index vh m1) v vl) => Hle.
-      exact: (ltn_leq_trans Hlt Hle).
+      exact: (Nltn_leq_trans Hlt Hle).
   - move=> v i.
     rewrite SSA.VSLemmas.OP.P.add_union_singleton.
     rewrite SSA.VSLemmas.OP.P.union_assoc.
     rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
     rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
-    case H:  (VS.mem v ivs && (i <= get_index v m2) || [&& VS.mem v (VS.union (VS.add vh (VS.singleton vl)) lvs), 0 < i & i <= get_index v m2]).
+    case H:  (VS.mem v ivs && (i <=? get_index v m2) || [&& VS.mem v (VS.union (VS.add vh (VS.singleton vl)) lvs), 0 <? i & i <=? get_index v m2]).
     + rewrite -Hm in H.
       case: (orP H) => {H} /andP [Hmem Hi].
       * exact: (dclosed_upd3 Hd Hmem Hi).
@@ -2094,13 +2096,12 @@ Proof.
         -- rewrite get_upd_index_eq in Hi.
            rewrite -Hm Hv Hi => {i Hi}.
            apply/andP; split.
-           ++ rewrite addn1; exact: ltn0Sn.
-           ++ rewrite -ltnS.
-              rewrite -(addn1 (get_index vh (upd_index vl (upd_index vh m1)))).
-              rewrite ltn_add2r.
+           ++ exact: Nltn0Sn.
+           ++ rewrite -NltnS.
+              rewrite Nltn_add2r.
               move: (get_upd_index_lt m1 vh) => Hlt.
               move: (get_upd_index_le (upd_index vh m1) vh vl) => Hle.
-              exact: (ltn_leq_trans Hlt Hle).
+              exact: (Nltn_leq_trans Hlt Hle).
       * move/eqP: Hmem => [Hv Hi].
         right; apply/andP; split.
         -- apply: VSLemmas.mem_union2.
@@ -2111,23 +2112,22 @@ Proof.
            rewrite -Hm Hv Hi => {i Hi v Hv Hm}.
            set m3 := upd_index vh m1.
            apply/andP; split.
-           ++ rewrite addn1; exact: ltn0Sn.
-           ++ rewrite -ltnS.
-              rewrite -(addn1 (get_index vl (upd_index vl m3))).
-              rewrite ltn_add2r.
+           ++ exact: Nltn0Sn.
+           ++ rewrite -NltnS.
+              rewrite Nltn_add2r.
               exact: (get_upd_index_lt m3 vl) => Hlt.
       * move: (get_upd_index_le m1 v vh) => Hle1.
         move: (get_upd_index_le (upd_index vh m1) v vl) => Hle2.
-        move: (leq_trans Hle1 Hle2) => {Hle1 Hle2} Hle.
+        move: (Nleq_trans Hle1 Hle2) => {Hle1 Hle2} Hle.
         case: (dclosed_mem1 Hd Hmem); move=> [Hv Hi].
         -- left; apply/andP; split; first by assumption.
            rewrite -Hm.
-           exact: (leq_trans Hi Hle).
+           exact: (Nleq_trans Hi Hle).
         -- right; apply/andP; split; first by apply: VSLemmas.mem_union3.
            move/andP: Hi => [Hi1 Hi2].
            apply/andP; split; first by assumption.
            rewrite -Hm.
-           exact: (leq_trans Hi2 Hle).
+           exact: (Nleq_trans Hi2 Hle).
 Qed.
 
 Corollary dclosed_instr_succ ivs lvs svs m1 m2 i si :
@@ -2243,7 +2243,8 @@ Proof.
   destruct v as [v i].
   move: (ssa_bexp_var_index Hmem) => Hidx.
   apply: (ssa_program_le_unchanged (m1:=empty_vmap)).
-  - by rewrite Hidx.
+  - rewrite Hidx.
+    exact: Nleqnn.
   - symmetry; exact: Hprog.
 Qed.
 
@@ -2273,3 +2274,5 @@ Proof.
   - assumption.
   - exact: (ssa_program_single_assignment (Logic.eq_sym Hprog)).
 Qed.
+
+Close Scope N_scope.

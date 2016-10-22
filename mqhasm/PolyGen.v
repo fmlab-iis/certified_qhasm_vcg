@@ -1,6 +1,6 @@
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import Types Lists FSets Nats Bools ZAriths Var Store.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
+From Common Require Import Types Lists FSets Bools ZAriths Var Store.
 From mQhasm Require Import mQhasm SSA.
 
 Set Implicit Arguments.

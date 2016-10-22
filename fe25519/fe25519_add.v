@@ -2,6 +2,7 @@ From Coq Require Import ZArith .
 From mQhasm Require Import mQhasm .
 From mathcomp Require Import seq .
 
+Open Scope N_scope.
 Open Scope mqhasm_scope.
 
 Definition fe25519_add : program :=
@@ -78,36 +79,36 @@ QAssign r4 (QBinop QAdd (QVar r4) (QVar y4))
 ] .
 
 Definition fe25519_add_inputs : VS.t :=
-let            x0 :=   0%nat in
-let            x1 :=   1%nat in
-let            x2 :=   2%nat in
-let            x3 :=   3%nat in
-let            x4 :=   4%nat in
-let            y0 :=   5%nat in
-let            y1 :=   6%nat in
-let            y2 :=   7%nat in
-let            y3 :=   8%nat in
-let            y4 :=   9%nat in
+let            x0 :=   0 in
+let            x1 :=   1 in
+let            x2 :=   2 in
+let            x3 :=   3 in
+let            x4 :=   4 in
+let            y0 :=   5 in
+let            y1 :=   6 in
+let            y2 :=   7 in
+let            y3 :=   8 in
+let            y4 :=   9 in
 VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4; y0; y1; y2; y3; y4].
 
 Definition fe25519_add_pre : bexp := QTrue.
 
 Definition fe25519_add_post : bexp :=
-let            x0 :=   0%nat in
-let            x1 :=   1%nat in
-let            x2 :=   2%nat in
-let            x3 :=   3%nat in
-let            x4 :=   4%nat in
-let            y0 :=   5%nat in
-let            y1 :=   6%nat in
-let            y2 :=   7%nat in
-let            y3 :=   8%nat in
-let            y4 :=   9%nat in
-let            r0 :=  20%nat in
-let            r1 :=  21%nat in
-let            r2 :=  22%nat in
-let            r3 :=  23%nat in
-let            r4 :=  24%nat in
+let            x0 :=   0 in
+let            x1 :=   1 in
+let            x2 :=   2 in
+let            x3 :=   3 in
+let            x4 :=   4 in
+let            y0 :=   5 in
+let            y1 :=   6 in
+let            y2 :=   7 in
+let            y3 :=   8 in
+let            y4 :=   9 in
+let            r0 :=  20 in
+let            r1 :=  21 in
+let            r2 :=  22 in
+let            r3 :=  23 in
+let            r4 :=  24 in
 QCong
   (
     (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
@@ -132,3 +133,6 @@ Proof.
   Time verify_ispec.
   (* 30.461s *)
 Qed.
+
+Close Scope mqhasm_scope.
+Close Scope N_scope.

@@ -2,8 +2,8 @@
 (** * Integer programs as mini Qhasm+ *)
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import Types Nats ZAriths FSets Var Store.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
+From Common Require Import Types ZAriths FSets Var Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -542,15 +542,15 @@ End MakeQhasm.
 
 Module Qhasm := MakeQhasm VarOrder.
 Export Qhasm.
-Arguments Qhasm.QVar v%nat.
+Arguments Qhasm.QVar v%N.
 
 Notation "@- x" := (QNeg x) (at level 35, right associativity) : mqhasm_scope.
 Notation "x @+ y" := (QBinop QAdd x y) (at level 50, left associativity) : mqhasm_scope.
 Notation "x @- y" := (QBinop QSub x y)  (at level 50, left associativity) : mqhasm_scope.
 Notation "x @* y" := (QBinop QMul x y)  (at level 40, left associativity) : mqhasm_scope.
 Notation "x @^ y" := (QPow x y)  (at level 30, right associativity) : mqhasm_scope.
-Notation "x @:= y" := (QAssign x%nat y) (at level 70, no associativity) : mqhasm_scope.
-Notation "[ x , y ] @:= z # p" := (QSplit x%nat y%nat z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
+Notation "x @:= y" := (QAssign x%N y) (at level 70, no associativity) : mqhasm_scope.
+Notation "[ x , y ] @:= z # p" := (QSplit x%N y%N z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
 Notation "x @= y" := (QEq x y) (at level 70, no associativity) : mqhasm_scope.
 Notation "x @= y 'mod' z" := (QCong x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
 Notation "x @&& y" := (QAnd x y) (at level 70, no associativity) : mqhasm_scope.

@@ -2,7 +2,7 @@
 (** * MiniQhasm+ for AMD64 *)
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
 From CompCert Require Import Integers.
 From Common Require Import ZAriths Env Var Store Integers.
 

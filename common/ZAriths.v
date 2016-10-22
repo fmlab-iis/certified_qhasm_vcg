@@ -129,6 +129,11 @@ Section NEqType.
 
 End NEqType.
 
+Reserved Notation "m <=? n <=? p" (at level 70, n at next level).
+Reserved Notation "m <? n <=? p" (at level 70, n at next level).
+Reserved Notation "m <=? n <? p" (at level 70, n at next level).
+Reserved Notation "m <? n <? p" (at level 70, n at next level).
+
 Section NLemmas.
 
   Notation "m <=? n <=? p" := ((m <=? n) && (n <=? p)) (at level 70, n at next level) : N_scope.
@@ -287,6 +292,11 @@ Section NLemmas.
   Qed.
 
 End NLemmas.
+
+Notation "m <=? n <=? p" := ((m <=? n) && (n <=? p))%N (at level 70, n at next level) : N_scope.
+Notation "m <? n <=? p" := ((m <? n) && (n <=? p))%N (at level 70, n at next level) : N_scope.
+Notation "m <=? n <? p" := ((m <=? n) && (n <? p))%N (at level 70, n at next level) : N_scope.
+Notation "m <? n <? p" := ((m <? n) && (n <? p))%N (at level 70, n at next level) : N_scope.
 
 
 

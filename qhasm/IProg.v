@@ -2,7 +2,7 @@
 (** * Sequential integer programs *)
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
 From Common Require Import ZAriths Env Var Store.
 
 Set Implicit Arguments.

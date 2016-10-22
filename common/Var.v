@@ -1,9 +1,9 @@
 
 (** * Variables *)
 
-From Coq Require Import FMaps FSets.
-From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
-From Common Require Import FMaps FSets Nats.
+From Coq Require Import FMaps FSets ZArith.
+From mathcomp Require Import ssreflect ssrbool eqtype.
+From Common Require Import FMaps FSets ZAriths.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,14 +11,16 @@ Import Prenex Implicits.
 
 
 
-Definition var : Set := nat.
+Open Scope N_scope.
 
-Module VarOrder := NatOrder.
+Definition var : Set := N.
+
+Module VarOrder := NOrder.
 
 (* Variable sets. *)
 
 Module VS.
-  Module S := FSetList.Make(NatOrder).
+  Module S := FSetList.Make(NOrder).
   Module Lemmas := FSetLemmas(S).
   Include S.
 
@@ -40,8 +42,7 @@ Module VS.
     - move=> Hin.
       move: (max_elt_2 H Hin) => Hfalse.
       apply: Hfalse.
-      rewrite addn1.
-      exact: ltnSn.
+      exact: NltnSn.
     - move: (max_elt_3 H) => {H} H Hin.
       move: (H 0) => Hnotin; apply: Hnotin; exact: Hin.
   Qed.
@@ -53,7 +54,7 @@ End VS.
 (* Variable maps. *)
 
 Module VM.
-   Module M := FMapList.Make(NatOrder).
+   Module M := FMapList.Make(NOrder).
    Module Lemmas := FMapLemmas(M).
    Include M.
 
@@ -109,15 +110,15 @@ Module VM.
          + case: Hin => ty1 Hmapsto.
            exists ty1.
            apply: (remove_2 _ Hmapsto).
-           rewrite addn1 => {Hmax Habove Hmapsto ty ty1 m} Heq.
-           move: (ltnSn x).
+           move=> {Hmax Habove Hmapsto ty ty1 m} Heq.
+           move: (NltnSn x).
            rewrite {1}(eqP Heq).
-           rewrite ltnn.
+           rewrite Nltnn.
            discriminate.
          + move=> Hin1.
            move: (Habove _ Hin1) => Hlt.
-           move: (ltn_trans Hlt (ltnSn x)).
-           rewrite addn1 ltnn.
+           move: (Nltn_trans Hlt (NltnSn x)).
+           rewrite Nltnn.
            discriminate.
        - move=> Hmax; rewrite Hmax => Hin.
          move: (Lemmas.max_elt_Empty Hmax) => Hempty.
@@ -129,3 +130,5 @@ Module VM.
    End Aux.
 
 End VM.
+
+Close Scope N_scope.

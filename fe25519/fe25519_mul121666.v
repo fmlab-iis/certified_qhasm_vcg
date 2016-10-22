@@ -2,6 +2,7 @@ From Coq Require Import ZArith .
 From mQhasm Require Import mQhasm .
 From mathcomp Require Import seq .
 
+Open Scope N_scope.
 Open Scope mqhasm_scope.
 
 Definition fe25519_mul121666 : program :=
@@ -269,3 +270,6 @@ Proof.
   Time verify_ispec.
   (* *)
 Qed.
+
+Close Scope mqhasm_scope.
+Close Scope N_scope.

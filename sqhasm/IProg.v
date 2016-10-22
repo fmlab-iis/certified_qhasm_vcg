@@ -2,8 +2,8 @@
 (** * Sequential integer programs *)
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
-From Common Require Import ZAriths Nats Types Var Env Store.
+From mathcomp Require Import ssreflect ssrbool seq eqtype.
+From Common Require Import ZAriths Types Var Env Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -31,7 +31,7 @@ Definition program : Set := seq instr.
 
 (** Semantics *)
 
-Module State := TStoreAdapter NatOrder ZType.
+Module State := TStoreAdapter NOrder ZType.
 
 Fixpoint eval_exp (e : exp) (s : State.t) : Z :=
   match e with
