@@ -38,21 +38,16 @@ Ltac clear_true :=
 Ltac unfold_ispec :=
   match goal with
   | |- valid_ispec ?ispec =>
-    let H := fresh in
-    have: (well_formed_spec (fst ispec) (snd ispec)); [
-        by done || fail "The specification is not well formed" |
-        move=> H;
-          split; [
-            by exact: H |
-            apply: ssa_spec_sound; apply: bexp_spec_sound; [
-              exact: (ssa_spec_well_formed H) |
-              clear H;
-              progress repeat rewrite /valid_bexp_spec /=
-                       /ssa_var /get_index /initial_index /first_assigned_index;
-              simplZ; intros; split_conjs; clear_true
-            ]
-          ]
+    split; [
+      by done || fail "The specification is not well formed" |
+      apply: ssa_spec_sound;
+      apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
+        by done |
+        rewrite /valid_bexp_spec /=
+                /ssa_var /get_index /initial_index /first_assigned_index;
+          simplZ; intros; split_conjs; clear_true
       ]
+    ]
   end.
 
 Ltac solve_ispec :=

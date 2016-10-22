@@ -91,6 +91,9 @@ Module MakeQhasm (V : SsrOrderedType).
       QBinop QAdd hd (QBinop QMul (limbs radix tl) (QPow (QConst 2) radix))
     end.
 
+  Definition qzero : exp := QConst 0.
+  Definition qtwo : exp := QConst 2.
+
 
 
   (** State *)
@@ -462,6 +465,24 @@ Module MakeQhasm (V : SsrOrderedType).
       well_formed_program (VS.union (lvals_instr hd) vs) tl
     end.
 
+  Fixpoint find_non_well_formed_instr (vs : VS.t) (p : program) : option instr :=
+    match p with
+    | [::] => None
+    | hd::tl =>
+      if well_formed_instr vs hd then
+        find_non_well_formed_instr (VS.union (lvals_instr hd) vs) tl
+      else
+        Some hd
+    end.
+
+  Ltac check_well_formedness vs p :=
+    let res := constr:(find_non_well_formed_instr vs p) in
+    let res := eval compute in res in
+        match res with
+        | None => idtac "The program is well-formed."
+        | Some ?i => idtac "The program is not well-formed, caused by the following instruction."; idtac i
+        end.
+
   Definition well_formed_spec (vs : VS.t) (s : spec) : bool :=
     VS.subset (vars_bexp (spre s)) vs &&
     well_formed_program vs (sprog s) &&
@@ -538,3 +559,19 @@ Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : mqha
 Notation "f ===> g" := (entails f g) (at level 82, no associativity) : mqhasm_scope.
 Notation "{{ f }} p {{ g }}" := ({| spre := f; sprog := p; spost := g |}) (at level 82, no associativity) : mqhasm_scope.
 Notation "|= s" := (valid_spec s) (at level 83, no associativity) : mqhasm_scope.
+
+
+
+Module Radix51.
+  Definition two_p51 : Z := 2251799813685248%Z.
+  Definition two_p102 : Z := 5070602400912917605986812821504%Z.
+  Definition two_p153 : Z := 11417981541647679048466287755595961091061972992%Z.
+  Definition two_p204 : Z := 25711008708143844408671393477458601640355247900524685364822016%Z.
+  Definition limbs (vs : seq exp) : exp :=
+    QBinop QAdd (nth qzero vs 0) (
+    QBinop QAdd (QBinop QMul (nth qzero vs 1) (QConst two_p51)) (
+    QBinop QAdd (QBinop QMul (nth qzero vs 2) (QConst two_p102)) (
+    QBinop QAdd (QBinop QMul (nth qzero vs 3) (QConst two_p153))
+                (QBinop QMul (nth qzero vs 4) (QConst two_p204))
+    ))).
+End Radix51.

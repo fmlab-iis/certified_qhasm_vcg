@@ -1,5 +1,6 @@
 -R . Top
 -R lib/CompCert CompCert
+-R lib/gbarith/src GBArith
 -R common Common
 -R qhasm Qhasm
 -R sqhasm sQhasm

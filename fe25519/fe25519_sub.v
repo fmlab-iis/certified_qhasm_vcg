@@ -125,11 +125,11 @@ let            r3 :=  23%nat in
 let            r4 :=  24%nat in
 QCong
   (
-    (limbs 51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
     @-
-    (limbs 51 [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
+    (Radix51.limbs [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
   )
-  (limbs 51 [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+  (Radix51.limbs [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
   (2^255 - 19).
 
 Definition fe25519_sub_spec :=
@@ -145,5 +145,5 @@ From mQhasm Require Import Verify.
 Lemma valid_fe25519_sub : valid_ispec (fe25519_sub_inputs, fe25519_sub_spec).
 Proof.
   Time verify_ispec.
-  (* 519.67s *)
+  (* 35.52s *)
 Qed.

@@ -2,6 +2,8 @@ From Coq Require Import ZArith .
 From mQhasm Require Import mQhasm .
 From mathcomp Require Import seq .
 
+Open Scope mqhasm_scope.
+
 Definition fe25519_mul121666 : program :=
 
 let          qtwo :=   QConst 2%Z in
@@ -41,7 +43,7 @@ let           tmp := 998 in
 let         carry := 999 in
 
 [::
-    
+
       (* # CPU: Intel(R) Xeon(R) CPU X5675 @ 3.07GHz *)
       (* # RAM: 32GB *)
       (* # Configuration: -c consts -s *)
@@ -222,4 +224,48 @@ QAssign z4 (QVar r4)
       (* leave *)
 ] .
 
+Definition fe25519_mul121666_inputs : VS.t :=
+let            x0 :=   0 in
+let            x1 :=   1 in
+let            x2 :=   2 in
+let            x3 :=   3 in
+let            x4 :=   4 in
+VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4].
 
+Definition fe25519_mul121666_pre : bexp := QTrue.
+
+Definition fe25519_mul121666_post : bexp :=
+let            x0 :=   0 in
+let            x1 :=   1 in
+let            x2 :=   2 in
+let            x3 :=   3 in
+let            x4 :=   4 in
+let            r0 :=  10 in
+let            r1 :=  11 in
+let            r2 :=  12 in
+let            r3 :=  13 in
+let            r4 :=  14 in
+QCong
+  (
+    (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    @*
+    (QConst 121666)
+  )
+  (Radix51.limbs [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+  (2^255 - 19).
+
+Definition fe25519_mul121666_spec :=
+  {| spre := fe25519_mul121666_pre;
+     sprog := fe25519_mul121666;
+     spost := fe25519_mul121666_post |}.
+
+Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
+Add ML Path "../lib/gbarith/src/".
+From mathcomp Require Import ssreflect eqtype ssrbool.
+From mQhasm Require Import mQhasm SSA PolyGen Verify.
+
+Lemma valid_fe25519_mul121666 : valid_ispec (fe25519_mul121666_inputs, fe25519_mul121666_spec).
+Proof.
+  Time verify_ispec.
+  (* *)
+Qed.

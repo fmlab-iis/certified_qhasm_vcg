@@ -2,6 +2,8 @@ From Coq Require Import ZArith .
 From mQhasm Require Import mQhasm .
 From mathcomp Require Import seq .
 
+Open Scope mqhasm_scope.
+
 Definition fe25519_mul : program :=
 
 let          qtwo :=   QConst (2%Z) in
@@ -807,7 +809,7 @@ QAssign mulr21 (QBinop QAdd (QVar mulr21) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   mulrax = *[uint64 *](xp + 32) *)
 QAssign mulrax (QVar x4);
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 0) *)
-QSplit mulrdx mulrdx (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
+QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
       (*   carry? r4 += mulrax *)
 QAssign r4 (QBinop QAdd (QVar r4) (QVar mulrax));
 QSplit carry r4 (QVar r4) wsize;
@@ -1182,3 +1184,59 @@ QAssign z4 (QVar r4)
 
       (* leave *)
 ] .
+
+Definition fe25519_mul_inputs : VS.t :=
+let            x0 :=   0%nat in
+let            x1 :=   1%nat in
+let            x2 :=   2%nat in
+let            x3 :=   3%nat in
+let            x4 :=   4%nat in
+let            y0 :=   5%nat in
+let            y1 :=   6%nat in
+let            y2 :=   7%nat in
+let            y3 :=   8%nat in
+let            y4 :=   9%nat in
+VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4; y0; y1; y2; y3; y4].
+
+Definition fe25519_mul_pre : bexp := QTrue.
+
+Definition fe25519_mul_post : bexp :=
+let            x0 :=   0%nat in
+let            x1 :=   1%nat in
+let            x2 :=   2%nat in
+let            x3 :=   3%nat in
+let            x4 :=   4%nat in
+let            y0 :=   5%nat in
+let            y1 :=   6%nat in
+let            y2 :=   7%nat in
+let            y3 :=   8%nat in
+let            y4 :=   9%nat in
+let            r0 :=  20%nat in
+let            r1 :=  21%nat in
+let            r2 :=  22%nat in
+let            r3 :=  23%nat in
+let            r4 :=  24%nat in
+QCong
+  (
+    (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    @*
+    (Radix51.limbs [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
+  )
+  (Radix51.limbs [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+  (2^255 - 19).
+
+Definition fe25519_mul_spec :=
+  {| spre := fe25519_mul_pre;
+     sprog := fe25519_mul;
+     spost := fe25519_mul_post |}.
+
+Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
+Add ML Path "../lib/gbarith/src/".
+From mathcomp Require Import eqtype ssrbool.
+From mQhasm Require Import Verify.
+
+Lemma valid_fe25519_mul : valid_ispec (fe25519_mul_inputs, fe25519_mul_spec).
+Proof.
+  verify_ispec.
+  (* *)
+Qed.
