@@ -1,6 +1,7 @@
 
 From Coq Require Import ZArith OrderedType.
-From mathcomp Require Import ssreflect ssrbool ssrnat ssralg ssrfun choice eqtype.
+From mathcomp Require Import ssreflect ssrbool ssralg ssrfun choice eqtype.
+From mathcomp Require ssrnat.
 From Common Require Import Types Nats.
 
 Set Implicit Arguments.
@@ -13,24 +14,40 @@ Import Prenex Implicits.
 
 Section PositiveEqType.
 
-  Definition map_pos_to_nat (n : positive) : nat :=
-    (Pos.to_nat n) - 1.
+  Local Open Scope positive_scope.
 
-  Definition map_nat_to_pos (n : nat) : positive :=
-    Pos.of_nat (n + 1).
-
-  Lemma cancel_map_nat_pos : cancel map_pos_to_nat map_nat_to_pos.
+  Lemma pos_eqP : forall (n m : positive), reflect (n = m) (n =? m).
   Proof.
-    move=> n.
-    rewrite /map_pos_to_nat /map_nat_to_pos.
-    move: (Pos2Nat.is_succ n) => [m Hm].
-    rewrite Hm (addl_subK m 1).
-    rewrite (addnC m 1) add1n -Hm.
-    exact: Pos2Nat.id.
+    move=> n m.
+    move: (Pos.eqb_eq n m) => [H1 H2].
+    case H: (n =? m).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hnm.
+      move: (H2 Hnm).
+      by rewrite H.
   Qed.
 
-  Definition pos_eqMixin := CanEqMixin cancel_map_nat_pos.
-  Definition pos_countMixin := CanCountMixin cancel_map_nat_pos.
+  Definition pos_pickle (n : positive) : nat :=
+    ssrnat.subn (Pos.to_nat n) 1.
+
+  Definition pos_unpickle (n : nat) : option positive :=
+    Some (Pos.of_nat (ssrnat.addn n 1)).
+
+  Lemma pos_count : pcancel pos_pickle pos_unpickle.
+  Proof.
+    move=> n.
+    rewrite /pos_unpickle /pos_pickle.
+    move: (Pos2Nat.is_succ n) => [m Hm].
+    rewrite Hm (addl_subK m 1).
+    rewrite (ssrnat.addnC m 1%nat) ssrnat.add1n -Hm.
+    rewrite Pos2Nat.id.
+    reflexivity.
+  Qed.
+
+  Definition pos_eqMixin := EqMixin pos_eqP.
+  Definition pos_countMixin := CountMixin pos_count.
   Definition pos_choiceMixin := CountChoiceMixin pos_countMixin.
   Canonical pos_eqType := Eval hnf in EqType positive pos_eqMixin.
   Canonical pos_choiceType := Eval hnf in ChoiceType positive pos_choiceMixin.
@@ -38,18 +55,37 @@ Section PositiveEqType.
 
 End PositiveEqType.
 
-Lemma pos_ltP : forall x y : positive, reflect (Pos.lt x y) (Pos.ltb x y).
-Proof.
-  move=> x y.
-  move: (Pos.ltb_lt x y) => [H1 H2].
-  case H: (Pos.ltb x y).
-  - apply: ReflectT.
-    exact: (H1 H).
-  - apply: ReflectF.
-    move=> Hlt.
-    move: (H2 Hlt).
-    by rewrite H.
-Qed.
+Section PositiveLemmas.
+
+  Local Open Scope positive_scope.
+
+  Lemma pos_ltP : forall x y : positive, reflect (x < y) (x <? y).
+  Proof.
+    move=> x y.
+    move: (Pos.ltb_lt x y) => [H1 H2].
+    case H: (x <? y).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hlt.
+      move: (H2 Hlt).
+      by rewrite H.
+  Qed.
+
+  Lemma pos_leP : forall x y : positive, reflect (x <= y) (x <=? y).
+  Proof.
+    move=> x y.
+    move: (Pos.leb_le x y) => [H1 H2].
+    case H: (x <=? y).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hlt.
+      move: (H2 Hlt).
+      by rewrite H.
+  Qed.
+
+End PositiveLemmas.
 
 
 
@@ -57,18 +93,35 @@ Qed.
 
 Section NEqType.
 
-  Definition nat_of_N (n : N) : nat := N.to_nat n.
+  Local Open Scope N_scope.
 
-  Definition N_of_nat (n : nat) : N := N.of_nat n.
-
-  Lemma nat_of_NK : cancel nat_of_N N_of_nat.
+  Lemma N_eqP : forall n m, reflect (n = m) (n =? m).
   Proof.
-    move=> n.
-    exact: Nnat.N2Nat.id.
+    move=> n m.
+    move: (N.eqb_eq n m) => [H1 H2].
+    case H: (n =? m).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hnm.
+      move: (H2 Hnm).
+      by rewrite H.
   Qed.
 
-  Definition N_eqMixin := CanEqMixin nat_of_NK.
-  Definition N_countMixin := CanCountMixin nat_of_NK.
+  Definition N_pickle (n : N) : nat := N.to_nat n.
+
+  Definition N_unpickle (n : nat) : option N := Some (N.of_nat n).
+
+  Lemma N_count : pcancel N_pickle N_unpickle.
+  Proof.
+    move=> n.
+    rewrite /N_unpickle /N_pickle.
+    rewrite Nnat.N2Nat.id.
+    reflexivity.
+  Qed.
+
+  Definition N_eqMixin := EqMixin N_eqP.
+  Definition N_countMixin := CountMixin N_count.
   Definition N_choiceMixin := CountChoiceMixin N_countMixin.
   Canonical N_eqType := Eval hnf in EqType N N_eqMixin.
   Canonical N_choiceType := Eval hnf in ChoiceType N N_choiceMixin.
@@ -76,18 +129,164 @@ Section NEqType.
 
 End NEqType.
 
-Lemma N_ltP : forall x y : N, reflect (N.lt x y) (N.ltb x y).
-Proof.
-  move=> x y.
-  move: (N.ltb_lt x y) => [H1 H2].
-  case H: (N.ltb x y).
-  - apply: ReflectT.
-    exact: (H1 H).
-  - apply: ReflectF.
-    move=> Hlt.
-    move: (H2 Hlt).
-    by rewrite H.
-Qed.
+Section NLemmas.
+
+  Notation "m <=? n <=? p" := ((m <=? n) && (n <=? p)) (at level 70, n at next level) : N_scope.
+  Notation "m <? n <=? p" := ((m <? n) && (n <=? p)) (at level 70, n at next level) : N_scope.
+  Notation "m <=? n <? p" := ((m <=? n) && (n <? p)) (at level 70, n at next level) : N_scope.
+  Notation "m <? n <? p" := ((m <? n) && (n <? p)) (at level 70, n at next level) : N_scope.
+
+  Local Open Scope N_scope.
+
+  Lemma N_ltP : forall x y : N, reflect (x < y) (x <? y).
+  Proof.
+    move=> x y.
+    move: (N.ltb_lt x y) => [H1 H2].
+    case H: (x <? y).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hlt.
+      move: (H2 Hlt).
+        by rewrite H.
+  Qed.
+
+  Lemma N_leP : forall x y : N, reflect (x <= y) (x <=? y).
+  Proof.
+    move=> x y.
+    move: (N.leb_le x y) => [H1 H2].
+    case H: (x <=? y).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hlt.
+      move: (H2 Hlt).
+      by rewrite H.
+  Qed.
+
+  Lemma NltSn n : n < n + 1.
+  Proof.
+    rewrite N.add_1_r.
+    exact: N.lt_succ_diag_r.
+  Qed.
+
+  Lemma NltnSn n : n <? n + 1.
+  Proof.
+    apply/N_ltP.
+    exact: NltSn.
+  Qed.
+
+  Lemma Nltnn n : (n <? n) = false.
+  Proof.
+    exact: N.ltb_irrefl.
+  Qed.
+
+  Lemma Nltn_trans n m p : (m <? n) -> (n <? p) -> (m <? p).
+  Proof.
+    move=> /N_ltP Hmn /N_ltP Hnp.
+    apply/N_ltP.
+    exact: (N.lt_trans _ _ _ Hmn Hnp).
+  Qed.
+
+  Lemma Nleq_trans n m p : (m <=? n) -> (n <=? p) -> (m <=? p).
+  Proof.
+    move=> /N_leP Hmn /N_leP Hnp.
+    apply/N_leP.
+    exact: (N.le_trans _ _ _ Hmn Hnp).
+  Qed.
+
+  Lemma Nleq_ltn_trans n m p : (m <=? n) -> (n <? p) -> (m <? p).
+  Proof.
+    move=> /N_leP Hmn /N_ltP Hnp.
+    apply/N_ltP.
+    exact: (N.le_lt_trans _ _ _ Hmn Hnp).
+  Qed.
+
+  Lemma Nltn_leq_trans n m p : (m <? n) -> (n <=? p) -> (m <? p).
+  Proof.
+    move=> /N_ltP Hmn /N_leP Hnp.
+    apply/N_ltP.
+    exact: (N.lt_le_trans _ _ _ Hmn Hnp).
+  Qed.
+
+  Lemma Nltn0Sn n : 0 <? n + 1.
+  Proof.
+    apply/N_ltP.
+    apply: N.add_pos_r.
+    done.
+  Qed.
+
+  Lemma NltnW m n : (m <? n) -> (m <=? n).
+  Proof.
+    move=> /N_ltP H.
+    apply/N_leP.
+    exact: (N.lt_le_incl _ _ H).
+  Qed.
+
+  Lemma Nleqnn n : n <=? n.
+  Proof.
+    exact: N.leb_refl.
+  Qed.
+
+  Lemma Nleqn0 n : (n <=? 0) = (n == 0).
+  Proof.
+    move: (N.le_0_r n) => [H1 H2].
+    case H: (n == 0); apply/N_leP.
+    - exact: (H2 (eqP H)).
+    - move=> Hle.
+      move: (H1 Hle) => /eqP Heq.
+      by rewrite H in Heq.
+  Qed.
+
+  Lemma Nsubn0 n : n - 0 = n.
+  Proof.
+    exact: (N.sub_0_r n).
+  Qed.
+
+  Lemma Nleq_eqVlt m n : (m <=? n) = (m == n) || (m <? n).
+  Proof.
+    move: (N.lt_eq_cases m n) => [H1 H2].
+    symmetry.
+    case H: (m <=? n).
+    - apply/orP.
+      move/N_leP: H => H.
+      case: (H1 H) => {H} H.
+      + right; apply/N_ltP; assumption.
+      + left; apply/eqP; assumption.
+    - apply/negP => /orP Hor.
+      move/negP: H; apply; apply/N_leP; apply: H2.
+      case: Hor => H.
+      + right; apply/eqP; assumption.
+      + left; apply/N_ltP; assumption.
+  Qed.
+
+  Lemma NltnS n m : (n <? m + 1) = (n <=? m).
+  Proof.
+    rewrite N.add_1_r.
+    move: (N.lt_succ_r n m) => [H1 H2].
+    case Hle: (n <=? m).
+    - move/N_leP: Hle => Hle.
+      apply/N_ltP.
+      exact: (H2 Hle).
+    - apply/N_ltP => Hlt.
+      move/negP: Hle; apply.
+      apply/N_leP.
+      exact: (H1 Hlt).
+  Qed.
+
+  Lemma Nltn_add2r p m n : ((m + p) <? (n + p)) = (m <? n).
+  Proof.
+    move: (N.add_lt_mono_r m n p) => [H1 H2].
+    case Hlt: (m <? n).
+    - move/N_ltP: Hlt => Hlt.
+      apply/N_ltP.
+      exact: (H1 Hlt).
+    - apply/negP => /N_ltP H.
+      move/negP: Hlt; apply; apply/N_ltP.
+      exact: (H2 H).
+  Qed.
+
+End NLemmas.
 
 
 
@@ -95,9 +294,24 @@ Qed.
 
 Section ZEqType.
 
+  Local Open Scope Z_scope.
+
+  Lemma Z_eqP : forall n m, reflect (n = m) (n =? m).
+  Proof.
+    move=> n m.
+    move: (Z.eqb_eq n m) => [H1 H2].
+    case H: (n =? m).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hnm.
+      move: (H2 Hnm).
+      by rewrite H.
+  Qed.
+
   Definition natsum_of_Z (n : Z) : nat + nat :=
     match n with
-    | Z0 => inl 0
+    | Z0 => inl 0%nat
     | Zpos m => inl (Pos.to_nat m)
     | Zneg m => inr (Pos.to_nat m)
     end.
@@ -119,14 +333,14 @@ Section ZEqType.
       case H: (Pos.to_nat p).
       + move: (Pos2Nat.is_pos p) => Hp.
         rewrite H in Hp.
-          by inversion Hp.
+        by inversion Hp.
       + reflexivity.
     - move=> p.
       rewrite Pos2Nat.id.
       reflexivity.
   Qed.
 
-  Definition Z_eqMixin := CanEqMixin natsum_of_ZK.
+  Definition Z_eqMixin := EqMixin Z_eqP.
   Definition Z_countMixin := CanCountMixin natsum_of_ZK.
   Definition Z_choiceMixin := CountChoiceMixin Z_countMixin.
   Canonical Z_eqType := Eval hnf in EqType Z Z_eqMixin.
@@ -134,19 +348,6 @@ Section ZEqType.
   Canonical Z_countType := Eval hnf in CountType Z Z_countMixin.
 
 End ZEqType.
-
-Lemma Z_ltP : forall x y : Z, reflect (Z.lt x y) (Z.ltb x y).
-Proof.
-  move=> x y.
-  move: (Z.ltb_lt x y) => [H1 H2].
-  case H: (Z.ltb x y).
-  - apply: ReflectT.
-    exact: (H1 H).
-  - apply: ReflectF.
-    move=> Hlt.
-    move: (H2 Hlt).
-    by rewrite H.
-Qed.
 
 
 
@@ -215,6 +416,32 @@ End ZEqtype.
 Section ZLemmas.
 
   Local Open Scope Z_scope.
+
+  Lemma Z_ltP : forall x y : Z, reflect (x < y) (x <? y).
+  Proof.
+    move=> x y.
+    move: (Z.ltb_lt x y) => [H1 H2].
+    case H: (x <? y).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hlt.
+      move: (H2 Hlt).
+      by rewrite H.
+  Qed.
+
+  Lemma Z_leP : forall x y : Z, reflect (x <= y) (x <=? y).
+  Proof.
+    move=> x y.
+    move: (Z.leb_le x y) => [H1 H2].
+    case H: (x <=? y).
+    - apply: ReflectT.
+      exact: (H1 H).
+    - apply: ReflectF.
+      move=> Hlt.
+      move: (H2 Hlt).
+      by rewrite H.
+  Qed.
 
   Lemma Zdouble_positive (n : Z) :
     0 <= n -> n <= Z.double n.
