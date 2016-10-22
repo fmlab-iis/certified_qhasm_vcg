@@ -127,7 +127,7 @@ End OptionIntEqtype.
 
 Module Type SsrOrderedTypeMinimal.
   Parameter t : eqType.
-  Definition eq : t -> t -> bool := eq_op.
+  Definition eq : t -> t -> bool := fun x y => x == y.
   Parameter lt : t -> t -> bool.
   Axiom lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
   Axiom lt_not_eq : forall x y : t, lt x y -> x != y.
