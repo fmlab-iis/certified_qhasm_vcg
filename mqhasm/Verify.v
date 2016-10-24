@@ -35,6 +35,14 @@ Ltac clear_true :=
   | _ => idtac
   end.
 
+Ltac rename_variables :=
+  match goal with
+  | |- context f [ ?s (?v, ?i) ] =>
+    let x := fresh "x" in
+    set x := s (v, i); rename_variables
+  | |- _ => idtac
+  end.
+
 Ltac unfold_ispec :=
   match goal with
   | |- valid_ispec ?ispec =>
