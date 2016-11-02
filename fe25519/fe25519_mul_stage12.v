@@ -503,7 +503,7 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEq
+QCong
   (
     (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
     @*
@@ -516,7 +516,8 @@ QEq
                       QBinop QAdd (QVar r3) (pow2 (QVar mulr31) 64%positive);
                       QBinop QAdd (QVar r4) (pow2 (QVar mulr41) 64%positive)
                   ]
-  ).
+  )
+  n25519.
 
 Definition fe25519_mul_stage1_spec :=
   {| spre := fe25519_mul_stage1_pre;

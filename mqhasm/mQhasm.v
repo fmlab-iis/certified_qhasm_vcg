@@ -61,6 +61,20 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Global Arguments QConst n%Z.
 
+  Definition qneg e : exp := QUnop QNeg e.
+  Definition qadd e1 e2 : exp := QBinop QAdd e1 e2.
+  Definition qsub e1 e2 : exp := QBinop QSub e1 e2.
+  Definition qmul e1 e2 : exp := QBinop QMul e1 e2.
+  Definition qpow2 n : exp := QPow (QConst 2) n.
+  Definition qconcat n h l : exp :=
+    qadd l (qmul h (qpow2 n)).
+  Fixpoint qsum es : exp :=
+    match es with
+    | [::] => QConst 0
+    | e::[::] => e
+    | hd::tl => qadd hd (qsum tl)
+    end.
+
   Definition program : Type := seq instr.
 
   Fixpoint vars_exp (e : exp) : VS.t :=
@@ -567,11 +581,24 @@ Module Radix51.
   Definition two_p102 : Z := 5070602400912917605986812821504%Z.
   Definition two_p153 : Z := 11417981541647679048466287755595961091061972992%Z.
   Definition two_p204 : Z := 25711008708143844408671393477458601640355247900524685364822016%Z.
+  Definition limbs5 (vs : seq exp) : exp :=
+    qsum [:: (nth qzero vs 0);
+             qmul (nth qzero vs 1) (QConst two_p51);
+             qmul (nth qzero vs 2) (QConst two_p102);
+             qmul (nth qzero vs 3) (QConst two_p153);
+             qmul (nth qzero vs 4) (QConst two_p204) ].
+  Require Import Nats.
+  From mathcomp Require Import ssrnat.
+  Fixpoint limbs_rec vs (n : nat) : exp :=
+    match vs with
+    | [::] => QConst 0
+    | hd::[::] => if n == 0 then hd
+                  else qmul hd (qpow2 (Pos.of_nat n))
+    | hd::tl =>
+      let m := (n + 51) in
+      if n == 0 then qadd hd (limbs_rec tl m)
+      else qadd (qmul hd (qpow2 (Pos.of_nat n))) (limbs_rec tl m)
+    end.
   Definition limbs (vs : seq exp) : exp :=
-    QBinop QAdd (nth qzero vs 0) (
-    QBinop QAdd (QBinop QMul (nth qzero vs 1) (QConst two_p51)) (
-    QBinop QAdd (QBinop QMul (nth qzero vs 2) (QConst two_p102)) (
-    QBinop QAdd (QBinop QMul (nth qzero vs 3) (QConst two_p153))
-                (QBinop QMul (nth qzero vs 4) (QConst two_p204))
-    ))).
+    limbs_rec vs 0.
 End Radix51.
