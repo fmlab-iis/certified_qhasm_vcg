@@ -99,7 +99,7 @@ From mQhasm Require Import mQhasm SSA PolyGen Verify.
 Lemma valid_fe25519_mul121666 : valid_ispec (fe25519_mul121666_inputs, fe25519_mul121666_spec).
 Proof.
   Time verify_ispec.
-  (* 66.332s *)
+  (* 35.703s *)
 Qed.
 
 Close Scope mqhasm_scope.

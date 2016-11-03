@@ -68,11 +68,17 @@ Module MakeQhasm (V : SsrOrderedType).
   Definition qpow2 n : exp := QPow (QConst 2) n.
   Definition qconcat n h l : exp :=
     qadd l (qmul h (qpow2 n)).
-  Fixpoint qsum es : exp :=
+  Fixpoint qadds es : exp :=
     match es with
     | [::] => QConst 0
     | e::[::] => e
-    | hd::tl => qadd hd (qsum tl)
+    | hd::tl => qadd hd (qadds tl)
+    end.
+  Fixpoint qmuls es : exp :=
+    match es with
+    | [::] => QConst 0
+    | e::[::] => e
+    | hd::tl => qmul hd (qmuls tl)
     end.
 
   Definition program : Type := seq instr.
@@ -359,6 +365,13 @@ Module MakeQhasm (V : SsrOrderedType).
   | QCong : exp -> exp -> positive -> bexp
   | QAnd : bexp -> bexp -> bexp.
 
+  Fixpoint qands es : bexp :=
+    match es with
+    | [::] => QTrue
+    | hd::[::] => hd
+    | hd::tl => QAnd hd (qands tl)
+    end.
+
   Fixpoint vars_bexp (e : bexp) : VS.t :=
     match e with
     | QTrue => VS.empty
@@ -582,11 +595,11 @@ Module Radix51.
   Definition two_p153 : Z := 11417981541647679048466287755595961091061972992%Z.
   Definition two_p204 : Z := 25711008708143844408671393477458601640355247900524685364822016%Z.
   Definition limbs5 (vs : seq exp) : exp :=
-    qsum [:: (nth qzero vs 0);
-             qmul (nth qzero vs 1) (QConst two_p51);
-             qmul (nth qzero vs 2) (QConst two_p102);
-             qmul (nth qzero vs 3) (QConst two_p153);
-             qmul (nth qzero vs 4) (QConst two_p204) ].
+    qadds [:: (nth qzero vs 0);
+              qmul (nth qzero vs 1) (QConst two_p51);
+              qmul (nth qzero vs 2) (QConst two_p102);
+              qmul (nth qzero vs 3) (QConst two_p153);
+              qmul (nth qzero vs 4) (QConst two_p204) ].
   Require Import Nats.
   From mathcomp Require Import ssrnat.
   Fixpoint limbs_rec vs (n : nat) : exp :=

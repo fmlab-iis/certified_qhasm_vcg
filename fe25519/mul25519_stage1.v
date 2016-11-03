@@ -397,11 +397,8 @@ From mQhasm Require Import Verify.
 
 Lemma valid_mul25519_stage1 : valid_ispec (mul25519_stage1_inputs, mul25519_stage1_spec).
 Proof.
-  Require Import Nsatz.
-  Time unfold_ispec.
-  (* 79.599s *)
-  Time nsatz.
-  (* 677.581s *)
+  Time verify_ispec.
+  (* 843.868s *)
 Qed.
 
 Close Scope mqhasm_scope.

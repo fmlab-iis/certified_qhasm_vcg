@@ -5,7 +5,7 @@ From mathcomp Require Import seq .
 Open Scope N_scope.
 Open Scope mqhasm_scope.
 
-Definition fe25519_mul_stage3 : program :=
+Definition fe25519_mul_stage3_2 : program :=
 
 let          qtwo :=   QConst (2%Z) in
 let         wsize :=   64%positive in
@@ -127,7 +127,7 @@ QAssign r4 (QVar tmp)
       (*  *)
 ] .
 
-Definition fe25519_mul_stage3_inputs : VS.t :=
+Definition fe25519_mul_stage3_2_inputs : VS.t :=
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
 let            x2 :=   2 in (* *[uint64 *](xp + 16) *)
@@ -170,9 +170,9 @@ let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 VSLemmas.OP.P.of_list [:: r0; r1; r2; r3; r4].
 
-Definition fe25519_mul_stage3_pre : bexp := QTrue.
+Definition fe25519_mul_stage3_2_pre : bexp := QTrue.
 
-Definition fe25519_mul_stage3_post : bexp :=
+Definition fe25519_mul_stage3_2_post : bexp :=
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
 let            x2 :=   2 in (* *[uint64 *](xp + 16) *)
@@ -219,20 +219,20 @@ QCong
   (Radix51.limbs [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
   (n25519).
 
-Definition fe25519_mul_stage3_spec :=
-  {| spre := fe25519_mul_stage3_pre;
-     sprog := fe25519_mul_stage3;
-     spost := fe25519_mul_stage3_post |}.
+Definition fe25519_mul_stage3_2_spec :=
+  {| spre := fe25519_mul_stage3_2_pre;
+     sprog := fe25519_mul_stage3_2;
+     spost := fe25519_mul_stage3_2_post |}.
 
 Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
 Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 
-Lemma valid_fe25519_mul_stage3 : valid_ispec (fe25519_mul_stage3_inputs, fe25519_mul_stage3_spec).
+Lemma valid_fe25519_mul_stage3_2 : valid_ispec (fe25519_mul_stage3_2_inputs, fe25519_mul_stage3_2_spec).
 Proof.
   Time verify_ispec.
-  (* 61.184s *)
+  (* 25.747s *)
 Qed.
 
 Close Scope mqhasm_scope.

@@ -58,10 +58,53 @@ Ltac unfold_ispec :=
     ]
   end.
 
+Definition opaque_eq (S : Type) (x y : S) := x = y.
+
+Lemma lock_eq : forall (S : Type) (x y : S), x = y -> opaque_eq x y.
+Proof.
+  done.
+Qed.
+
+Lemma unlock_eq : forall (S : Type) (x y : S), opaque_eq x y -> x = y.
+Proof.
+  done.
+Qed.
+
+Ltac lock_hyp H :=
+  move: (lock_eq H); clear H; move=> H.
+
+Ltac unlock_hyp H :=
+  move: (unlock_eq H); clear H; move=> H.
+
+Ltac unlock_hyps :=
+  match goal with
+  | H: opaque_eq _ _ |- _ => unlock_hyp H; unlock_hyps
+  | |- _ => idtac
+  end.
+
+Ltac gen_eqs :=
+  match goal with
+  | H: _ = _ |- _ => move: H; gen_eqs
+  | |- _ => idtac
+  end.
+
+Ltac rewrite_assign :=
+  match goal with
+  | st: N * N -> value |- _ =>
+    match goal with
+    | H: st _ = _ |- _ =>
+      lock_hyp H; gen_eqs; unlock_hyp H; (try rewrite H);
+      clear H; intros; rewrite_assign
+    | |- _ => idtac
+    end
+  end.
+
+From Coq Require Import Nsatz.
+
 Ltac solve_ispec :=
   match goal with
-  | |- _ = _ => gbZ
+  | |- _ = _ => nsatz
   | |- exists _, _ = _ => gbarith
   end.
 
-Ltac verify_ispec := unfold_ispec; solve_ispec.
+Ltac verify_ispec := unfold_ispec; rewrite_assign; solve_ispec.

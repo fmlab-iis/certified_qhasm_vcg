@@ -5,7 +5,7 @@ From mathcomp Require Import seq .
 Open Scope N_scope.
 Open Scope mqhasm_scope.
 
-Definition fe25519_mul_stage2 : program :=
+Definition fe25519_mul_stage3_1 : program :=
 
 let          qtwo :=   QConst (2%Z) in
 let         wsize :=   64%positive in
@@ -97,7 +97,7 @@ QAssign r0 (QBinop QAdd (QVar r0) (QVar mulr41))
       (*  *)
 ] .
 
-Definition fe25519_mul_stage2_inputs : VS.t :=
+Definition fe25519_mul_stage3_1_inputs : VS.t :=
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
 let            x2 :=   2 in (* *[uint64 *](xp + 16) *)
@@ -139,9 +139,9 @@ let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 VSLemmas.OP.P.of_list [:: mulr01; r0; mulr11; r1; mulr21; r2; mulr31; r3; mulr41; r4].
 
-Definition fe25519_mul_stage2_pre : bexp := QTrue.
+Definition fe25519_mul_stage3_1_pre : bexp := QTrue.
 
-Definition fe25519_mul_stage2_post : bexp :=
+Definition fe25519_mul_stage3_1_post : bexp :=
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
 let            x2 :=   2 in (* *[uint64 *](xp + 16) *)
@@ -187,20 +187,20 @@ QCong
   (Radix51.limbs [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
   (n25519).
 
-Definition fe25519_mul_stage2_spec :=
-  {| spre := fe25519_mul_stage2_pre;
-     sprog := fe25519_mul_stage2;
-     spost := fe25519_mul_stage2_post |}.
+Definition fe25519_mul_stage3_1_spec :=
+  {| spre := fe25519_mul_stage3_1_pre;
+     sprog := fe25519_mul_stage3_1;
+     spost := fe25519_mul_stage3_1_post |}.
 
 Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
 Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 
-Lemma valid_fe25519_mul_stage2 : valid_ispec (fe25519_mul_stage2_inputs, fe25519_mul_stage2_spec).
+Lemma valid_fe25519_mul_stage3_1 : valid_ispec (fe25519_mul_stage3_1_inputs, fe25519_mul_stage3_1_spec).
 Proof.
   Time verify_ispec.
-  (* 52.34s *)
+  (* 45.094s *)
 Qed.
 
 Close Scope mqhasm_scope.
