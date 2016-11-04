@@ -589,29 +589,23 @@ Notation "|= s" := (valid_spec s) (at level 83, no associativity) : mqhasm_scope
 
 
 
-Module Radix51.
-  Definition two_p51 : Z := 2251799813685248%Z.
-  Definition two_p102 : Z := 5070602400912917605986812821504%Z.
-  Definition two_p153 : Z := 11417981541647679048466287755595961091061972992%Z.
-  Definition two_p204 : Z := 25711008708143844408671393477458601640355247900524685364822016%Z.
-  Definition limbs5 (vs : seq exp) : exp :=
-    qadds [:: (nth qzero vs 0);
-              qmul (nth qzero vs 1) (QConst two_p51);
-              qmul (nth qzero vs 2) (QConst two_p102);
-              qmul (nth qzero vs 3) (QConst two_p153);
-              qmul (nth qzero vs 4) (QConst two_p204) ].
+Module Radix.
   Require Import Nats.
   From mathcomp Require Import ssrnat.
+  Variable w : nat.
   Fixpoint limbs_rec vs (n : nat) : exp :=
     match vs with
     | [::] => QConst 0
     | hd::[::] => if n == 0 then hd
                   else qmul hd (qpow2 (Pos.of_nat n))
     | hd::tl =>
-      let m := (n + 51) in
+      let m := (n + w) in
       if n == 0 then qadd hd (limbs_rec tl m)
       else qadd (qmul hd (qpow2 (Pos.of_nat n))) (limbs_rec tl m)
     end.
   Definition limbs (vs : seq exp) : exp :=
     limbs_rec vs 0.
-End Radix51.
+End Radix.
+
+Definition radix51 := limbs 51.
+Definition radix64 := limbs 64.

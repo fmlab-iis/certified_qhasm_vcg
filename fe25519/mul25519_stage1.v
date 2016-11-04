@@ -368,21 +368,21 @@ let        mulrdx :=  51 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 QEq
   (
-    (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    (radix51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
     @*
-    (Radix51.limbs [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
+    (radix51 [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
   )
   (
-    Radix51.limbs [:: QBinop QAdd (QVar r0l) (pow2 (QVar r0h) 64%positive);
-                      QBinop QAdd (QVar r1l) (pow2 (QVar r1h) 64%positive);
-                      QBinop QAdd (QVar r2l) (pow2 (QVar r2h) 64%positive);
-                      QBinop QAdd (QVar r3l) (pow2 (QVar r3h) 64%positive);
-                      QBinop QAdd (QVar r4l) (pow2 (QVar r4h) 64%positive);
-                      QBinop QAdd (QVar r5l) (pow2 (QVar r5h) 64%positive);
-                      QBinop QAdd (QVar r6l) (pow2 (QVar r6h) 64%positive);
-                      QBinop QAdd (QVar r7l) (pow2 (QVar r7h) 64%positive);
-                      QBinop QAdd (QVar r8l) (pow2 (QVar r8h) 64%positive)
-                  ]
+    radix51 [:: QBinop QAdd (QVar r0l) (pow2 (QVar r0h) 64%positive);
+                QBinop QAdd (QVar r1l) (pow2 (QVar r1h) 64%positive);
+                QBinop QAdd (QVar r2l) (pow2 (QVar r2h) 64%positive);
+                QBinop QAdd (QVar r3l) (pow2 (QVar r3h) 64%positive);
+                QBinop QAdd (QVar r4l) (pow2 (QVar r4h) 64%positive);
+                QBinop QAdd (QVar r5l) (pow2 (QVar r5h) 64%positive);
+                QBinop QAdd (QVar r6l) (pow2 (QVar r6h) 64%positive);
+                QBinop QAdd (QVar r7l) (pow2 (QVar r7h) 64%positive);
+                QBinop QAdd (QVar r8l) (pow2 (QVar r8h) 64%positive)
+            ]
   ).
 
 Definition mul25519_stage1_spec :=

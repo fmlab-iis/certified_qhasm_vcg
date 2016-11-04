@@ -251,8 +251,8 @@ let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 QCong
-  (Radix51.limbs [::QVar z0; QVar z1; QVar z2; QVar z3; QVar z4])
-  (Radix51.limbs [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+  (radix51 [::QVar z0; QVar z1; QVar z2; QVar z3; QVar z4])
+  (radix51 [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
   (n25519).
 
 Definition fe25519_mul_stage3_spec :=

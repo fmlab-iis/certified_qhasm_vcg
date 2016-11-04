@@ -505,17 +505,17 @@ let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 QCong
   (
-    (Radix51.limbs [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    (radix51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
     @*
-    (Radix51.limbs [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
+    (radix51 [::QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
   )
   (
-    Radix51.limbs [:: QBinop QAdd (QVar r0) (pow2 (QVar mulr01) 64%positive);
-                      QBinop QAdd (QVar r1) (pow2 (QVar mulr11) 64%positive);
-                      QBinop QAdd (QVar r2) (pow2 (QVar mulr21) 64%positive);
-                      QBinop QAdd (QVar r3) (pow2 (QVar mulr31) 64%positive);
-                      QBinop QAdd (QVar r4) (pow2 (QVar mulr41) 64%positive)
-                  ]
+    radix51 [:: QBinop QAdd (QVar r0) (pow2 (QVar mulr01) 64%positive);
+                QBinop QAdd (QVar r1) (pow2 (QVar mulr11) 64%positive);
+                QBinop QAdd (QVar r2) (pow2 (QVar mulr21) 64%positive);
+                QBinop QAdd (QVar r3) (pow2 (QVar mulr31) 64%positive);
+                QBinop QAdd (QVar r4) (pow2 (QVar mulr41) 64%positive)
+            ]
   )
   n25519.
 
