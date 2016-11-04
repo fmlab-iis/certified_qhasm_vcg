@@ -60,21 +60,13 @@ Ltac unfold_ispec :=
 
 Definition opaque_eq (S : Type) (x y : S) := x = y.
 
-Lemma lock_eq : forall (S : Type) (x y : S), x = y -> opaque_eq x y.
-Proof.
-  done.
-Qed.
-
-Lemma unlock_eq : forall (S : Type) (x y : S), opaque_eq x y -> x = y.
-Proof.
-  done.
-Qed.
-
 Ltac lock_hyp H :=
-  move: (lock_eq H); clear H; move=> H.
+  match type of H with
+  | ?x = ?y => fold (opaque_eq x y) in H
+  end.
 
 Ltac unlock_hyp H :=
-  move: (unlock_eq H); clear H; move=> H.
+  unfold opaque_eq in H.
 
 Ltac unlock_hyps :=
   match goal with
@@ -103,8 +95,9 @@ From Coq Require Import Nsatz.
 
 Ltac solve_ispec :=
   match goal with
-  | |- _ = _ => nsatz
+  | |- _ /\ _ => split; solve_ispec
   | |- exists _, _ = _ => gbarith
+  | |- _ = _ => nsatz
   end.
 
 Ltac verify_ispec := unfold_ispec; rewrite_assign; solve_ispec.
