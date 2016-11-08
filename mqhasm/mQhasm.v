@@ -104,13 +104,6 @@ Module MakeQhasm (V : SsrOrderedType).
     | hd::tl => VS.union (vars_instr hd) (vars_program tl)
     end.
 
-  Fixpoint limbs (radix : positive) (es : seq exp) : exp :=
-    match es with
-    | [::] => QConst 0
-    | hd::tl =>
-      QBinop QAdd hd (QBinop QMul (limbs radix tl) (QPow (QConst 2) radix))
-    end.
-
   Definition qzero : exp := QConst 0.
   Definition qtwo : exp := QConst 2.
 
@@ -456,6 +449,18 @@ Module MakeQhasm (V : SsrOrderedType).
     assumption.
   Qed.
 
+  Lemma spec_concat :
+    forall f g h p1 p2,
+      |= {{ f }} p1 {{ g }} -> |= {{ g }} p2 {{ h }} ->
+      |= {{ f }} (p1 ++ p2) {{ h }}.
+  Proof.
+    move=> f g h p1 p2 Hp1 Hp2 s1 s2 /= Hf Hp.
+    move: (eval_program_split Hp) => [s3 [Hep1 Hep2]].
+    apply: (Hp2 _ _ _ Hep2) => /=.
+    apply: (Hp1 _ _ _ Hep1) => /=.
+    assumption.
+  Qed.
+
   Lemma spec_split_post :
     forall f g1 g2 p,
       |= {{ f }} p {{ g1 }} ->
@@ -565,6 +570,33 @@ Module MakeQhasm (V : SsrOrderedType).
       reflexivity.
   Qed.
 
+
+
+  (** Big integers *)
+
+  Section BigIntegers.
+
+    Require Import Nats.
+    From mathcomp Require Import ssrnat.
+
+    Variable w : nat.
+
+    Fixpoint limbs_rec vs (n : nat) : exp :=
+      match vs with
+      | [::] => QConst 0
+      | hd::[::] => if n == 0 then hd
+                    else qmul hd (qpow2 (Pos.of_nat n))
+      | hd::tl =>
+        let m := (n + w) in
+        if n == 0 then qadd hd (limbs_rec tl m)
+        else qadd (qmul hd (qpow2 (Pos.of_nat n))) (limbs_rec tl m)
+      end.
+
+    Definition limbs (vs : seq exp) : exp :=
+      limbs_rec vs 0.
+
+  End BigIntegers.
+
 End MakeQhasm.
 
 Module Qhasm := MakeQhasm VarOrder.
@@ -586,26 +618,3 @@ Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : mqha
 Notation "f ===> g" := (entails f g) (at level 82, no associativity) : mqhasm_scope.
 Notation "{{ f }} p {{ g }}" := ({| spre := f; sprog := p; spost := g |}) (at level 82, no associativity) : mqhasm_scope.
 Notation "|= s" := (valid_spec s) (at level 83, no associativity) : mqhasm_scope.
-
-
-
-Module Radix.
-  Require Import Nats.
-  From mathcomp Require Import ssrnat.
-  Variable w : nat.
-  Fixpoint limbs_rec vs (n : nat) : exp :=
-    match vs with
-    | [::] => QConst 0
-    | hd::[::] => if n == 0 then hd
-                  else qmul hd (qpow2 (Pos.of_nat n))
-    | hd::tl =>
-      let m := (n + w) in
-      if n == 0 then qadd hd (limbs_rec tl m)
-      else qadd (qmul hd (qpow2 (Pos.of_nat n))) (limbs_rec tl m)
-    end.
-  Definition limbs (vs : seq exp) : exp :=
-    limbs_rec vs 0.
-End Radix.
-
-Definition radix51 := limbs 51.
-Definition radix64 := limbs 64.

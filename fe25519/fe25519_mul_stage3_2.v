@@ -1,5 +1,5 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm .
+From mQhasm Require Import mQhasm Radix .
 From mathcomp Require Import seq .
 
 Open Scope N_scope.

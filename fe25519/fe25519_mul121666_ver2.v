@@ -1,5 +1,5 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm .
+From mQhasm Require Import mQhasm Radix .
 From mathcomp Require Import seq .
 
 (* This is an alternative implementation of fe25519_mul121666. *)

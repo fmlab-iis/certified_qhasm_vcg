@@ -97,7 +97,31 @@ Ltac solve_ispec :=
   match goal with
   | |- _ /\ _ => split; solve_ispec
   | |- exists _, _ = _ => gbarith
+  | |- modulo _ _ _ => gbarith
   | |- _ = _ => nsatz
   end.
 
+Ltac verify_bexp :=
+  match goal with
+  | |- valid (QEq _ _) => move=> s /=; nsatz
+  | |- valid (QCong _ _ _) => move=> s /=; gbarith
+  | |- ?f ===> ?g =>
+    let H := fresh in
+    move=> s /= H; split_conjs; clear_true;
+    match goal with
+    | |- _ = _ => nsatz
+    | |- modulo _ _ _ => gbarith
+    end
+  end.
+
 Ltac verify_ispec := unfold_ispec; rewrite_assign; solve_ispec.
+
+Ltac verify_spec vs :=
+  match goal with
+  | |- valid_spec ?spec =>
+    have: valid_ispec (vs, spec);
+      [ verify_ispec |
+        let H := fresh in
+        move=> [_ H]; exact: H
+      ]
+  end.

@@ -758,6 +758,10 @@ Module ZOrder <: SsrOrderedType := MakeSsrOrderedType ZOrderMinimal.
 
 (** Equality Modulo *)
 
+From GBArith Require GBZArith.
+
+Notation modulo := GBZArith.modulo.
+
 Section EqualityModulo.
 
   Local Open Scope Z_scope.
@@ -776,8 +780,6 @@ Section EqualityModulo.
       apply/eqP/negP.
       by rewrite Hxy.
   Qed.
-
-  Definition modulo (x y p : Z) := exists k : Z, x - y = k * p.
 
   Lemma Zminus_mod_mod :
     forall x p : Z,
@@ -852,6 +854,17 @@ Section EqualityModulo.
     exists k.
     rewrite -Z.mul_sub_distr_l Z.mul_assoc (Z.mul_comm k z) -Z.mul_assoc in H.
     exact (Z.mul_reg_l _ _ z Hz H).
+  Qed.
+
+  Require Import Nsatz.
+
+  Lemma modulo_plus x y a b p :
+    modulo x a p -> modulo y b p ->
+    modulo (x + y) (a + b) p.
+  Proof.
+    move=> [k1 H1] [k2 H2].
+    exists (k1 + k2).
+    nsatz.
   Qed.
 
 End EqualityModulo.
