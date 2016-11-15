@@ -1182,10 +1182,10 @@ Qed.
 Lemma post2_cong :
   fe25519_mul_stage12_part2_post ===> fe25519_mul_stage12_post.
 Proof.
-  move=> s /= H; rewrite {}H.
   Require Import GBZArith.
+  move=> s /= H.
   Time gbarith.
-  (* 47.267s *)
+  (* 206.388s *)
 Qed.
 
 Lemma valid_fe25519_mul_stage12 :
