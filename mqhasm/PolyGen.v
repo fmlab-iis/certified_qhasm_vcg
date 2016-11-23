@@ -113,11 +113,10 @@ Section SSAPoly.
     - move=> hd tl IH vs g s1 s2 /andP [Hhd Htl] Hpost Hvs /andP [Hssa1 Hssa2] Hp Hb.
       move: (eval_program_cons Hp) => {Hp} [s3 [Hehd Hetl]].
       apply: (IH _ _ _ _ Htl _ _ Hssa2 Hetl).
-      + rewrite (VSLemmas.OP.P.union_sym _ vs).
-        rewrite -(SSA.well_formed_instr_vars Hhd).
+      + rewrite -(SSA.well_formed_instr_vars Hhd).
         rewrite VSLemmas.OP.P.union_assoc.
         exact: Hpost.
-      + exact: (ssa_unchanged_program_union2 Hssa1 (ssa_unchanged_program_tl Hvs)).
+      + exact: (ssa_unchanged_program_union2 (ssa_unchanged_program_tl Hvs) Hssa1).
       + move=> Htls2.
         apply: Hb.
         split; last by assumption.

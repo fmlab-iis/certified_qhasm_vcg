@@ -1976,14 +1976,13 @@ Lemma dclosed_qassign_succ :
          (m1 m2 : vmap) (si : SSA.instr),
     dclosed m1 ivs lvs svs ->
     (upd_index v m1, ssa_var (upd_index v m1) v @:= ssa_exp m1 e) = (m2, si) ->
-    dclosed m2 ivs (VS.union (VS.singleton v) lvs)
-            (SSA.VS.union (SSA.lvs_instr si) svs).
+    dclosed m2 ivs (VS.union lvs (VS.singleton v))
+            (SSA.VS.union svs (SSA.lvs_instr si)).
 Proof.
   move=> v e ivs lvs svs m1 m2 si Hd [Hm Hsi].
   rewrite -Hsi /= => {Hsi}.
   split; [idtac | split].
   - move=> x.
-    rewrite (VSLemmas.OP.P.union_sym (VS.singleton v) lvs).
     rewrite -VSLemmas.OP.P.union_assoc.
     move=> Hmem.
     move: (VSLemmas.not_mem_union1 Hmem) => {Hmem} [Hmem1 Hmem2].
@@ -1993,42 +1992,42 @@ Proof.
     exact: Hidx.
   - move=> x Hmem.
     case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-    + move: (VSLemmas.mem_singleton1 Hmem) => /eqP Hxv.
-      rewrite Hxv -Hm.
-      exact: get_upd_index_gt0.
     + move: (dclosed_mem4 Hd Hmem) => Hlt.
       rewrite -Hm.
       exact: (Nltn_leq_trans Hlt (get_upd_index_le m1 x v)).
+    + move: (VSLemmas.mem_singleton1 Hmem) => /eqP Hxv.
+      rewrite Hxv -Hm.
+      exact: get_upd_index_gt0.
   - move=> x i.
-    case H: (VS.mem x ivs && (i <=? get_index x m2) || [&& VS.mem x (VS.union (VS.singleton v) lvs), 0 <? i & i <=? get_index x m2]).
+    case H: (VS.mem x ivs && (i <=? get_index x m2) || [&& VS.mem x (VS.union lvs (VS.singleton v)), 0 <? i & i <=? get_index x m2]).
     + case: (orP H) => {H} /andP [Hmem Hi].
-      * rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
+      * rewrite SSA.VSLemmas.OP.P.union_sym -SSA.VSLemmas.OP.P.add_union_singleton.
         rewrite -Hm in Hi.
         exact: (dclosed_upd1 Hd Hmem Hi).
-      * rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
+      * rewrite SSA.VSLemmas.OP.P.union_sym -SSA.VSLemmas.OP.P.add_union_singleton.
         rewrite -Hm in Hi.
         exact: (dclosed_upd2 Hd Hi).
     + apply/negP => Hmemx.
       move/negP: H; apply.
       apply/orP.
       case: (SSA.VSLemmas.mem_union1 Hmemx) => {Hmemx} Hmemx.
-      * move: (SSA.VSLemmas.mem_singleton1 Hmemx) => {Hmemx} /eqP [Hx Hi].
-        right; apply/andP; split.
-        -- rewrite Hx; apply: VSLemmas.mem_union2;
-           exact: VSLemmas.mem_singleton2.
-        -- rewrite Hx -Hm; apply/andP; split; last by rewrite Hi; exact: Nleqnn.
-           rewrite Hi.
-           exact: (get_upd_index_gt0).
       * move: (dclosed_mem1 Hd Hmemx); case; move => [Hx Hi].
         -- left; apply/andP; split; first by exact: Hx.
            rewrite -Hm.
            exact: (Nleq_trans Hi (get_upd_index_le m1 x v)).
         -- right; apply/andP; split;
-           first by apply: VSLemmas.mem_union3; exact: Hx.
+           first by apply: VSLemmas.mem_union2; exact: Hx.
            move/andP: Hi => [Hi1 Hi2].
            apply/andP; split; first by exact: Hi1.
            rewrite -Hm.
            exact: (Nleq_trans Hi2 (get_upd_index_le m1 x v)).
+      * move: (SSA.VSLemmas.mem_singleton1 Hmemx) => {Hmemx} /eqP [Hx Hi].
+        right; apply/andP; split.
+        -- rewrite Hx; apply: VSLemmas.mem_union3;
+           exact: VSLemmas.mem_singleton2.
+        -- rewrite Hx -Hm; apply/andP; split; last by rewrite Hi; exact: Nleqnn.
+           rewrite Hi.
+           exact: (get_upd_index_gt0).
 Qed.
 
 Lemma dclosed_qsplit_succ :
@@ -2037,16 +2036,15 @@ Lemma dclosed_qsplit_succ :
     dclosed m1 ivs lvs svs ->
     (upd_index v0 (upd_index v m1),
      SSA.QSplit (ssa_var (upd_index v m1) v)
-                (ssa_var (upd_index v0 (upd_index v m1)) v0) 
+                (ssa_var (upd_index v0 (upd_index v m1)) v0)
                 (ssa_exp m1 e) p) = (m2, si) ->
-    dclosed m2 ivs (VS.union (VS.add v (VS.singleton v0)) lvs)
-            (SSA.VS.union (SSA.lvs_instr si) svs).
+    dclosed m2 ivs (VS.union lvs (VS.add v (VS.singleton v0)))
+            (SSA.VS.union svs (SSA.lvs_instr si)).
 Proof.
   move=> vh vl e p ivs lvs svs m1 m2 si Hd [Hm Hsi].
   rewrite -Hsi /= => {Hsi}.
   split; [idtac | split].
   - move=> v.
-    rewrite (VSLemmas.OP.P.union_sym _ lvs).
     rewrite -VSLemmas.OP.P.union_assoc.
     move=> Hmem.
     move: (VSLemmas.not_mem_union1 Hmem) => {Hmem} [Hmem1 Hmem2].
@@ -2058,7 +2056,12 @@ Proof.
   - move=> v Hmem.
     rewrite -Hm => {Hm}.
     case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem;
-      [case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem | idtac].
+      [idtac | case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem].
+    + move: (dclosed_mem4 Hd Hmem) => Hlt.
+      move: (get_upd_index_le m1 v vh) => Hle.
+      move: (Nltn_leq_trans Hlt Hle) => {Hlt Hle} Hlt.
+      move: (get_upd_index_le (upd_index vh m1) v vl) => Hle.
+      exact: (Nltn_leq_trans Hlt Hle).
     + rewrite (eqP Hmem).
       move: (get_upd_index_le (upd_index vh m1) vh vl) => Hle.
       move: (get_upd_index_gt0 m1 vh) => Hlt.
@@ -2066,17 +2069,15 @@ Proof.
     + move: (VSLemmas.mem_singleton1 Hmem) => {Hmem} Heq.
       rewrite (eqP Heq).
       exact: (get_upd_index_gt0 _ vl).
-    + move: (dclosed_mem4 Hd Hmem) => Hlt.
-      move: (get_upd_index_le m1 v vh) => Hle.
-      move: (Nltn_leq_trans Hlt Hle) => {Hlt Hle} Hlt.
-      move: (get_upd_index_le (upd_index vh m1) v vl) => Hle.
-      exact: (Nltn_leq_trans Hlt Hle).
   - move=> v i.
     rewrite SSA.VSLemmas.OP.P.add_union_singleton.
-    rewrite SSA.VSLemmas.OP.P.union_assoc.
+    rewrite (SSA.VSLemmas.OP.P.union_sym (SSA.VS.singleton _)).
+    rewrite -SSA.VSLemmas.OP.P.union_assoc.
+    rewrite (SSA.VSLemmas.OP.P.union_sym svs).
+    rewrite (SSA.VSLemmas.OP.P.union_sym _ (SSA.VS.singleton _)).
     rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
     rewrite -SSA.VSLemmas.OP.P.add_union_singleton.
-    case H:  (VS.mem v ivs && (i <=? get_index v m2) || [&& VS.mem v (VS.union (VS.add vh (VS.singleton vl)) lvs), 0 <? i & i <=? get_index v m2]).
+    case H:  (VS.mem v ivs && (i <=? get_index v m2) || [&& VS.mem v (VS.union lvs (VS.add vh (VS.singleton vl))), 0 <? i & i <=? get_index v m2]).
     + rewrite -Hm in H.
       case: (orP H) => {H} /andP [Hmem Hi].
       * exact: (dclosed_upd3 Hd Hmem Hi).
@@ -2090,7 +2091,7 @@ Proof.
         ].
       * move/eqP: Hmem => [Hv Hi].
         right; apply/andP; split.
-        -- apply: VSLemmas.mem_union2.
+        -- apply: VSLemmas.mem_union3.
            apply: VSLemmas.mem_add2.
            rewrite Hv; exact: eqxx.
         -- rewrite get_upd_index_eq in Hi.
@@ -2104,7 +2105,7 @@ Proof.
               exact: (Nltn_leq_trans Hlt Hle).
       * move/eqP: Hmem => [Hv Hi].
         right; apply/andP; split.
-        -- apply: VSLemmas.mem_union2.
+        -- apply: VSLemmas.mem_union3.
            apply: VSLemmas.mem_add3.
            apply: VSLemmas.mem_singleton2.
            rewrite Hv; exact: eqxx.
@@ -2123,7 +2124,7 @@ Proof.
         -- left; apply/andP; split; first by assumption.
            rewrite -Hm.
            exact: (Nleq_trans Hi Hle).
-        -- right; apply/andP; split; first by apply: VSLemmas.mem_union3.
+        -- right; apply/andP; split; first by apply: VSLemmas.mem_union2.
            move/andP: Hi => [Hi1 Hi2].
            apply/andP; split; first by assumption.
            rewrite -Hm.
@@ -2133,7 +2134,7 @@ Qed.
 Corollary dclosed_instr_succ ivs lvs svs m1 m2 i si :
   dclosed m1 ivs lvs svs ->
   ssa_instr m1 i = (m2, si) ->
-  dclosed m2 ivs (VS.union (lvs_instr i) lvs) (SSA.VS.union (SSA.lvs_instr si) svs).
+  dclosed m2 ivs (VS.union lvs (lvs_instr i)) (SSA.VS.union svs (SSA.lvs_instr si)).
 Proof.
   elim: i ivs lvs svs m1 m2 si => /=.
   - exact: dclosed_qassign_succ.
@@ -2157,10 +2158,9 @@ Proof.
       rewrite Hsp => {Hsp sp}.
       apply/andP; split.
       * exact: (dclosed_instr_well_formed Hhd Hshd).
-      * apply: (IH ivs (VS.union (lvs_instr hd) lvs) _ _ _ _ _ Hstl);
-        last by exact: (dclosed_instr_succ Hd Hshd).
+      * apply: (IH ivs (VS.union lvs (lvs_instr hd)) _ _ _ _ _ Hstl);
+          last by exact: (dclosed_instr_succ Hd Hshd).
         apply: (well_formed_program_replace Htl).
-        rewrite (VSLemmas.OP.P.union_sym (lvs_instr hd) (VS.union ivs lvs)).
         rewrite VSLemmas.OP.P.union_assoc.
         rewrite (VSLemmas.OP.P.union_sym lvs (lvs_instr hd)).
         reflexivity.

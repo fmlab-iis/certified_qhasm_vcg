@@ -305,6 +305,25 @@ Module FSetLemmas (S : FSetInterface.S).
     - exact: (S.subset_2 H23).
   Qed.
 
+  Lemma subset_union4 s1 s2 s3 :
+    S.subset (S.union s1 s2) s3 ->
+    S.subset s1 s3.
+  Proof.
+    move=> Hsub.
+    move: (S.subset_2 Hsub) => {Hsub} Hsub.
+    apply: S.subset_1 => x Hinx.
+    apply: (Hsub x).
+    exact: (S.union_2 _ Hinx).
+  Qed.
+
+  Lemma subset_union5 s1 s2 s3 :
+    S.subset (S.union s1 s2) s3 ->
+    S.subset s2 s3.
+  Proof.
+    rewrite OP.P.union_sym.
+    exact: subset_union4.
+  Qed.
+
   Lemma mem_in_elements :
     forall x s,
       S.mem x s ->
@@ -523,6 +542,23 @@ Module FSetLemmas (S : FSetInterface.S).
       apply: (S.diff_3 Hinx).
       apply/memP.
       by rewrite Hmem.
+  Qed.
+
+  Lemma subset_union_diff4 s1 s2 s3 :
+    S.subset (S.diff s1 s2) s3 ->
+    S.subset s1 (S.union s2 s3).
+  Proof.
+    move=> H.
+    move: (S.subset_2 H) => {H} H.
+    apply/S.subset_1 => x Hinx.
+    case H2: (S.mem x s2).
+    - apply: S.union_2.
+      apply/memP; assumption.
+    - apply: S.union_3.
+      apply: (H x).
+      apply: (S.diff_3 Hinx).
+      apply/memP.
+      by rewrite H2.
   Qed.
 
   Lemma mem_inter1 x s1 s2 :
