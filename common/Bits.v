@@ -4,7 +4,7 @@ From mathcomp Require Import ssreflect ssrbool ssrnat ssralg ssrfun.
 From mathcomp Require Import eqtype div zmodp.
 From mathcomp Require Export tuple.
 From Bits Require Export bits.
-Require Import Nats ZAriths Tactics.
+From Common Require Import Nats ZAriths Tactics.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

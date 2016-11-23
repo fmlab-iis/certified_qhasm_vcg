@@ -50,16 +50,14 @@ vo_to_obj = $(addsuffix .o,\
 ##########################
 
 COQLIBS?=\
-  -R "." Top\
-  -R "lib/CompCert" CompCert\
-  -R "lib/gbarith/src" GBArith\
-  -R "common" Common\
-  -R "qhasm" Qhasm\
-  -R "sqhasm" sQhasm\
-  -R "mqhasm" mQhasm\
+  -Q "lib/CompCert" CompCert\
+  -Q "lib/gbarith/src" GBArith\
+  -Q "common" Common\
+  -Q "qhasm" Qhasm\
+  -Q "sqhasm" sQhasm\
+  -Q "mqhasm" mQhasm\
   -I "."
 COQCHKLIBS?=\
-  -R "." Top\
   -R "lib/CompCert" CompCert\
   -R "lib/gbarith/src" GBArith\
   -R "common" Common\
@@ -67,7 +65,6 @@ COQCHKLIBS?=\
   -R "sqhasm" sQhasm\
   -R "mqhasm" mQhasm
 COQDOCLIBS?=\
-  -R "." Top\
   -R "lib/CompCert" CompCert\
   -R "lib/gbarith/src" GBArith\
   -R "common" Common\
@@ -156,6 +153,11 @@ endif
 
 VO=vo
 VOFILES:=$(VFILES:.v=.$(VO))
+VOFILES1=$(patsubst lib/CompCert/%,%,$(filter lib/CompCert/%,$(VOFILES)))
+VOFILES3=$(patsubst common/%,%,$(filter common/%,$(VOFILES)))
+VOFILES4=$(patsubst qhasm/%,%,$(filter qhasm/%,$(VOFILES)))
+VOFILES5=$(patsubst sqhasm/%,%,$(filter sqhasm/%,$(VOFILES)))
+VOFILES6=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(VOFILES)))
 GLOBFILES:=$(VFILES:.v=.glob)
 GFILES:=$(VFILES:.v=.g)
 HTMLFILES:=$(VFILES:.v=.html)
@@ -163,6 +165,11 @@ GHTMLFILES:=$(VFILES:.v=.g.html)
 OBJFILES=$(call vo_to_obj,$(VOFILES))
 ALLNATIVEFILES=$(OBJFILES:.o=.cmi) $(OBJFILES:.o=.cmo) $(OBJFILES:.o=.cmx) $(OBJFILES:.o=.cmxs)
 NATIVEFILES=$(foreach f, $(ALLNATIVEFILES), $(wildcard $f))
+NATIVEFILES1=$(patsubst lib/CompCert/%,%,$(filter lib/CompCert/%,$(NATIVEFILES)))
+NATIVEFILES3=$(patsubst common/%,%,$(filter common/%,$(NATIVEFILES)))
+NATIVEFILES4=$(patsubst qhasm/%,%,$(filter qhasm/%,$(NATIVEFILES)))
+NATIVEFILES5=$(patsubst sqhasm/%,%,$(filter sqhasm/%,$(NATIVEFILES)))
+NATIVEFILES6=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(NATIVEFILES)))
 ifeq '$(HASNATDYNLINK)' 'true'
 HASNATDYNLINK_OR_EMPTY := yes
 else
@@ -231,9 +238,25 @@ userinstall:
 	+$(MAKE) USERINSTALL=true install
 
 install:
-	cd "." && for i in $(VOFILES) $(VFILES) $(GLOBFILES) $(NATIVEFILES) $(CMOFILES) $(CMIFILES) $(CMAFILES); do \
-	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/Top/$$i`"; \
-	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Top/$$i; \
+	cd "mqhasm" && for i in $(NATIVEFILES6) $(GLOBFILES6) $(VFILES6) $(VOFILES6); do \
+	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/$$i`"; \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/$$i; \
+	done
+	cd "sqhasm" && for i in $(NATIVEFILES5) $(GLOBFILES5) $(VFILES5) $(VOFILES5); do \
+	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm/$$i`"; \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm/$$i; \
+	done
+	cd "qhasm" && for i in $(NATIVEFILES4) $(GLOBFILES4) $(VFILES4) $(VOFILES4); do \
+	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm/$$i`"; \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm/$$i; \
+	done
+	cd "common" && for i in $(NATIVEFILES3) $(GLOBFILES3) $(VFILES3) $(VOFILES3); do \
+	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/Common/$$i`"; \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Common/$$i; \
+	done
+	cd "lib/CompCert" && for i in $(NATIVEFILES1) $(GLOBFILES1) $(VFILES1) $(VOFILES1); do \
+	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/CompCert/$$i`"; \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/CompCert/$$i; \
 	done
 
 install-doc:
@@ -244,7 +267,12 @@ install-doc:
 
 uninstall_me.sh: Makefile
 	echo '#!/bin/sh' > $@
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Top && rm -f $(VOFILES) $(VFILES) $(GLOBFILES) $(NATIVEFILES) $(CMOFILES) $(CMIFILES) $(CMAFILES) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Top" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/mQhasm && rm -f $(NATIVEFILES6) $(GLOBFILES6) $(VFILES6) $(VOFILES6) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "mQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/sQhasm && rm -f $(NATIVEFILES5) $(GLOBFILES5) $(VFILES5) $(VOFILES5) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "sQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Qhasm && rm -f $(NATIVEFILES4) $(GLOBFILES4) $(VFILES4) $(VOFILES4) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Qhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Common && rm -f $(NATIVEFILES3) $(GLOBFILES3) $(VFILES3) $(VOFILES3) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Common" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/GBArith && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "GBArith" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/CompCert && rm -f $(NATIVEFILES1) $(GLOBFILES1) $(VFILES1) $(VOFILES1) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "CompCert" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
 	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT) \\\n' >> "$@"
 	printf '&& rm -f $(shell find "html" -maxdepth 1 -and -type f -print)\n' >> "$@"
 	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL) && find $(INSTALLDEFAULTROOT)/html -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"

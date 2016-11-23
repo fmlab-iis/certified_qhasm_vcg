@@ -212,6 +212,26 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: (Hsub _ Hin).
   Qed.
 
+  Lemma union_emptyl s :
+    S.Equal (S.union S.empty s) s.
+  Proof.
+    move=> v; split => Hin.
+    - case: (S.union_1 Hin) => {Hin} Hin.
+      + apply: False_ind.
+        apply: S.empty_1.
+        exact: Hin.
+      + assumption.
+    - apply: S.union_3.
+      assumption.
+  Qed.
+
+  Lemma union_emptyr s :
+    S.Equal (S.union s S.empty) s.
+  Proof.
+    rewrite OP.P.union_sym.
+    exact: union_emptyl.
+  Qed.
+
   Lemma union_subsets sa1 sa2 sb1 sb2 :
     S.subset sa1 sb1 ->
     S.subset sa2 sb2 ->
@@ -245,6 +265,44 @@ Module FSetLemmas (S : FSetInterface.S).
   Proof.
     apply/S.subset_1.
     exact: OP.P.union_subset_2.
+  Qed.
+
+  Lemma subset_empty s :
+    S.subset S.empty s.
+  Proof.
+    apply/S.subset_1.
+    exact: OP.P.subset_empty.
+  Qed.
+
+  Lemma subset_union1 s1 s2 s3 :
+    S.subset s1 s2 ->
+    S.subset s1 (S.union s2 s3).
+  Proof.
+    move=> Hsub.
+    apply: S.subset_1 => x /memP Hx.
+    apply/memP.
+    apply/mem_union2.
+    exact: (mem_subset Hx Hsub).
+  Qed.
+
+  Lemma subset_union2 s1 s2 s3 :
+    S.subset s1 s3 ->
+    S.subset s1 (S.union s2 s3).
+  Proof.
+    rewrite OP.P.union_sym.
+    exact: subset_union1.
+  Qed.
+
+  Lemma subset_union3 s1 s2 s3 :
+    S.subset s1 s3 ->
+    S.subset s2 s3 ->
+    S.subset (S.union s1 s2) s3.
+  Proof.
+    move=> H13 H23.
+    apply: S.subset_1.
+    apply: OP.P.union_subset_3.
+    - exact: (S.subset_2 H13).
+    - exact: (S.subset_2 H23).
   Qed.
 
   Lemma mem_in_elements :
@@ -365,6 +423,247 @@ Module FSetLemmas (S : FSetInterface.S).
   Proof.
     move=> Hin; apply/memP.
     exact: in_of_list2.
+  Qed.
+
+  Lemma mem_remove1 x y s :
+    S.mem x (S.remove y s) ->
+    ~ S.E.eq x y /\ S.mem x s.
+  Proof.
+    move=> Hmem; split.
+    - move=> Heq.
+      move: (S.E.eq_sym Heq) => {Heq} Heq.
+      apply: (@S.remove_1 s y x Heq).
+      apply/memP.
+      assumption.
+    - apply/memP; apply: (@S.remove_3 s y x); apply/memP; assumption.
+  Qed.
+
+  Lemma mem_remove2 x y s :
+    S.E.eq x y ->
+    ~~ S.mem x (S.remove y s).
+  Proof.
+    move=> Heq.
+    apply/negP => Hmem.
+    move: (mem_remove1 Hmem) => {Hmem} [Hne Hmem].
+    apply: Hne; assumption.
+  Qed.
+
+  Lemma mem_remove3 x y s :
+    ~ S.E.eq x y ->
+    S.mem x s ->
+    S.mem x (S.remove y s).
+  Proof.
+    move=> Hne Hmem.
+    apply/memP; apply: S.remove_2.
+    - move=> Heq; apply: Hne; apply: S.E.eq_sym; assumption.
+    - apply/memP; assumption.
+  Qed.
+
+  Lemma in_remove_ne x y s :
+    S.In x (S.remove y s) -> ~ S.E.eq x y.
+  Proof.
+    move=> Hin Heq.
+    move: (S.E.eq_sym Heq) => {Heq} Heq.
+    exact: (S.remove_1 Heq Hin).
+  Qed.
+
+  Lemma diff_add x s1 s2 :
+    S.Equal (S.diff s1 (S.add x s2)) (S.remove x (S.diff s1 s2)).
+  Proof.
+    split => Hin.
+    - apply: S.remove_2.
+      + move=> Heq; apply: (S.diff_2 Hin).
+        exact: (S.add_1 _ Heq).
+      + apply: (S.diff_3 (S.diff_1 Hin)).
+        move=> H; apply: (S.diff_2 Hin).
+        exact: (S.add_2 _ H).
+    - apply: S.diff_3.
+      + exact: (S.diff_1 (S.remove_3 Hin)).
+      + move: (OP.P.Add_add s2 x a).
+        move=> [H _].
+        move=> H1; case: (H H1) => {H H1}.
+        * move=> Heq.
+          move: (S.E.eq_sym Heq) => {Heq} Heq.
+          exact: (in_remove_ne Hin Heq).
+        * move=> Hins2.
+          exact: (S.diff_2 (S.remove_3 Hin) Hins2).
+  Qed.
+
+  Lemma subset_union_diff1 s1 s2 s3 :
+    S.subset s1 (S.union s2 s3) ->
+    S.subset (S.diff s1 s2) s3.
+  Proof.
+    move=> H.
+    apply: S.subset_1 => x Hin_diff.
+    move: (S.subset_2 H) => {H} H.
+    move: (H x (S.diff_1 Hin_diff)) => Hin_union.
+    case: (S.union_1 Hin_union).
+    - move=> Hin2.
+      apply: False_ind; exact: (S.diff_2 Hin_diff Hin2).
+    - by apply.
+  Qed.
+
+  Lemma subset_union_diff2 s1 s2 s3 :
+    S.subset s1 (S.union s2 s3) ->
+    S.subset (S.diff s1 s3) s2.
+  Proof.
+    rewrite OP.P.union_sym.
+    move=> H.
+    exact: (subset_union_diff1 H).
+  Qed.
+
+  Lemma subset_union_diff3 s1 s2 :
+    S.subset s1 (S.union (S.diff s1 s2) s2).
+  Proof.
+    apply: S.subset_1 => x Hinx.
+    case Hmem: (S.mem x s2).
+    - apply: S.union_3.
+      apply/memP; assumption.
+    - apply: S.union_2.
+      apply: (S.diff_3 Hinx).
+      apply/memP.
+      by rewrite Hmem.
+  Qed.
+
+  Lemma mem_inter1 x s1 s2 :
+    S.mem x (S.inter s1 s2) -> S.mem x s1.
+  Proof.
+    move=> /memP H.
+    apply/memP.
+    exact: (S.inter_1 H).
+  Qed.
+
+  Lemma mem_inter2 x s1 s2 :
+    S.mem x (S.inter s1 s2) -> S.mem x s2.
+  Proof.
+    move=> /memP H.
+    apply/memP.
+    exact: (S.inter_2 H).
+  Qed.
+
+  Lemma mem_inter3 x s1 s2 :
+    S.mem x s1 -> S.mem x s2 ->
+    S.mem x (S.inter s1 s2).
+  Proof.
+    move=> /memP H1 /memP H2.
+    apply/memP.
+    exact: (S.inter_3 H1 H2).
+  Qed.
+
+
+
+  Definition disjoint s1 s2 : bool :=
+    S.is_empty (S.inter s1 s2).
+
+  Lemma disjoint_sym s1 s2 :
+    disjoint s1 s2 = disjoint s2 s1.
+  Proof.
+    rewrite /disjoint OP.P.inter_sym.
+    reflexivity.
+  Qed.
+
+  Lemma disjoint_nonempty_anti_refl s : ~~ S.is_empty s -> ~~ disjoint s s.
+  Proof.
+    move=> Hemp.
+    apply/negP => H.
+    move/negP: Hemp; apply.
+    move: H.
+    by rewrite /disjoint OP.P.inter_subset_equal.
+  Qed.
+
+  Lemma mem_disjoint1 x s1 s2 :
+    disjoint s1 s2 ->
+    S.mem x s1 -> ~~ S.mem x s2.
+  Proof.
+    move=> Hd Hm1.
+    apply/negP => Hm2.
+    move: (S.is_empty_2 Hd) => {Hd} Hd.
+    apply: (Hd x).
+    apply/memP.
+    exact: (mem_inter3 Hm1 Hm2).
+  Qed.
+
+  Lemma mem_disjoint2 x s1 s2 :
+    disjoint s1 s2 ->
+    S.mem x s2 -> ~~ S.mem x s1.
+  Proof.
+    rewrite disjoint_sym.
+    exact: mem_disjoint1.
+  Qed.
+
+  Lemma disjoint_singleton x s :
+    disjoint s (S.singleton x) = ~~ S.mem x s.
+  Proof.
+    case H: (S.mem x s) => /=.
+    - apply/negP => Hd.
+      move: (S.is_empty_2 Hd) => Hemp.
+      apply: (Hemp x).
+      apply/memP.
+      apply: (mem_inter3 H).
+      exact: mem_singleton2.
+    - move/negP: H => H.
+      apply: S.is_empty_1 => v /memP Hv.
+      apply: H.
+      rewrite -(mem_singleton1 (mem_inter2 Hv)).
+      exact: (mem_inter1 Hv).
+  Qed.
+
+  Lemma disjoint_add x s1 s2 :
+    disjoint s1 (S.add x s2) = ~~ S.mem x s1 && disjoint s1 s2.
+  Proof.
+    case Hx: (S.mem x s1) => /=.
+    - apply/negP => Hd.
+      move: (S.is_empty_2 Hd) => Hemp.
+      apply: (Hemp x).
+      apply/memP.
+      apply: (mem_inter3 Hx).
+      exact: mem_add2.
+    - case Hd12: (disjoint s1 s2) => /=.
+      + apply: S.is_empty_1 => v /memP Hv.
+        move: (mem_inter1 Hv) (mem_inter2 Hv) => {Hv} Hv1 Hv2.
+        move: (S.is_empty_2 Hd12) => {Hd12} Hemp.
+        apply: (Hemp v) => {Hemp}.
+        apply/memP.
+        apply: (mem_inter3 Hv1).
+        case: (mem_add1 Hv2); last by apply.
+        move=> H.
+        apply: False_ind.
+        move/negP: Hx; apply.
+        rewrite -H; assumption.
+      + apply/negP => Hd.
+        move/negP: Hd12; apply.
+        apply: S.is_empty_1 => v /memP Hv.
+        move: (S.is_empty_2 Hd) => {Hd} Hemp.
+        apply: (Hemp v).
+        apply/memP.
+        apply: (mem_inter3 (mem_inter1 Hv)).
+        apply: mem_add3.
+        exact: (mem_inter2 Hv).
+  Qed.
+
+  Lemma subset_union_disjoint1 s1 s2 s3 :
+    S.subset s1 (S.union s2 s3) ->
+    disjoint s1 s3 ->
+    S.subset s1 s2.
+  Proof.
+    move=> Hsub Hd.
+    apply: S.subset_1 => x /memP Hmem1.
+    apply/memP.
+    case: (mem_union1 (@mem_subset x _ _ Hmem1 Hsub)).
+    - done.
+    - move=> Hmem3.
+      apply: False_ind.
+      apply/negP/negPn: (mem_disjoint1 Hd Hmem1).
+      assumption.
+  Qed.
+
+  Lemma subset_union_disjoint2 s1 s2 s3 :
+    S.subset s1 (S.union s2 s3) ->
+    disjoint s1 s2 ->
+    S.subset s1 s3.
+  Proof.
+    rewrite OP.P.union_sym.
+    exact: subset_union_disjoint1.
   Qed.
 
 End FSetLemmas.

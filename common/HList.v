@@ -1,7 +1,7 @@
 
 From Coq Require Import Program Program.Tactics Arith List.
 From mathcomp Require Import ssreflect ssrnat.
-Require Import Lists.
+From Common Require Import Lists.
 
 (** * Formalization of heterogeneous lists.
 

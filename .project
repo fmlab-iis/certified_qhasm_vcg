@@ -1,10 +1,9 @@
--R . Top
--R lib/CompCert CompCert
--R lib/gbarith/src GBArith
--R common Common
--R qhasm Qhasm
--R sqhasm sQhasm
--R mqhasm mQhasm
+-Q lib/CompCert CompCert
+-Q lib/gbarith/src GBArith
+-Q common Common
+-Q qhasm Qhasm
+-Q sqhasm sQhasm
+-Q mqhasm mQhasm
 -I .
 # 3rd Party Libraries
 lib/CompCert/Coqlib.v

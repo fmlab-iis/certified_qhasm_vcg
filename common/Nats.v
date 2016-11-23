@@ -1,7 +1,7 @@
 
 From Coq Require Import OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
-Require Import Types.
+From Common Require Import Types.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

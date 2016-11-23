@@ -3,7 +3,7 @@
 
 From Coq Require Import Program Program.Tactics ZArith.
 From mathcomp Require Import ssreflect ssrbool eqtype.
-Require Import HList Var ZAriths.
+From Common Require Import HList Var ZAriths.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

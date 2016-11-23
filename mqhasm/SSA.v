@@ -1108,10 +1108,10 @@ Qed.
 (** Well-formed SSA *)
 
 Definition ssa_var_unchanged_instr (v : SSA.var) (i : SSA.instr) : bool :=
-  ~~ (SSA.VS.mem v (SSA.lvals_instr i)).
+  ~~ (SSA.VS.mem v (SSA.lvs_instr i)).
 
 Definition ssa_unchanged_instr_var (i : SSA.instr) (v : SSA.var) : bool :=
-  ~~ (SSA.VS.mem v (SSA.lvals_instr i)).
+  ~~ (SSA.VS.mem v (SSA.lvs_instr i)).
 
 Definition ssa_vars_unchanged_instr (vs : SSA.VS.t) (i : SSA.instr) : bool :=
   SSA.VS.for_all (ssa_unchanged_instr_var i) vs.
@@ -1129,7 +1129,7 @@ Fixpoint ssa_single_assignment (p : SSA.program) : bool :=
   match p with
   | [::] => true
   | hd::tl =>
-    (ssa_vars_unchanged_program (SSA.lvals_instr hd) tl) &&
+    (ssa_vars_unchanged_program (SSA.lvs_instr hd) tl) &&
     (ssa_single_assignment tl)
   end.
 
@@ -1977,7 +1977,7 @@ Lemma dclosed_qassign_succ :
     dclosed m1 ivs lvs svs ->
     (upd_index v m1, ssa_var (upd_index v m1) v @:= ssa_exp m1 e) = (m2, si) ->
     dclosed m2 ivs (VS.union (VS.singleton v) lvs)
-            (SSA.VS.union (SSA.lvals_instr si) svs).
+            (SSA.VS.union (SSA.lvs_instr si) svs).
 Proof.
   move=> v e ivs lvs svs m1 m2 si Hd [Hm Hsi].
   rewrite -Hsi /= => {Hsi}.
@@ -2040,7 +2040,7 @@ Lemma dclosed_qsplit_succ :
                 (ssa_var (upd_index v0 (upd_index v m1)) v0) 
                 (ssa_exp m1 e) p) = (m2, si) ->
     dclosed m2 ivs (VS.union (VS.add v (VS.singleton v0)) lvs)
-            (SSA.VS.union (SSA.lvals_instr si) svs).
+            (SSA.VS.union (SSA.lvs_instr si) svs).
 Proof.
   move=> vh vl e p ivs lvs svs m1 m2 si Hd [Hm Hsi].
   rewrite -Hsi /= => {Hsi}.
@@ -2133,7 +2133,7 @@ Qed.
 Corollary dclosed_instr_succ ivs lvs svs m1 m2 i si :
   dclosed m1 ivs lvs svs ->
   ssa_instr m1 i = (m2, si) ->
-  dclosed m2 ivs (VS.union (lvals_instr i) lvs) (SSA.VS.union (SSA.lvals_instr si) svs).
+  dclosed m2 ivs (VS.union (lvs_instr i) lvs) (SSA.VS.union (SSA.lvs_instr si) svs).
 Proof.
   elim: i ivs lvs svs m1 m2 si => /=.
   - exact: dclosed_qassign_succ.
@@ -2157,12 +2157,12 @@ Proof.
       rewrite Hsp => {Hsp sp}.
       apply/andP; split.
       * exact: (dclosed_instr_well_formed Hhd Hshd).
-      * apply: (IH ivs (VS.union (lvals_instr hd) lvs) _ _ _ _ _ Hstl);
+      * apply: (IH ivs (VS.union (lvs_instr hd) lvs) _ _ _ _ _ Hstl);
         last by exact: (dclosed_instr_succ Hd Hshd).
-        apply: (well_formed_program_replace _ Htl).
-        rewrite (VSLemmas.OP.P.union_sym (lvals_instr hd) (VS.union ivs lvs)).
+        apply: (well_formed_program_replace Htl).
+        rewrite (VSLemmas.OP.P.union_sym (lvs_instr hd) (VS.union ivs lvs)).
         rewrite VSLemmas.OP.P.union_assoc.
-        rewrite (VSLemmas.OP.P.union_sym lvs (lvals_instr hd)).
+        rewrite (VSLemmas.OP.P.union_sym lvs (lvs_instr hd)).
         reflexivity.
   - apply: ssa_unchanged_program_global => v Hmem.
     destruct v as [v i].
@@ -2181,7 +2181,7 @@ Corollary ssa_program_well_formed vs m p sp :
 Proof.
   move=> Hwell Hsp.
   have: well_formed_program (VS.union vs VS.empty) p
-    by apply: (well_formed_program_replace _ Hwell);
+    by apply: (well_formed_program_replace Hwell);
     rewrite (VSLemmas.OP.P.empty_union_2 vs VS.empty_1);
     reflexivity.
   move=> {Hwell} Hwell.
