@@ -2048,6 +2048,25 @@ Module MakeQhasm (V : SsrOrderedType).
     assumption.
   Qed.
 
+  Theorem slice_spec_complete vs s :
+    well_formed_spec vs s ->
+    valid_spec s -> valid_spec (slice_spec s).
+  Proof.
+    destruct s as [f p g].
+    rewrite /slice_spec /well_formed_spec /=.
+    set tmp := slice_program (vars_bexp g) p.
+    have: tmp = slice_program (vars_bexp g) p by reflexivity.
+    destruct tmp as (vs', p') => /=.
+    move=> Hsp /andP [/andP [Hsubf Hwellp] Hsubg] Hs s1 s2 /= Hf Hp.
+    rewrite -{}Hp.
+    move: (Logic.eq_sym Hsp) => {Hsp} Hsp.
+    move: (slice_program_subset Hwellp Hsubg Hsp) => Hsub.
+    move: (slice_program_eqmod Hsp Hsub (state_eqmod_refl s1)) => Heqm.
+    move: (Hs s1 (eval_program s1 p) Hf (Logic.eq_refl (eval_program s1 p))) => /= Hg.
+    rewrite -(state_eqmod_bexp Heqm).
+    assumption.
+  Qed.
+
 End MakeQhasm.
 
 Module Qhasm := MakeQhasm VarOrder.
