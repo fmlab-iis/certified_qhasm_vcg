@@ -1169,23 +1169,21 @@ Lemma valid_fe25519_mul_stage12_part1 :
   valid_spec fe25519_mul_stage12_part1_spec.
 Proof.
   Time verify_spec fe25519_mul_stage12_part1_inputs.
-  (* 162.179s *)
+  (* 84.971s *)
 Qed.
 
 Lemma valid_fe25519_mul_stage12_part2 :
   valid_spec fe25519_mul_stage12_part2_spec.
 Proof.
   Time verify_spec fe25519_mul_stage12_part2_inputs.
-  (* 210.714s *)
+  (* 60.656s *)
 Qed.
 
 Lemma post2_cong :
   fe25519_mul_stage12_part2_post ===> fe25519_mul_stage12_post.
 Proof.
-  Require Import GBZArith.
-  move=> s /= H.
-  Time gbarith.
-  (* 206.388s *)
+  Time verify_entail.
+  (* 48.521s *)
 Qed.
 
 Lemma valid_fe25519_mul_stage12 :

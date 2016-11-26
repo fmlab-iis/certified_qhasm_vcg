@@ -609,24 +609,23 @@ Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 
+From mathcomp Require Import ssreflect.
+From mQhasm Require Import SSA.
+From mQhasm Require Import PolyGen.
+From GBArith Require Import GBZArith.
+
 Lemma valid_fe25519_mul_stage12_ands_spec :
   valid_spec fe25519_mul_stage12_ands_spec.
 Proof.
-  Time verify_spec fe25519_mul_stage12_inputs.
-  (* 1308.754s *)
+  Time verify_spec_with (vconfig [::With Slicing]) fe25519_mul_stage12_inputs.
+  (* 105.485s *)
 Qed.
-
-From mathcomp Require Import ssreflect.
-From GBArith Require Import GBZArith.
 
 Lemma ands_post_cong :
   fe25519_mul_stage12_ands_post ===> fe25519_mul_stage12_post.
 Proof.
-  move=> s /= H.
-  split_conjs.
-  rewrite {}H {}H0 {}H1 {}H2 {}H4.
-  Time gbarith.
-  (* 46.994s *)
+  Time verify_entail.
+  (* 3398.648s *)
 Qed.
 
 Lemma valid_fe25519_mul_stage12_spec :

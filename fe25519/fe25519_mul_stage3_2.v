@@ -232,7 +232,7 @@ From mQhasm Require Import Verify.
 Lemma valid_fe25519_mul_stage3_2 : valid_ispec (fe25519_mul_stage3_2_inputs, fe25519_mul_stage3_2_spec).
 Proof.
   Time verify_ispec.
-  (* 25.747s *)
+  (* 22.707s *)
 Qed.
 
 Close Scope mqhasm_scope.

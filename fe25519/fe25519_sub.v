@@ -147,7 +147,7 @@ From mQhasm Require Import Verify.
 Lemma valid_fe25519_sub : valid_ispec (fe25519_sub_inputs, fe25519_sub_spec).
 Proof.
   Time verify_ispec.
-  (* 5.549s *)
+  (* 2.449s *)
 Qed.
 
 Close Scope mqhasm_scope.

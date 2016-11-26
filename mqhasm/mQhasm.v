@@ -2098,7 +2098,11 @@ Module MakeQhasm (V : SsrOrderedType).
   Fixpoint related_vars_bexp_rec n vs es :=
     match n with
     | 0%nat => vs
-    | S m => related_vars_bexp_rec m (related_vars_bexp_once vs es) es
+    | S m =>
+      let vs' := related_vars_bexp_once vs es in
+      if Nat.eqb (VS.cardinal vs) (VS.cardinal vs')
+      then vs'
+      else related_vars_bexp_rec m vs' es
     end.
 
   Lemma eval_slice_bexp vs e s :

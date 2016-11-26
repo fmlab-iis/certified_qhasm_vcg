@@ -3,18 +3,9 @@ From mQhasm Require Import mQhasm .
 From mathcomp Require Import seq .
 
 Definition fe25519_sq : program :=
-  
 let         wsize :=   64%positive in
 let          qtwo :=   QConst (2%Z) in
-
-let concat_shift hi lo w :=       (* (hi.lo) << w *)
-      QBinop QMul (QBinop QAdd (QBinop QMul hi (QPow qtwo wsize)) lo)
-                  (QPow qtwo w) in
-
-let crypto_sign_ed25519_amd64_51_REDMASK51 :=
-                       2251799813685247%Z in (* 0x7FFFFFFFFFFFF from consts *)
-let crypto_sign_ed25519_amd64_51_REDMASK51_width :=
-                       51%positive in        (* 51 bits *)
+let      pow2 x n := QBinop QMul x (QPow qtwo n) in
 
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
@@ -28,10 +19,10 @@ let            z2 :=   7 in (* *[uint64 *](rp + 16) *)
 let            z3 :=   8 in (* *[uint64 *](rp + 24) *)
 let            z4 :=   9 in (* *[uint64 *](rp + 32) *)
 
-let            r0 :=  20 in 
-let            r1 :=  21 in 
-let            r2 :=  22 in 
-let            r3 :=  23 in 
+let            r0 :=  20 in
+let            r1 :=  21 in
+let            r2 :=  22 in
+let            r3 :=  23 in
 let            r4 :=  24 in
 
 let            c1 :=  31 in
@@ -149,22 +140,22 @@ let         carry := 999 in
       (*  *)
       (*   #BEGIN MACRO  *)
       (*   rax = *[uint64 *](xp + 0) *)
-QAssign rax (QVar x0);
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 0) *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x0)) wsize;
       (*   r0 = rax *)
-QAssign r0 (QVar rax);
       (*   r01 = rdx *)
+QAssign rax (QVar x0);
+QSplit rdx rax (QBinop QMul (QVar rax) (QVar x0)) wsize;
+QAssign r0 (QVar rax);
 QAssign r01 (QVar rdx);
       (*   rax = *[uint64 *](xp + 0) *)
-QAssign rax (QVar x0);
       (*   rax <<= 1 *)
-QAssign rax (QBinop QMul (QVar rax) qtwo);
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 8) *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x1)) wsize;
       (*   r1 = rax *)
-QAssign r1 (QVar rax);
       (*   r11 = rdx *)
+QAssign rax (QVar x0);
+QAssign rax (QBinop QMul (QVar rax) qtwo);
+QSplit rdx rax (QBinop QMul (QVar rax) (QVar x1)) wsize;
+QAssign r1 (QVar rax);
 QAssign r11 (QVar rdx);
       (*   rax = *[uint64 *](xp + 0) *)
 QAssign rax (QVar x0);
