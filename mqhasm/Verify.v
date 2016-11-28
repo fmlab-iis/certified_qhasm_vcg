@@ -209,6 +209,7 @@ Ltac verify_bexp_with o :=
   end.
 
 Tactic Notation "verify_bexp" := verify_bexp_with default_options.
+Tactic Notation "verify_bexp" "with" constr(opts) := verify_bexp_with (vconfig opts).
 
 Ltac verify_entail_with o :=
   match goal with
@@ -219,11 +220,13 @@ Ltac verify_entail_with o :=
   end.
 
 Tactic Notation "verify_entail" := verify_entail_with default_options.
+Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconfig opts).
 
 Ltac verify_ispec_with o :=
   unfold_ispec_with o; rewrite_assign; rewrite_equality; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.
+Tactic Notation "verify_ispec" "with" constr(opts) := verify_ispec_with (vconfig opts).
 
 Ltac verify_spec_with o vs :=
   match goal with
@@ -236,3 +239,4 @@ Ltac verify_spec_with o vs :=
   end.
 
 Tactic Notation "verify_spec" constr(vs) := verify_spec_with default_options vs.
+Tactic Notation "verify_spec" constr(vs) "with" constr(opts) := verify_spec_with (vconfig opts) vs.

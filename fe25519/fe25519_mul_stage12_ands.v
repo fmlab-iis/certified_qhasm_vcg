@@ -617,7 +617,7 @@ From GBArith Require Import GBZArith.
 Lemma valid_fe25519_mul_stage12_ands_spec :
   valid_spec fe25519_mul_stage12_ands_spec.
 Proof.
-  Time verify_spec_with (vconfig [::With Slicing]) fe25519_mul_stage12_inputs.
+  Time verify_spec fe25519_mul_stage12_inputs with [::With Slicing].
   (* 105.485s *)
 Qed.
 
