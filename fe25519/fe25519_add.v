@@ -110,7 +110,7 @@ let            r2 :=  22 in
 let            r3 :=  23 in
 let            r4 :=  24 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QCong
+QEqMod
   (
     (radix51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
     @+
@@ -131,8 +131,7 @@ From mQhasm Require Import Verify.
 
 Lemma valid_fe25519_add : valid_ispec (fe25519_add_inputs, fe25519_add_spec).
 Proof.
-  Time verify_ispec.
-  (* 1.498s *)
+  time "valid_fe25519_add" verify_ispec.
 Qed.
 
 Close Scope mqhasm_scope.

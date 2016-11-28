@@ -5,7 +5,7 @@ From mathcomp Require Import seq .
 Open Scope N_scope.
 Open Scope mqhasm_scope.
 
-Definition fe25519_mul_stage1 : program :=
+Definition fe25519_mul_stage12 : program :=
 
 let          qtwo :=   QConst (2%Z) in
 let         wsize :=   64%positive in
@@ -442,7 +442,7 @@ QAssign mulr31 (QBinop QAdd (QVar mulr31) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*  *)
 ] .
 
-Definition fe25519_mul_stage1_inputs : VS.t :=
+Definition fe25519_mul_stage12_inputs : VS.t :=
 let            x0 :=   0 in
 let            x1 :=   1 in
 let            x2 :=   2 in
@@ -455,9 +455,9 @@ let            y3 :=   8 in
 let            y4 :=   9 in
 VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4; y0; y1; y2; y3; y4].
 
-Definition fe25519_mul_stage1_pre : bexp := QTrue.
+Definition fe25519_mul_stage12_pre : bexp := QTrue.
 
-Definition fe25519_mul_stage1_post : bexp :=
+Definition fe25519_mul_stage12_post : bexp :=
 let      pow2 x n := QBinop QMul x (QPow qtwo n) in
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
@@ -503,7 +503,7 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QCong
+QEqMod
   (
     (radix51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
     @*
@@ -519,20 +519,19 @@ QCong
   )
   n25519.
 
-Definition fe25519_mul_stage1_spec :=
-  {| spre := fe25519_mul_stage1_pre;
-     sprog := fe25519_mul_stage1;
-     spost := fe25519_mul_stage1_post |}.
+Definition fe25519_mul_stage12_spec :=
+  {| spre := fe25519_mul_stage12_pre;
+     sprog := fe25519_mul_stage12;
+     spost := fe25519_mul_stage12_post |}.
 
 Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
 Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 
-Lemma valid_fe25519_mul_stage1 : valid_ispec (fe25519_mul_stage1_inputs, fe25519_mul_stage1_spec).
+Lemma valid_fe25519_mul_stage12 : valid_ispec (fe25519_mul_stage12_inputs, fe25519_mul_stage12_spec).
 Proof.
-  Time verify_ispec.
-  (* nsatz failed after 17753.14s *)
+  time "valid_fe25519_mul_stage12" verify_ispec.
 Qed.
 
 Close Scope mqhasm_scope.

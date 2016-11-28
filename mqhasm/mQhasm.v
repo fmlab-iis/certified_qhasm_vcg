@@ -533,7 +533,7 @@ Module MakeQhasm (V : SsrOrderedType).
   Inductive bexp : Type :=
   | QTrue : bexp
   | QEq : exp -> exp -> bexp
-  | QCong : exp -> exp -> positive -> bexp
+  | QEqMod : exp -> exp -> positive -> bexp
   | QAnd : bexp -> bexp -> bexp.
 
   Fixpoint qands es : bexp :=
@@ -547,7 +547,7 @@ Module MakeQhasm (V : SsrOrderedType).
     match e with
     | QTrue => VS.empty
     | QEq e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | QCong e1 e2 _ => VS.union (vars_exp e1) (vars_exp e2)
+    | QEqMod e1 e2 _ => VS.union (vars_exp e1) (vars_exp e2)
     | QAnd e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
 
@@ -555,7 +555,7 @@ Module MakeQhasm (V : SsrOrderedType).
     match e with
     | QTrue => True
     | QEq e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | QCong e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) (Zpos p)
+    | QEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) (Zpos p)
     | QAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
     end.
 
@@ -2072,7 +2072,7 @@ Module MakeQhasm (V : SsrOrderedType).
       if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
       then QTrue
       else e
-    | QCong e1 e2 p =>
+    | QEqMod e1 e2 p =>
       if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
       then QTrue
       else e
@@ -2083,7 +2083,7 @@ Module MakeQhasm (V : SsrOrderedType).
     match e with
     | QTrue => [::]
     | QEq _ _ => [:: e]
-    | QCong _ _ _ => [:: e]
+    | QEqMod _ _ _ => [:: e]
     | QAnd e1 e2 => (split_qands e1) ++ (split_qands e2)
     end.
 
@@ -2220,7 +2220,7 @@ Notation "x @^ y" := (QPow x y)  (at level 30, right associativity) : mqhasm_sco
 Notation "x @:= y" := (QAssign x%N y) (at level 70, no associativity) : mqhasm_scope.
 Notation "[ x , y ] @:= z # p" := (QSplit x%N y%N z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
 Notation "x @= y" := (QEq x y) (at level 70, no associativity) : mqhasm_scope.
-Notation "x @= y 'mod' z" := (QCong x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
+Notation "x @= y 'mod' z" := (QEqMod x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
 Notation "x @&& y" := (QAnd x y) (at level 70, no associativity) : mqhasm_scope.
 
 Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : mqhasm_scope.

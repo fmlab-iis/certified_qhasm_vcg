@@ -494,7 +494,7 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QCong
+QEqMod
   (
     qmul (radix51 [:: QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
          (radix51 [:: QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
@@ -617,15 +617,13 @@ From GBArith Require Import GBZArith.
 Lemma valid_fe25519_mul_stage12_ands_spec :
   valid_spec fe25519_mul_stage12_ands_spec.
 Proof.
-  Time verify_spec fe25519_mul_stage12_inputs with [::With Slicing].
-  (* 105.485s *)
+  time "valid_fe25519_mul_stage12_ands_spec" verify_spec fe25519_mul_stage12_inputs with [::With Slicing].
 Qed.
 
 Lemma ands_post_cong :
   fe25519_mul_stage12_ands_post ===> fe25519_mul_stage12_post.
 Proof.
-  Time verify_entail.
-  (* 3398.648s *)
+  time "ands_post_cong" verify_entail.
 Qed.
 
 Lemma valid_fe25519_mul_stage12_spec :

@@ -494,7 +494,7 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QCong
+QEqMod
   (
     qmul (radix51 [:: QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
          (radix51 [:: QVar y0; QVar y1; QVar y2; QVar y3; QVar y4])
@@ -1168,22 +1168,19 @@ From mQhasm Require Import Verify.
 Lemma valid_fe25519_mul_stage12_part1 :
   valid_spec fe25519_mul_stage12_part1_spec.
 Proof.
-  Time verify_spec fe25519_mul_stage12_part1_inputs.
-  (* 84.971s *)
+  time "valid_fe25519_mul_stage12_part1" verify_spec fe25519_mul_stage12_part1_inputs.
 Qed.
 
 Lemma valid_fe25519_mul_stage12_part2 :
   valid_spec fe25519_mul_stage12_part2_spec.
 Proof.
-  Time verify_spec fe25519_mul_stage12_part2_inputs.
-  (* 60.656s *)
+  time "valid_fe25519_mul_stage12_part2" verify_spec fe25519_mul_stage12_part2_inputs.
 Qed.
 
 Lemma post2_cong :
   fe25519_mul_stage12_part2_post ===> fe25519_mul_stage12_post.
 Proof.
-  Time verify_entail.
-  (* 48.521s *)
+  time "post2_cong" verify_entail.
 Qed.
 
 Lemma valid_fe25519_mul_stage12 :

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+grep -E "Tactic call|ran for .* secs" $*
+grep -E ".* real .* user .* sys" $*

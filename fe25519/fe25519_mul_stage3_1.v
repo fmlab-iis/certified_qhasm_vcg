@@ -182,7 +182,7 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QCong
+QEqMod
   (radix51 [::QVar z0; QVar z1; QVar z2; QVar z3; QVar z4])
   (radix51 [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
   (n25519).
@@ -199,8 +199,7 @@ From mQhasm Require Import Verify.
 
 Lemma valid_fe25519_mul_stage3_1 : valid_ispec (fe25519_mul_stage3_1_inputs, fe25519_mul_stage3_1_spec).
 Proof.
-  Time verify_ispec.
-  (* 37.444s *)
+  time "valid_fe25519_mul_stage3_1" verify_ispec.
 Qed.
 
 Close Scope mqhasm_scope.

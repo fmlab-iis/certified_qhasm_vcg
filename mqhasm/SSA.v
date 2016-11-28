@@ -32,7 +32,7 @@ Notation "x @^ y" := (SSA.QPow x y)  (at level 30, right associativity) : ssa_sc
 Notation "x @:= y" := (SSA.QAssign x y) (at level 70, no associativity) : ssa_scope.
 Notation "[ x , y ] @:= z # p" := (SSA.QSplit x y z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : ssa_scope.
 Notation "x @= y" := (SSA.QEq x y) (at level 70, no associativity) : ssa_scope.
-Notation "x @= y 'mod' z" := (SSA.QCong x y z) (at level 70, y at next level, no associativity) : ssa_scope.
+Notation "x @= y 'mod' z" := (SSA.QEqMod x y z) (at level 70, y at next level, no associativity) : ssa_scope.
 Notation "x @&& y" := (SSA.QAnd x y) (at level 70, no associativity) : mqhasm_scope.
 Notation "s |= f" := (SSA.eval_bexp f true s) (at level 74, no associativity) : ssa_scope.
 Notation "f ===> g" := (SSA.entails f g) (at level 82, no associativity) : ssa_scope.
@@ -145,7 +145,7 @@ Fixpoint ssa_bexp (m : vmap) (e : bexp) : SSA.bexp :=
   match e with
   | QTrue => SSA.QTrue
   | QEq e1 e2 => SSA.QEq (ssa_exp m e1) (ssa_exp m e2)
-  | QCong e1 e2 p => SSA.QCong (ssa_exp m e1) (ssa_exp m e2) p
+  | QEqMod e1 e2 p => SSA.QEqMod (ssa_exp m e1) (ssa_exp m e2) p
   | QAnd e1 e2 => SSA.QAnd (ssa_bexp m e1) (ssa_bexp m e2)
   end.
 

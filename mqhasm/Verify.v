@@ -19,26 +19,31 @@ Open Scope mqhasm_scope.
 Record verify_options : Set :=
   mkOptions { opt_split : bool;
               opt_slicing : bool;
-              opt_gb : gb_algorithm }.
+              opt_gb : gb_algorithm;
+              opt_profiling : bool }.
 
 Definition default_options : verify_options :=
   {| opt_split := true;
      opt_slicing := false;
-     opt_gb := SingularZ |}.
+     opt_gb := SingularZ;
+     opt_profiling := true |}.
 
 Definition options_none : verify_options :=
   {| opt_split := false;
      opt_slicing := false;
-     opt_gb := SingularZ |}.
+     opt_gb := SingularZ;
+     opt_profiling := false |}.
 
 Definition options_all : verify_options :=
   {| opt_split := true;
      opt_slicing := true;
-     opt_gb := SingularZ |}.
+     opt_gb := SingularZ;
+     opt_profiling := true |}.
 
 Inductive bool_flag : Set :=
 | Split
-| Slicing.
+| Slicing
+| Profiling.
 
 Inductive vflag : Set :=
 | With : bool_flag -> vflag
@@ -49,10 +54,16 @@ Definition set_bool_flag f b o : verify_options :=
   match f with
   | Split => {| opt_split := b;
                 opt_slicing := opt_slicing o;
-                opt_gb := opt_gb o |}
+                opt_gb := opt_gb o;
+                opt_profiling := opt_profiling o |}
   | Slicing => {| opt_split := opt_split o;
                   opt_slicing := b;
-                  opt_gb := opt_gb o |}
+                  opt_gb := opt_gb o;
+                  opt_profiling := opt_profiling o |}
+  | Profiling => {| opt_split := opt_split o;
+                    opt_slicing := opt_slicing o;
+                    opt_gb := opt_gb o;
+                    opt_profiling := b |}
   end.
 
 Definition set_vflag f o : verify_options :=
@@ -61,7 +72,8 @@ Definition set_vflag f o : verify_options :=
   | Without g => set_bool_flag g false o
   | GB alg => {| opt_split := opt_split o;
                  opt_slicing := opt_slicing o;
-                 opt_gb := alg |}
+                 opt_gb := alg;
+                 opt_profiling := opt_profiling o |}
   end.
 
 Definition vconfig_with flags o : verify_options :=
@@ -85,13 +97,12 @@ Definition valid_ispec (s : ispec) : Prop :=
 
 From GBArith Require Import GBZ GBZArith.
 
-Ltac split_conjs :=
+Ltac split_conj :=
   match goal with
   | H: _ /\ _ |- _ =>
     let H1 := fresh in
     let H2 := fresh in
-    move: H => [H1 H2]; split_conjs
-  | |- _ => idtac
+    move: H => [H1 H2]
   end.
 
 Ltac clear_true :=
@@ -134,7 +145,7 @@ Ltac unfold_ispec_with o :=
       apply: ssa_spec_sound;
       apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
         by done |
-        simplZ; intros; split_conjs; clear_true
+        simplZ; intros; repeat (remove_exists_hyp || split_conj); clear_true
       ])
     ]
   end.
@@ -163,15 +174,25 @@ Ltac gen_eqs :=
   | |- _ => idtac
   end.
 
-Ltac rewrite_assign :=
+Ltac rewrite_assign1 :=
   match goal with
-  | st: _ -> value |- _ =>
+  | st : _ -> value |- _ =>
     match goal with
-    | H: st _ = _ |- _ =>
-      ( try rewrite -> H in * ); clear H; rewrite_assign
-    | |- _ => idtac
+    | H : st _ = _ |- _ =>
+      ( try rewrite -> H in * ); clear H
     end
   end.
+
+Ltac rewrite_assign2 :=
+  match goal with
+  | x : value |- _ =>
+    match goal with
+    | H : x = _ |- _ =>
+      ( try rewrite -> H in * ); clear H; try clear x
+    end
+  end.
+
+Ltac rewrite_assign := rewrite_assign1 || rewrite_assign2.
 
 Ltac rewrite_equality :=
   match goal with
@@ -185,23 +206,36 @@ From Coq Require Import Nsatz.
 Ltac gbarith_with o :=
   let a := constr:(opt_gb o) in
   let a := eval compute in a in
-  gbarith_choice a.
+  let b := constr:(opt_profiling o) in
+  let b := eval compute in b in
+  match b with
+  | true => time "gbarith" (gbarith_choice a)
+  | false => gbarith_choice a
+  end.
+
+Ltac nsatz_with o :=
+  let b := constr:(opt_profiling o) in
+  let b := eval compute in b in
+  match b with
+  | true => time "nsatz" nsatz
+  | false => nsatz
+  end.
 
 Ltac solve_ispec_with o :=
   match goal with
   | |- _ /\ _ => split; solve_ispec_with o
   | |- exists _, _ = _ => gbarith_with o
   | |- modulo _ _ _ => gbarith_with o
-  | |- _ = _ => nsatz
+  | |- _ = _ => nsatz_with o
   end.
 
 Tactic Notation "solve_ispec" := solve_ispec_with default_options.
 
 Ltac verify_bexp_with o :=
   match goal with
-  | |- valid (QEq _ _) => move=> s; simplZ; nsatz
-  | |- _ = _ => nsatz
-  | |- valid (QCong _ _ _) => move=> s; simplZ; gbarith_with o
+  | |- valid (QEq _ _) => move=> s; simplZ; nsatz_with o
+  | |- _ = _ => nsatz_with o
+  | |- valid (QEqMod _ _ _) => move=> s; simplZ; gbarith_with o
   | |- modulo _ _ _ => gbarith_with o
   | |- exists k : Z, (_ - _)%Z = (k * _)%Z => gbarith_with o
   | |- valid (QAnd _ _) => split; verify_bexp_with o
@@ -215,15 +249,15 @@ Ltac verify_entail_with o :=
   match goal with
   | |- ?f ===> ?g =>
     let H := fresh in
-    simplZ; move=> s H; split_conjs; clear_true;
-    rewrite_assign; rewrite_equality; verify_bexp_with o
+    simplZ; move=> s H; repeat (remove_exists_hyp || split_conj); clear_true;
+    repeat rewrite_assign; rewrite_equality; verify_bexp_with o
   end.
 
 Tactic Notation "verify_entail" := verify_entail_with default_options.
 Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconfig opts).
 
 Ltac verify_ispec_with o :=
-  unfold_ispec_with o; rewrite_assign; rewrite_equality; solve_ispec_with o.
+  unfold_ispec_with o; repeat rewrite_assign; rewrite_equality; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.
 Tactic Notation "verify_ispec" "with" constr(opts) := verify_ispec_with (vconfig opts).
