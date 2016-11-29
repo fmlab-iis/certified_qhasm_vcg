@@ -19,30 +19,35 @@ Open Scope mqhasm_scope.
 Record verify_options : Set :=
   mkOptions { opt_split : bool;
               opt_slicing : bool;
+              opt_qsplit_to_assign : bool;
               opt_gb : gb_algorithm;
               opt_profiling : bool }.
 
 Definition default_options : verify_options :=
   {| opt_split := true;
      opt_slicing := false;
+     opt_qsplit_to_assign := false;
      opt_gb := SingularZ;
      opt_profiling := true |}.
 
 Definition options_none : verify_options :=
   {| opt_split := false;
      opt_slicing := false;
+     opt_qsplit_to_assign := false;
      opt_gb := SingularZ;
      opt_profiling := false |}.
 
 Definition options_all : verify_options :=
   {| opt_split := true;
      opt_slicing := true;
+     opt_qsplit_to_assign := true;
      opt_gb := SingularZ;
      opt_profiling := true |}.
 
 Inductive bool_flag : Set :=
 | Split
 | Slicing
+| ToAssign
 | Profiling.
 
 Inductive vflag : Set :=
@@ -54,14 +59,22 @@ Definition set_bool_flag f b o : verify_options :=
   match f with
   | Split => {| opt_split := b;
                 opt_slicing := opt_slicing o;
+                opt_qsplit_to_assign := opt_qsplit_to_assign o;
                 opt_gb := opt_gb o;
                 opt_profiling := opt_profiling o |}
   | Slicing => {| opt_split := opt_split o;
                   opt_slicing := b;
+                  opt_qsplit_to_assign := opt_qsplit_to_assign o;
                   opt_gb := opt_gb o;
                   opt_profiling := opt_profiling o |}
+  | ToAssign => {| opt_split := opt_split o;
+                   opt_slicing := opt_slicing o;
+                   opt_qsplit_to_assign := b;
+                   opt_gb := opt_gb o;
+                   opt_profiling := opt_profiling o |}
   | Profiling => {| opt_split := opt_split o;
                     opt_slicing := opt_slicing o;
+                    opt_qsplit_to_assign := opt_qsplit_to_assign o;
                     opt_gb := opt_gb o;
                     opt_profiling := b |}
   end.
@@ -72,6 +85,7 @@ Definition set_vflag f o : verify_options :=
   | Without g => set_bool_flag g false o
   | GB alg => {| opt_split := opt_split o;
                  opt_slicing := opt_slicing o;
+                 opt_qsplit_to_assign := opt_qsplit_to_assign o;
                  opt_gb := alg;
                  opt_profiling := opt_profiling o |}
   end.
@@ -174,9 +188,36 @@ Ltac gen_eqs :=
   | |- _ => idtac
   end.
 
+Lemma add_move_r1 n m p :
+  n + m = p -> n = p - m.
+Proof.
+  move: (Z.add_move_r n m p) => [H _].
+  exact: H.
+Qed.
+
+Lemma add_move_l1 n m p :
+  n + m = p -> m = p - n.
+Proof.
+  move: (Z.add_move_l n m p) => [H _].
+  exact: H.
+Qed.
+
+Ltac qsplit_to_assign :=
+  match goal with
+  | H : _ + _ * 2^_ = _ |- _ => move: (add_move_r1 H) => {H} H
+  end.
+
+Ltac qsplit_to_assign_with o :=
+  let b := constr:(opt_qsplit_to_assign o) in
+  let b := eval compute in b in
+  match b with
+  | true => repeat qsplit_to_assign
+  | false => idtac
+  end.
+
 Ltac rewrite_assign1 :=
   match goal with
-  | st : _ -> value |- _ =>
+  | st : _ -> Z |- _ =>
     match goal with
     | H : st _ = _ |- _ =>
       ( try rewrite -> H in * ); clear H
@@ -185,7 +226,7 @@ Ltac rewrite_assign1 :=
 
 Ltac rewrite_assign2 :=
   match goal with
-  | x : value |- _ =>
+  | x : Z |- _ =>
     match goal with
     | H : x = _ |- _ =>
       ( try rewrite -> H in * ); clear H; try clear x
@@ -249,7 +290,8 @@ Ltac verify_entail_with o :=
   match goal with
   | |- ?f ===> ?g =>
     let H := fresh in
-    simplZ; move=> s H; repeat (remove_exists_hyp || split_conj); clear_true;
+    simplZ; move=> s H; repeat (remove_exists_hyp || split_conj);
+    clear_true; qsplit_to_assign_with o;
     repeat rewrite_assign; rewrite_equality; verify_bexp_with o
   end.
 
@@ -257,7 +299,8 @@ Tactic Notation "verify_entail" := verify_entail_with default_options.
 Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconfig opts).
 
 Ltac verify_ispec_with o :=
-  unfold_ispec_with o; repeat rewrite_assign; rewrite_equality; solve_ispec_with o.
+  unfold_ispec_with o; qsplit_to_assign_with o;
+  repeat rewrite_assign; rewrite_equality; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.
 Tactic Notation "verify_ispec" "with" constr(opts) := verify_ispec_with (vconfig opts).

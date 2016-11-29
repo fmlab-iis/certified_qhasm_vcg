@@ -20,7 +20,7 @@ Section SSAPoly.
   Definition bexp_instr (i : instr) : bexp :=
     match i with
     | QAssign v e => QVar v @= e
-    | QSplit v1 v2 e p => (QVar v1 @* (QConst 2 @^ p)) @+ (QVar v2) @= e
+    | QSplit vh vl e p => (QVar vl) @+ (QVar vh @* (QConst 2 @^ p)) @= e
     end.
 
   Definition bexp_program (p : program) : seq bexp :=
@@ -57,6 +57,7 @@ Section SSAPoly.
       reflexivity.
     - move=> vh vl e _.
       rewrite (VSLemmas.OP.P.empty_union_2 (VS.singleton vh) VS.empty_1).
+      rewrite (VSLemmas.OP.P.union_sym (VS.singleton vl) _).
       rewrite VSLemmas.OP.P.union_assoc.
       rewrite -VSLemmas.OP.P.add_union_singleton.
       rewrite -VSLemmas.OP.P.add_union_singleton.
@@ -90,7 +91,7 @@ Section SSAPoly.
       move: (Z_div_mod ev (Z.pow_pos 2 p) H2p).
       rewrite -Hqr.
       move=> [Hev _].
-      rewrite Zmult_comm -Hev.
+      rewrite Zplus_comm Zmult_comm -Hev.
       reflexivity.
   Qed.
 
