@@ -36,18 +36,6 @@ Section SSAPoly.
        bprog := bexp_program (sprog s);
        bpost := spost s |}.
 
-  Fixpoint eval_bexps (es : seq bexp) (s : State.t) : Prop :=
-    match es with
-    | [::] => True
-    | hd::tl => eval_bexp hd s /\ eval_bexps tl s
-    end.
-
-  Definition valid_bexp_spec (s : bexp_spec) : Prop :=
-    forall st : State.t,
-      eval_bexp (bpre s) st ->
-      eval_bexps (bprog s) st ->
-      eval_bexp (bpost s) st.
-
   Lemma bexp_instr_vars i :
     VS.Equal (vars_bexp (bexp_instr i)) (vars_instr i).
   Proof.
@@ -95,9 +83,23 @@ Section SSAPoly.
       reflexivity.
   Qed.
 
-  Lemma bexp_spec_sound (vs : VS.t) (s : spec) :
+
+
+  Fixpoint eval_bexps_conj (es : seq bexp) (s : State.t) : Prop :=
+    match es with
+    | [::] => True
+    | hd::tl => eval_bexp hd s /\ eval_bexps_conj tl s
+    end.
+
+  Definition valid_bexp_spec_conj (s : bexp_spec) : Prop :=
+    forall st : State.t,
+      eval_bexp (bpre s) st ->
+      eval_bexps_conj (bprog s) st ->
+      eval_bexp (bpost s) st.
+
+  Lemma bexp_spec_sound_conj (vs : VS.t) (s : spec) :
     well_formed_ssa_spec vs s ->
-    valid_bexp_spec (bexp_of_spec s) -> valid_spec s.
+    valid_bexp_spec_conj (bexp_of_spec s) -> valid_spec s.
   Proof.
     destruct s as [f p g].
     move=> /andP /= [/andP [/andP [/andP [/= Hpre Hwell] Hpost] Hvs] Hssa] Hb s1 s2 /= Hf Hp.
@@ -130,6 +132,64 @@ Section SSAPoly.
           exact: VSLemmas.union_subset_2.
         * rewrite /well_formed_instr in Hhd.
           exact: (bexp_instr_eval Hhd (ssa_unchanged_program_hd Hvs) Hehd).
+  Qed.
+
+
+
+  Fixpoint eval_bexps_imp (es : seq bexp) (s : State.t) (p : Prop) : Prop :=
+    match es with
+    | [::] => p
+    | hd::tl => eval_bexp hd s -> eval_bexps_imp tl s p
+    end.
+
+  Definition valid_bexp_spec_imp (s : bexp_spec) : Prop :=
+    forall st : State.t,
+      eval_bexp (bpre s) st ->
+      eval_bexps_imp (bprog s) st (eval_bexp (bpost s) st).
+
+  Lemma valid_bexp_spec_conj_imp (s : bexp_spec) :
+    valid_bexp_spec_conj s -> valid_bexp_spec_imp s.
+  Proof.
+    destruct s as [f p g].
+    move => Hc s /= Hf.
+    move: (Hc s Hf) => /= {Hc Hf f} Hc.
+    elim: p Hc => /=.
+    - by apply.
+    - move=> hd tl IH Hc Hhd.
+      apply: IH => Htl.
+      apply: Hc; split; assumption.
+  Qed.
+
+  Lemma valid_bexp_spec_imp_conj (s : bexp_spec) :
+    valid_bexp_spec_imp s -> valid_bexp_spec_conj s.
+  Proof.
+    destruct s as [f p g].
+    move => Hi s /= Hf.
+    move: (Hi s Hf) => /= {Hi Hf f} Hi.
+    elim: p Hi => /=.
+    - done.
+    - move=> hd tl IH Hi [Hhd Htl].
+      exact: (IH (Hi Hhd) Htl).
+  Qed.
+
+  Lemma bexp_spec_sound_imp (vs : VS.t) (s : spec) :
+    well_formed_ssa_spec vs s ->
+    valid_bexp_spec_imp (bexp_of_spec s) -> valid_spec s.
+  Proof.
+    move=> Hw Hv.
+    apply: (bexp_spec_sound_conj Hw).
+    exact: valid_bexp_spec_imp_conj.
+  Qed.
+
+
+
+  Definition valid_bexp_spec := valid_bexp_spec_imp.
+
+  Theorem bexp_spec_sound (vs : VS.t) (s : spec) :
+    well_formed_ssa_spec vs s ->
+    valid_bexp_spec (bexp_of_spec s) -> valid_spec s.
+  Proof.
+    exact: bexp_spec_sound_imp.
   Qed.
 
   Local Close Scope ssa_scope.
