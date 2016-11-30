@@ -1,10 +1,9 @@
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
 From mQhasm Require Import mQhasm SSA PolyGen.
 From GBArith Require Import GBCompute.
+From PolyOp Require Import Modp.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -26,7 +25,7 @@ Record verify_options : Set :=
 Definition default_options : verify_options :=
   {| opt_split := true;
      opt_slicing := false;
-     opt_qsplit_to_assign := false;
+     opt_qsplit_to_assign := true;
      opt_gb := SingularZ;
      opt_profiling := true |}.
 
@@ -149,7 +148,7 @@ Ltac apply_qslice_sound o :=
   | false => idtac
   end.
 
-Ltac unfold_ispec_with o :=
+Ltac ispec_to_poly_with o :=
   match goal with
   | |- valid_ispec ?ispec =>
     split; [
@@ -164,23 +163,7 @@ Ltac unfold_ispec_with o :=
     ]
   end.
 
-Tactic Notation "unfold_ispec" := unfold_ispec_with default_options.
-
-Definition opaque_eq (S : Type) (x y : S) := x = y.
-
-Ltac lock_hyp H :=
-  match type of H with
-  | ?x = ?y => fold (opaque_eq x y) in H
-  end.
-
-Ltac unlock_hyp H :=
-  unfold opaque_eq in H.
-
-Ltac unlock_hyps :=
-  match goal with
-  | H: opaque_eq _ _ |- _ => unlock_hyp H; unlock_hyps
-  | |- _ => idtac
-  end.
+Tactic Notation "ispec_to_poly" := ispec_to_poly_with default_options.
 
 Ltac gen_eqs :=
   match goal with
@@ -202,6 +185,7 @@ Proof.
   exact: H.
 Qed.
 
+(* The pattern here should match the pattern in PolyGen.bexp_instr. *)
 Ltac qsplit_to_assign :=
   match goal with
   | H : _ + _ * 2^_ = _ |- _ => move: (add_move_r1 H) => {H} H
@@ -249,17 +233,33 @@ Ltac gbarith_with o :=
   let a := eval compute in a in
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
-  match b with
-  | true => time "gbarith" (gbarith_choice a)
-  | false => gbarith_choice a
+  match goal with
+  | H : _ = _ |- _ =>
+    match b with
+    | true => time "gbarith" (gbarith_choice a)
+    | false => gbarith_choice a
+    end
+  | |- _ =>
+    match b with
+    | true => time "modp_find_witness" modp_find_witness
+    | false => modp_find_witness
+    end
   end.
 
 Ltac nsatz_with o :=
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
-  match b with
-  | true => time "nsatz" nsatz
-  | false => nsatz
+  match goal with
+  | H : _ = _ |- _ =>
+    match b with
+    | true => time "nsatz" nsatz
+    | false => nsatz
+    end
+  | |- _ =>
+    match b with
+    | true => time "ring" ring
+    | false => ring
+    end
   end.
 
 Ltac solve_ispec_with o :=
@@ -299,7 +299,7 @@ Tactic Notation "verify_entail" := verify_entail_with default_options.
 Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconfig opts).
 
 Ltac verify_ispec_with o :=
-  unfold_ispec_with o; qsplit_to_assign_with o;
+  ispec_to_poly_with o; qsplit_to_assign_with o;
   repeat rewrite_assign; rewrite_equality; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.

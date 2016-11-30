@@ -1,5 +1,5 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm .
+From mQhasm Require Import mQhasm Radix .
 From mathcomp Require Import seq .
 
 Open Scope N_scope.
@@ -325,7 +325,7 @@ QAssign mulr01 (QBinop QAdd (QVar mulr01) (QBinop QAdd (QVar mulrdx) (QVar carry
 QAssign mulrax (QVar x2);
 QAssign mulrax (QBinop QMul (QVar mulrax) (QConst 19%Z));
 QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y4)) wsize;
-QAssign r1 (QBinop QMul (QVar r1) (QVar mulrax));
+QAssign r1 (QBinop QAdd (QVar r1) (QVar mulrax));
 QSplit carry r1 (QVar r1) wsize;
 QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry)));
       (*  *)
@@ -584,8 +584,7 @@ From mQhasm Require Import Verify.
 
 Lemma valid_fe25519_mul : valid_ispec (fe25519_mul_inputs, fe25519_mul_spec).
 Proof.
-  Time verify_ispec.
-  (* *)
+  time "valid_fe25519_mul" verify_ispec.
 Qed.
 
 Close Scope mqhasm_scope.

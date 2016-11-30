@@ -1,6 +1,6 @@
 #!/bin/bash
 COQC=coqc
-PKGS="-R . Top -R lib/CompCert CompCert -R lib/gbarith/src GBArith -R common Common -R qhasm Qhasm -R sqhasm sQhasm -R mqhasm mQhasm"
+PKGS="-Q . Top -Q lib/CompCert CompCert -Q lib/gbarith/src GBArith -Q lib/polyop/src PolyOp -Q common Common -Q qhasm Qhasm -Q sqhasm sQhasm -Q mqhasm mQhasm"
 LOG_GB=log_gb
 case `uname` in
 Linux*)
@@ -13,6 +13,9 @@ esac
 
 if [[ "${1}" == "" ]]; then
   echo "Usage: ${0} FILE"
+  exit
+elif [[ ! -f "${1}" ]]; then
+  echo "File not found."
   exit
 fi
 
