@@ -124,8 +124,6 @@ Definition fe25519_add_spec :=
      sprog := fe25519_add;
      spost := fe25519_add_post |}.
 
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import ssreflect eqtype ssrbool.
 From mQhasm Require Import Verify.
 

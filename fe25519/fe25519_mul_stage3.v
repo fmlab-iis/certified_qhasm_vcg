@@ -260,8 +260,6 @@ Definition fe25519_mul_stage3_spec :=
      sprog := fe25519_mul_stage3;
      spost := fe25519_mul_stage3_post |}.
 
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 

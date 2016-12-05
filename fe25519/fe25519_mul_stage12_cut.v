@@ -1160,8 +1160,6 @@ Definition fe25519_mul_stage12_part2_spec :=
 
 (* Verification. *)
 
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 

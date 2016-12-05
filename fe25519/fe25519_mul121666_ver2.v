@@ -91,8 +91,6 @@ Definition fe25519_mul121666_spec :=
      sprog := fe25519_mul121666;
      spost := fe25519_mul121666_post |}.
 
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import ssreflect eqtype ssrbool.
 From mQhasm Require Import mQhasm SSA PolyGen Verify.
 

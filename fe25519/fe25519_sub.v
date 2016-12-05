@@ -139,8 +139,6 @@ Definition fe25519_sub_spec :=
      sprog := fe25519_sub;
      spost := fe25519_sub_post |}.
 
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
 From mQhasm Require Import Verify.
 

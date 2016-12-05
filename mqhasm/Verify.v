@@ -18,63 +18,102 @@ Open Scope mqhasm_scope.
 Record verify_options : Set :=
   mkOptions { opt_split : bool;
               opt_slicing : bool;
-              opt_qsplit_to_assign : bool;
-              opt_gb : gb_algorithm;
+              opt_to_assign : bool;
+              opt_lazy : bool;
+              opt_native : bool;
+              opt_singular : bool;
+              opt_magma : bool;
               opt_profiling : bool }.
 
 Definition default_options : verify_options :=
   {| opt_split := true;
      opt_slicing := false;
-     opt_qsplit_to_assign := true;
-     opt_gb := SingularZ;
-     opt_profiling := true |}.
-
-Definition options_none : verify_options :=
-  {| opt_split := false;
-     opt_slicing := false;
-     opt_qsplit_to_assign := false;
-     opt_gb := SingularZ;
-     opt_profiling := false |}.
-
-Definition options_all : verify_options :=
-  {| opt_split := true;
-     opt_slicing := true;
-     opt_qsplit_to_assign := true;
-     opt_gb := SingularZ;
+     opt_to_assign := true;
+     opt_lazy := false;
+     opt_native := true;
+     opt_singular := true;
+     opt_magma := false;
      opt_profiling := true |}.
 
 Inductive bool_flag : Set :=
 | Split
 | Slicing
 | ToAssign
+| Lazy
+| Native
+| Singular
+| Magma
 | Profiling.
 
 Inductive vflag : Set :=
 | With : bool_flag -> vflag
-| Without : bool_flag -> vflag
-| GB : gb_algorithm -> vflag.
+| Without : bool_flag -> vflag.
 
 Definition set_bool_flag f b o : verify_options :=
   match f with
   | Split => {| opt_split := b;
                 opt_slicing := opt_slicing o;
-                opt_qsplit_to_assign := opt_qsplit_to_assign o;
-                opt_gb := opt_gb o;
+                opt_to_assign := opt_to_assign o;
+                opt_lazy := opt_lazy o;
+                opt_native := opt_native o;
+                opt_singular := opt_singular o;
+                opt_magma := opt_magma o;
                 opt_profiling := opt_profiling o |}
   | Slicing => {| opt_split := opt_split o;
                   opt_slicing := b;
-                  opt_qsplit_to_assign := opt_qsplit_to_assign o;
-                  opt_gb := opt_gb o;
+                  opt_to_assign := opt_to_assign o;
+                  opt_lazy := opt_lazy o;
+                  opt_native := opt_native o;
+                  opt_singular := opt_singular o;
+                  opt_magma := opt_magma o;
                   opt_profiling := opt_profiling o |}
   | ToAssign => {| opt_split := opt_split o;
                    opt_slicing := opt_slicing o;
-                   opt_qsplit_to_assign := b;
-                   opt_gb := opt_gb o;
+                   opt_to_assign := b;
+                   opt_lazy := opt_lazy o;
+                   opt_native := opt_native o;
+                   opt_singular := opt_singular o;
+                   opt_magma := opt_magma o;
                    opt_profiling := opt_profiling o |}
+  | Lazy => {| opt_split := opt_split o;
+               opt_slicing := opt_slicing o;
+               opt_to_assign := opt_to_assign o;
+               opt_lazy := b;
+               opt_native := opt_native o;
+               opt_singular := opt_singular o;
+               opt_magma := opt_magma o;
+               opt_profiling := opt_profiling o |}
+  | Native => {| opt_split := opt_split o;
+                 opt_slicing := opt_slicing o;
+                 opt_to_assign := opt_to_assign o;
+                 opt_lazy := opt_lazy o;
+                 opt_native := b;
+                 opt_singular := opt_singular o;
+                 opt_magma := opt_magma o;
+                 opt_profiling := opt_profiling o |}
+  | Singular => {| opt_split := opt_split o;
+                   opt_slicing := opt_slicing o;
+                   opt_to_assign := opt_to_assign o;
+                   opt_lazy := opt_lazy o;
+                   opt_native := opt_native o;
+                   opt_singular := b;
+                   opt_magma := opt_magma o;
+                   opt_profiling := opt_profiling o |}
+  | Magma => {| opt_split := opt_split o;
+                opt_slicing := opt_slicing o;
+                opt_to_assign := opt_to_assign o;
+                opt_lazy := opt_lazy o;
+                opt_native := opt_native o;
+                opt_singular := opt_singular o;
+                opt_magma := b;
+                opt_profiling := opt_profiling o |}
   | Profiling => {| opt_split := opt_split o;
                     opt_slicing := opt_slicing o;
-                    opt_qsplit_to_assign := opt_qsplit_to_assign o;
-                    opt_gb := opt_gb o;
+                    opt_to_assign := opt_to_assign o;
+                    opt_lazy := opt_lazy o;
+                    opt_native := opt_native o;
+                    opt_singular := opt_singular o;
+                    opt_magma := opt_magma o;
                     opt_profiling := b |}
   end.
 
@@ -82,11 +121,6 @@ Definition set_vflag f o : verify_options :=
   match f with
   | With g => set_bool_flag g true o
   | Without g => set_bool_flag g false o
-  | GB alg => {| opt_split := opt_split o;
-                 opt_slicing := opt_slicing o;
-                 opt_qsplit_to_assign := opt_qsplit_to_assign o;
-                 opt_gb := alg;
-                 opt_profiling := opt_profiling o |}
   end.
 
 Definition vconfig_with flags o : verify_options :=
@@ -148,17 +182,40 @@ Ltac apply_qslice_sound o :=
   | false => idtac
   end.
 
+Ltac lsimplZ :=
+  lazy beta iota zeta delta
+  -[Zmult Zplus Zpower Z.pow_pos Zminus Zopp Zdiv Zmod].
+
+Ltac simplZ_with o :=
+  let c := constr:((opt_lazy o, opt_native o)) in
+  let c := eval compute in c in
+  match c with
+  | (false, false) => simplZ
+  | _ => lsimplZ
+  end.
+
+Ltac simpl_with o :=
+  let c := constr:((opt_lazy o, opt_native o)) in
+  let c := eval compute in c in
+  match c with
+  | (true, _) => lazy
+  | (false, true) => native_compute
+  | _ => cbv
+  end.
+
 Ltac ispec_to_poly_with o :=
   match goal with
   | |- valid_ispec ?ispec =>
     split; [
-      by done || fail "The specification is not well formed" |
+      by (simpl_with o; reflexivity)
+         || fail "The specification is not well formed" |
       apply_spec_split_post o;
       (apply_qslice_sound o;
       apply: ssa_spec_sound;
       apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
-        by done |
-        simplZ; intros; repeat (remove_exists_hyp || split_conj); clear_true
+        by (simpl_with o; reflexivity) |
+        simplZ_with o; intros;
+        repeat (remove_exists_hyp || split_conj); clear_true
       ])
     ]
   end.
@@ -185,17 +242,50 @@ Proof.
   exact: H.
 Qed.
 
-(* The pattern here should match the pattern in PolyGen.bexp_instr. *)
-Ltac qsplit_to_assign :=
+(* The patterns here should include the pattern in PolyGen.bexp_instr. *)
+Ltac to_assign :=
   match goal with
-  | H : _ + _ * 2^_ = _ |- _ => move: (add_move_r1 H) => {H} H
+  | st : _ -> Z |- _ =>
+    match goal with
+    | H : st _ + _ = _ |- _ => move: (add_move_r1 H) => {H} H
+    | H : _ + st _ = _ |- _ => move: (add_move_l1 H) => {H} H
+    | H : (st _ +  _) + _ = _ |- _ =>
+      rewrite -Z.add_assoc in H;
+      move: (add_move_r1 H) => {H} H
+    | H : (?z + st _) + _ = _ |- _ =>
+      rewrite (Z.add_comm z (st _)) -Z.add_assoc in H;
+      move: (add_move_r1 H) => {H} H
+    | H : _ + (st _ + ?z) = _ |- _ =>
+      rewrite (Z.add_comm (st _) z) Z.add_assoc in H;
+      move: (add_move_l1 H) => {H} H
+    | H : _ + (_ + st _) = _ |- _ =>
+      rewrite Z.add_assoc in H;
+      move: (add_move_l1 H) => {H} H
+    end
+  | x : Z |- _ =>
+    match goal with
+    | H : x + _ = _ |- _ => move: (add_move_r1 H) => {H} H
+    | H : _ + x = _ |- _ => move: (add_move_l1 H) => {H} H
+    | H : (x +  _) + _ = _ |- _ =>
+      rewrite -Z.add_assoc in H;
+      move: (add_move_r1 H) => {H} H
+    | H : (?z + x) + _ = _ |- _ =>
+      rewrite (Z.add_comm z x) -Z.add_assoc in H;
+      move: (add_move_r1 H) => {H} H
+    | H : _ + (x + ?z) = _ |- _ =>
+      rewrite (Z.add_comm x z) Z.add_assoc in H;
+      move: (add_move_l1 H) => {H} H
+    | H : _ + (_ + x) = _ |- _ =>
+      rewrite Z.add_assoc in H;
+      move: (add_move_l1 H) => {H} H
+    end
   end.
 
-Ltac qsplit_to_assign_with o :=
-  let b := constr:(opt_qsplit_to_assign o) in
+Ltac to_assign_with o :=
+  let b := constr:(opt_to_assign o) in
   let b := eval compute in b in
   match b with
-  | true => repeat qsplit_to_assign
+  | true => repeat to_assign
   | false => idtac
   end.
 
@@ -229,12 +319,18 @@ Ltac rewrite_equality :=
 From Coq Require Import Nsatz.
 
 Ltac gbarith_with o :=
-  let a := constr:(opt_gb o) in
+  let a := constr:((opt_singular o, opt_magma o)) in
   let a := eval compute in a in
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
   match goal with
   | H : _ = _ |- _ =>
+    let a :=
+        match a with
+        | (true, _) => SingularZ
+        | (_, true) => MagmaZ
+        | _ => fail 100 "No Groebner basis engine is selected."
+        end in
     match b with
     | true => time "gbarith" (gbarith_choice a)
     | false => gbarith_choice a
@@ -291,7 +387,7 @@ Ltac verify_entail_with o :=
   | |- ?f ===> ?g =>
     let H := fresh in
     simplZ; move=> s H; repeat (remove_exists_hyp || split_conj);
-    clear_true; qsplit_to_assign_with o;
+    clear_true; to_assign_with o;
     repeat rewrite_assign; rewrite_equality; verify_bexp_with o
   end.
 
@@ -299,7 +395,7 @@ Tactic Notation "verify_entail" := verify_entail_with default_options.
 Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconfig opts).
 
 Ltac verify_ispec_with o :=
-  ispec_to_poly_with o; qsplit_to_assign_with o;
+  ispec_to_poly_with o; to_assign_with o;
   repeat rewrite_assign; rewrite_equality; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.
