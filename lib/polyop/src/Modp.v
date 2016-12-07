@@ -35,7 +35,7 @@ Ltac rIN a l :=
 
 Ltac rAddFv a l :=
   match (rIN a l) with
-  | true => constr:l
+  | true => l
   | _ => constr:(cons a l)
   end.
 
@@ -68,30 +68,30 @@ Ltac variables t :=
   | False  => fv
   | ?t1 -> ?g1 =>
     let fv1  := aux t1 fv in
-    let fv2  := aux g1 fv1 in constr: fv2
+    let fv2  := aux g1 fv1 in fv2
   | (_ <= ?t1) => aux t1 fv
   | (_ < ?t1) => aux t1 fv
   | (?t1 = _) => aux t1 fv
   | (?t1 + ?t2) =>
     let fv1  := aux t1 fv in
-    let fv2  := aux t2 fv1 in constr: fv2
+    let fv2  := aux t2 fv1 in fv2
   | (?t1 * ?t2) =>
     let fv1  := aux t1 fv in
-    let fv2  := aux t2 fv1 in constr: fv2
+    let fv2  := aux t2 fv1 in fv2
   | (?t1 - ?t2) =>
     let fv1  := aux t1 fv in
-    let fv2  := aux t2 fv1 in constr: fv2
+    let fv2  := aux t2 fv1 in fv2
   | (-?t1) =>
     let fv1  := aux t1 fv in fv1
   | (?t1 ^ ?t2) =>
     let fv1  := aux t1 fv in
     match NCst t2 with
-    | false => let fv1 := rAddFv t fv in constr:fv1
+    | false => let fv1 := rAddFv t fv in fv1
     | _ => fv1
     end
-  | _ => let fv1 := rAddFv t fv in constr:fv1
-  end
-  in aux t (@nil Z).
+  | _ => let fv1 := rAddFv t fv in fv1
+  end in
+  aux t (@nil Z).
 
 (********************************************)
 (* Syntaxification tactic for Z             *)
@@ -100,33 +100,33 @@ Ltac variables t :=
 Ltac abstrait t fv :=
   let rec aux t :=
   match t with
-  | 0 => constr:(Const 0 1)
-  | 1 => constr:(Const 1 1)
-  | 2 => constr:(Const 2 1)
-  | Zpos _ => constr:(Const t 1)
-  | Zneg _ => constr:(Const t 1)
+  | 0 => uconstr:(Const 0 1)
+  | 1 => uconstr:(Const 1 1)
+  | 2 => uconstr:(Const 2 1)
+  | Zpos _ => uconstr:(Const t 1)
+  | Zneg _ => uconstr:(Const t 1)
   | (?t1 + ?t2) =>
     let v1  := aux t1 in
-    let v2  := aux t2 in constr:(Add v1 v2)
+    let v2  := aux t2 in uconstr:(Add v1 v2)
   | (?t1 * ?t2) =>
     let v1  := aux t1 in
-    let v2  := aux t2 in constr:(Mul v1 v2)
+    let v2  := aux t2 in uconstr:(Mul v1 v2)
   | (?t1 - ?t2) =>
     let v1  := aux t1 in
-    let v2  := aux t2 in constr:(Sub v1 v2)
+    let v2  := aux t2 in uconstr:(Sub v1 v2)
   | (?t1 ^ 0) =>
-    constr:(Const 1 1)
+    uconstr:(Const 1 1)
   | (?t1 ^ ?n) =>
     match NCst n with
-    | false => let p := rFind_at t fv in constr:(Var p)
-    | ?n1 => let v1  := aux t1 in constr:(Pow v1 n1)
+    | false => let p := rFind_at t fv in uconstr:(Var p)
+    | ?n1 => let v1  := aux t1 in uconstr:(Pow v1 n1)
     end
   | (- ?t1) =>
-    let v1  := aux t1 in constr:(Opp v1)
+    let v1  := aux t1 in uconstr:(Opp v1)
   | _ =>
-    let p := rFind_at t fv in constr:(Var p)
-  end
-  in aux t.
+    let p := rFind_at t fv in uconstr:(Var p)
+  end in
+  aux t.
 
 (********************************************)
 (* Unsyntaxification for Z                  *)

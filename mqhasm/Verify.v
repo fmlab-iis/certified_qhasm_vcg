@@ -15,6 +15,17 @@ Open Scope mqhasm_scope.
 
 (** Options *)
 
+(*
+  - opt_split: split postcondition at specification level,
+               good for slicing, bad for rewriting a lot of assignments
+  - opt_slicing: apply slicing before converting to SSA
+  - opt_to_assign: rewrite equations (e1 = e2) to assignment form (x = e)
+  - opt_lazy: use Lazy to do simplification
+  - opt_native: use native_compute to do simplification
+  - opt_singular: use Singular to do polynomial operations
+  - opt_magma: use Magma to do polynomial operations
+  - opt_profiling: print some timing information
+*)
 Record verify_options : Set :=
   mkOptions { opt_split : bool;
               opt_slicing : bool;
