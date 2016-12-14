@@ -1,8 +1,8 @@
 
-From Coq Require Import ZArith.
+From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat ssralg ssrfun choice eqtype.
 From CompCert Require Import Integers.
-From Common Require Import Bits.
+From Common Require Import Bits Types.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -129,3 +129,215 @@ Section HexStrings.
     int64_of_bits64 (fromNString str).
 
 End HexStrings.
+
+
+
+(** Ordered types for byte, int, and int64 *)
+(*
+Lemma zlt_trans :
+  forall x y z : Z,
+    Coqlib.zlt x y -> Coqlib.zlt y z -> Coqlib.zlt x z.
+Proof.
+  rewrite /Coqlib.zlt.
+  move=> x y z.
+  case (Z_lt_dec x y).
+Qed.
+*)
+
+Lemma byte_unsigned_inj x y :
+  Byte.unsigned x = Byte.unsigned y -> byte_eq x y.
+Proof.
+  destruct x as [x rx]; destruct y as [y ry];
+    rewrite /byte_eq /Byte.eq /= => Hxy.
+  by case: (Coqlib.zeq x y).
+Qed.
+
+Lemma int_unsigned_inj x y :
+  Int.unsigned x = Int.unsigned y -> int_eq x y.
+Proof.
+  destruct x as [x rx]; destruct y as [y ry];
+    rewrite /int_eq /Int.eq /= => Hxy.
+  by case: (Coqlib.zeq x y).
+Qed.
+
+Lemma int64_unsigned_inj x y :
+  Int64.unsigned x = Int64.unsigned y -> int64_eq x y.
+Proof.
+  destruct x as [x rx]; destruct y as [y ry];
+    rewrite /int64_eq /Int64.eq /= => Hxy.
+  by case: (Coqlib.zeq x y).
+Qed.
+
+Module ByteOrderMinimal <: SsrOrderedTypeMinimal.
+
+  Definition t : eqType := byte_eqType.
+
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
+
+  Definition lt : t -> t -> bool := Byte.ltu.
+
+  Hint Unfold eq lt.
+
+  Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+  Proof.
+    rewrite /lt /Byte.ltu /Coqlib.zlt /= => x y z.
+    case: (Z_lt_dec (Byte.unsigned x) (Byte.unsigned y)) => //=.
+    case: (Z_lt_dec (Byte.unsigned y) (Byte.unsigned z)) => //=.
+    case: (Z_lt_dec (Byte.unsigned x) (Byte.unsigned z)) => //=.
+    move=> Hxz Hyz Hxy _ _.
+    apply: False_ind; apply: Hxz.
+    exact: (Z.lt_trans _ _ _ Hxy Hyz).
+  Qed.
+
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
+  Proof.
+    rewrite /lt /Byte.ltu /Coqlib.zlt /= => x y.
+    case: (Z_lt_dec (Byte.unsigned x) (Byte.unsigned y)) => //=.
+    move=> Hlt _.
+    apply/negP => Heq.
+    rewrite (eqP Heq) in Hlt.
+    apply: (Z.lt_irrefl (Byte.unsigned y)).
+    assumption.
+  Qed.
+
+  Lemma compare : forall x y : t, Compare lt eq x y.
+  Proof.
+    move=> x y.
+    case Heq: (x == y); last case Hlt: (lt x y).
+    - apply: EQ.
+      assumption.
+    - exact: (OrderedType.LT Hlt).
+    - apply: GT.
+      move: Hlt.
+      rewrite /lt /Byte.ltu.
+      case: (Coqlib.zlt (Byte.unsigned x) (Byte.unsigned y)) => //=.
+      move=> Hge _.
+      move: (Z.ge_le _ _ Hge) => Hle.
+      move: (Z.le_lteq (Byte.unsigned y) (Byte.unsigned x)) => [H _].
+      case: (H Hle) => {H} Hyx.
+      + by case: (Coqlib.zlt (Byte.unsigned y) (Byte.unsigned x)).
+      + apply: False_ind.
+        move/negP: Heq; apply.
+        rewrite eq_sym.
+        exact: (byte_unsigned_inj Hyx).
+  Defined.
+
+End ByteOrderMinimal.
+
+Module ByteOrder <: SsrOrderedType := MakeSsrOrderedType ByteOrderMinimal.
+
+Module IntOrderMinimal <: SsrOrderedTypeMinimal.
+
+  Definition t : eqType := int_eqType.
+
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
+
+  Definition lt : t -> t -> bool := Int.ltu.
+
+  Hint Unfold eq lt.
+
+  Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+  Proof.
+    rewrite /lt /Int.ltu /Coqlib.zlt /= => x y z.
+    case: (Z_lt_dec (Int.unsigned x) (Int.unsigned y)) => //=.
+    case: (Z_lt_dec (Int.unsigned y) (Int.unsigned z)) => //=.
+    case: (Z_lt_dec (Int.unsigned x) (Int.unsigned z)) => //=.
+    move=> Hxz Hyz Hxy _ _.
+    apply: False_ind; apply: Hxz.
+    exact: (Z.lt_trans _ _ _ Hxy Hyz).
+  Qed.
+
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
+  Proof.
+    rewrite /lt /Int.ltu /Coqlib.zlt /= => x y.
+    case: (Z_lt_dec (Int.unsigned x) (Int.unsigned y)) => //=.
+    move=> Hlt _.
+    apply/negP => Heq.
+    rewrite (eqP Heq) in Hlt.
+    apply: (Z.lt_irrefl (Int.unsigned y)).
+    assumption.
+  Qed.
+
+  Lemma compare : forall x y : t, Compare lt eq x y.
+  Proof.
+    move=> x y.
+    case Heq: (x == y); last case Hlt: (lt x y).
+    - apply: EQ.
+      assumption.
+    - exact: (OrderedType.LT Hlt).
+    - apply: GT.
+      move: Hlt.
+      rewrite /lt /Int.ltu.
+      case: (Coqlib.zlt (Int.unsigned x) (Int.unsigned y)) => //=.
+      move=> Hge _.
+      move: (Z.ge_le _ _ Hge) => Hle.
+      move: (Z.le_lteq (Int.unsigned y) (Int.unsigned x)) => [H _].
+      case: (H Hle) => {H} Hyx.
+      + by case: (Coqlib.zlt (Int.unsigned y) (Int.unsigned x)).
+      + apply: False_ind.
+        move/negP: Heq; apply.
+        rewrite eq_sym.
+        exact: (int_unsigned_inj Hyx).
+  Defined.
+
+End IntOrderMinimal.
+
+Module IntOrder <: SsrOrderedType := MakeSsrOrderedType IntOrderMinimal.
+
+Module Int64OrderMinimal <: SsrOrderedTypeMinimal.
+
+  Definition t : eqType := int64_eqType.
+
+  Definition eq : t -> t -> bool := fun x y : t => x == y.
+
+  Definition lt : t -> t -> bool := Int64.ltu.
+
+  Hint Unfold eq lt.
+
+  Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+  Proof.
+    rewrite /lt /Int64.ltu /Coqlib.zlt /= => x y z.
+    case: (Z_lt_dec (Int64.unsigned x) (Int64.unsigned y)) => //=.
+    case: (Z_lt_dec (Int64.unsigned y) (Int64.unsigned z)) => //=.
+    case: (Z_lt_dec (Int64.unsigned x) (Int64.unsigned z)) => //=.
+    move=> Hxz Hyz Hxy _ _.
+    apply: False_ind; apply: Hxz.
+    exact: (Z.lt_trans _ _ _ Hxy Hyz).
+  Qed.
+
+  Lemma lt_not_eq : forall x y : t, lt x y -> x != y.
+  Proof.
+    rewrite /lt /Int64.ltu /Coqlib.zlt /= => x y.
+    case: (Z_lt_dec (Int64.unsigned x) (Int64.unsigned y)) => //=.
+    move=> Hlt _.
+    apply/negP => Heq.
+    rewrite (eqP Heq) in Hlt.
+    apply: (Z.lt_irrefl (Int64.unsigned y)).
+    assumption.
+  Qed.
+
+  Lemma compare : forall x y : t, Compare lt eq x y.
+  Proof.
+    move=> x y.
+    case Heq: (x == y); last case Hlt: (lt x y).
+    - apply: EQ.
+      assumption.
+    - exact: (OrderedType.LT Hlt).
+    - apply: GT.
+      move: Hlt.
+      rewrite /lt /Int64.ltu.
+      case: (Coqlib.zlt (Int64.unsigned x) (Int64.unsigned y)) => //=.
+      move=> Hge _.
+      move: (Z.ge_le _ _ Hge) => Hle.
+      move: (Z.le_lteq (Int64.unsigned y) (Int64.unsigned x)) => [H _].
+      case: (H Hle) => {H} Hyx.
+      + by case: (Coqlib.zlt (Int64.unsigned y) (Int64.unsigned x)).
+      + apply: False_ind.
+        move/negP: Heq; apply.
+        rewrite eq_sym.
+        exact: (int64_unsigned_inj Hyx).
+  Defined.
+
+End Int64OrderMinimal.
+
+Module Int64Order <: SsrOrderedType := MakeSsrOrderedType Int64OrderMinimal.
