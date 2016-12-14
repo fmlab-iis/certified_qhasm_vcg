@@ -215,20 +215,27 @@ Ltac simpl_with o :=
   end.
 
 Ltac ispec_to_poly_with o :=
-  match goal with
-  | |- valid_ispec ?ispec =>
-    split; [
-      by (simpl_with o; reflexivity)
-         || fail "The specification is not well formed" |
-      apply_spec_split_post o;
-      (apply_qslice_sound o;
-      apply: ssa_spec_sound;
-      apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
-        by (simpl_with o; reflexivity) |
-        simplZ_with o; intros;
-        repeat (remove_exists_hyp || split_conj); clear_true
-      ])
-    ]
+  let tac _ := (
+    match goal with
+    | |- valid_ispec ?ispec =>
+      split; [
+        by (simpl_with o; reflexivity)
+           || fail "The specification is not well formed" |
+        apply_spec_split_post o;
+        (apply_qslice_sound o;
+        apply: ssa_spec_sound;
+        apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
+          by (simpl_with o; reflexivity) |
+          simplZ_with o; intros;
+          repeat (remove_exists_hyp || split_conj); clear_true
+        ])
+      ]
+    end) in
+  let b := constr:(opt_profiling o) in
+  let b := eval compute in b in
+  match b with
+  | true => time "ispec_to_poly" (tac unit)
+  | false => tac unit
   end.
 
 Tactic Notation "ispec_to_poly" := ispec_to_poly_with default_options.
@@ -318,7 +325,17 @@ Ltac rewrite_assign2 :=
     end
   end.
 
-Ltac rewrite_assign := rewrite_assign1 || rewrite_assign2.
+Ltac rewrite_assign3 := rewrite_assign1 || rewrite_assign2.
+
+Ltac rewrite_assign_with o :=
+  let b := constr:(opt_profiling o) in
+  let b := eval compute in b in
+  match b with
+  | true => time "rewrite_assign" (repeat rewrite_assign3)
+  | false => repeat rewrite_assign3
+  end.
+
+Tactic Notation "rewrite_assign" := rewrite_assign_with default_options.
 
 Ltac rewrite_equality :=
   match goal with
@@ -399,7 +416,7 @@ Ltac verify_entail_with o :=
     let H := fresh in
     simplZ; move=> s H; repeat (remove_exists_hyp || split_conj);
     clear_true; to_assign_with o;
-    repeat rewrite_assign; rewrite_equality; verify_bexp_with o
+    rewrite_assign_with o; rewrite_equality; verify_bexp_with o
   end.
 
 Tactic Notation "verify_entail" := verify_entail_with default_options.
@@ -407,7 +424,7 @@ Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconf
 
 Ltac verify_ispec_with o :=
   ispec_to_poly_with o; to_assign_with o;
-  repeat rewrite_assign; rewrite_equality; solve_ispec_with o.
+  rewrite_assign_with o; rewrite_equality; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.
 Tactic Notation "verify_ispec" "with" constr(opts) := verify_ispec_with (vconfig opts).
