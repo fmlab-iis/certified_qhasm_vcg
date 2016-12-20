@@ -1,1 +1,16 @@
 
+\begin{eqnarray*}
+  N & ::= & \mathsf{1}\ |\ \mathsf{2}\ |\ \cdots\\
+  C & ::= & \cdots \ |\ \mathsf{-2}\ |\ \mathsf{-1} \ |\ 0\ |\ 
+            \mathsf{1}\ |\ \mathsf{2}\ |\ \cdots\\
+  V & ::= & \mathsf{x_0}\ |\ \mathsf{x_1}\ |\ \mathsf{x_2}\ |\ \cdots\\
+  E & ::= &  C \ |\ V \ |\  \mathsf{-}E \ |\ E \mathsf{+} E 
+             \ |\ E \mathsf{-} E
+             \ |\ E \mathsf{\times} E \ |\ \mathsf{Pow} (E, N)
+\end{eqnarray*}
+
+\begin{eqnarray*}
+  S & ::= & V \mathsf{\leftarrow} E 
+            \ |\  V, V \mathsf{\leftarrow} \mathsf{Split} (E, N)\\
+  P & ::= & S \ |\ P; S
+\end{eqnarray*}
