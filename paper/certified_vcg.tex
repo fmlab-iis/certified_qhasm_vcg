@@ -1,0 +1,84 @@
+\documentclass{llncs}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{alltt}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{xspace}
+\usepackage{proof}
+\usepackage{multirow}
+\pagestyle{plain}
+\usepackage{graphicx}
+\usepackage{algorithm,algpseudocode}
+%\usepackage[T1]{fontenc} 
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+
+\usepackage{a4wide}
+
+\input{macros}
+
+\usepackage{xcolor}
+\definecolor{linkcolor}{rgb}{0.65,0,0}
+\definecolor{citecolor}{rgb}{0,0.65,0}
+\definecolor{urlcolor}{rgb}{0,0,0.65}
+\usepackage[colorlinks=true, backref=page, linkcolor=linkcolor, urlcolor=urlcolor, citecolor=citecolor]{hyperref}
+
+\newif\ifpublic
+\publictrue
+
+\titlerunning{Verifying Curve25519 Software}
+\title{Verifying Curve25519 Software}
+
+\ifpublic
+\author{
+Peter Schwabe\inst{2}
+\and
+Ming-Hsien Tsai\inst{1}
+\and
+Bow-Yaw Wang\inst{1}
+\and
+Bo-Yin Yang\inst{1}
+%
+\thanks{}
+}
+
+\institute
+{
+Institute of Information Science\\
+Academia Sinica\\
+128 Section 2 Academia Road, Taipei 115-29, Taiwan\\
+\email{mhtsai208@gmail.com, bywang@iis.sinica.edu.tw, by@crypto.tw}
+\and
+Radboud University Nijmegen\\
+Digital Security Group\\
+PO Box 9010, 6500GL Nijmegen, The Netherlands\\
+\email{peter@cryptojedi.org}
+}
+\else
+\author{\vspace*{-1cm} }
+\institute{\vspace*{-1cm}\ }
+\fi
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  blah blah blah
+\end{abstract}
+
+\input{introduction}
+
+%\bibliographystyle{splncs03}
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% eval: (TeX-PDF-mode 1)
+%%% TeX-master: "verify25519"
+%%% End: 
