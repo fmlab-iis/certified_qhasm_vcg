@@ -10,7 +10,7 @@ Import Prenex Implicits.
 
 
 
-(** byte, int, and int64 are eqTypes. *)
+(** Byte, int, and int64 are eqTypes. *)
 
 Definition byte_eq : byte -> byte -> bool := Byte.eq.
 Definition int_eq : int -> int -> bool := Int.eq.
@@ -92,6 +92,18 @@ Qed.
 Canonical int64_eqMixin := EqMixin int64_eqP.
 Canonical int64_eqType := Eval hnf in EqType int64 int64_eqMixin.
 
+Module ByteEqtype <: EQTYPE.
+  Definition t := byte_eqType.
+End ByteEqtype.
+
+Module IntEqtype <: EQTYPE.
+  Definition t := int_eqType.
+End IntEqtype.
+
+Module Int64Eqtype <: EQTYPE.
+  Definition t := int64_eqType.
+End Int64Eqtype.
+
 
 
 (** Conversion from hex strings to CompCert integers. *)
@@ -133,16 +145,6 @@ End HexStrings.
 
 
 (** Ordered types for byte, int, and int64 *)
-(*
-Lemma zlt_trans :
-  forall x y z : Z,
-    Coqlib.zlt x y -> Coqlib.zlt y z -> Coqlib.zlt x z.
-Proof.
-  rewrite /Coqlib.zlt.
-  move=> x y z.
-  case (Z_lt_dec x y).
-Qed.
-*)
 
 Lemma byte_unsigned_inj x y :
   Byte.unsigned x = Byte.unsigned y -> byte_eq x y.
@@ -341,3 +343,11 @@ Module Int64OrderMinimal <: SsrOrderedTypeMinimal.
 End Int64OrderMinimal.
 
 Module Int64Order <: SsrOrderedType := MakeSsrOrderedType Int64OrderMinimal.
+
+
+
+(** Others *)
+
+Definition byte_pow_pos x := Pos.iter (Byte.mul x) Byte.one.
+Definition int_pow_pos x := Pos.iter (Int.mul x) Int.one.
+Definition int64_pow_pos x := Pos.iter (Int64.mul x) Int64.one.

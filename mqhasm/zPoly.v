@@ -1,7 +1,7 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
 From Common Require Import Types Lists FSets Bools ZAriths Var Store.
-From mQhasm Require Import mQhasm SSA.
+From mQhasm Require Import zDSL zSSA.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -13,14 +13,14 @@ Import Prenex Implicits.
 
 Section SSAPoly.
 
-  Import SSA.
+  Import zSSA.
 
-  Local Open Scope ssa_scope.
+  Local Open Scope zssa_scope.
 
   Definition bexp_instr (i : instr) : bexp :=
     match i with
-    | QAssign v e => QVar v @= e
-    | QSplit vh vl e p => (QVar vl) @+ (QVar vh @* (QConst 2 @^ p)) @= e
+    | zAssign v e => zVar v @= e
+    | zSplit vh vl e p => (zVar vl) @+ (zVar vh @* (zConst 2 @^ p)) @= e
     end.
 
   Definition bexp_program (p : program) : seq bexp :=
@@ -104,7 +104,7 @@ Section SSAPoly.
     destruct s as [f p g].
     move=> /andP /= [/andP [/andP [/andP [/= Hpre Hwell] Hpost] Hvs] Hssa] Hb s1 s2 /= Hf Hp.
     move: (Hb s2) => {Hb} /= Hb.
-    have: ssa_vars_unchanged_program (SSA.vars_bexp f) p by
+    have: ssa_vars_unchanged_program (zSSA.vars_bexp f) p by
       exact: (ssa_unchanged_program_subset Hvs Hpre).
     move=> Hunf.
     move: (ssa_unchanged_program_eval_bexp1 Hunf Hp Hf) => {Hf} Hf.
@@ -116,7 +116,7 @@ Section SSAPoly.
     - move=> hd tl IH vs g s1 s2 /andP [Hhd Htl] Hpost Hvs /andP [Hssa1 Hssa2] Hp Hb.
       move: (eval_program_cons Hp) => {Hp} [s3 [Hehd Hetl]].
       apply: (IH _ _ _ _ Htl _ _ Hssa2 Hetl).
-      + rewrite -(SSA.well_formed_instr_vars Hhd).
+      + rewrite -(zSSA.well_formed_instr_vars Hhd).
         rewrite VSLemmas.OP.P.union_assoc.
         exact: Hpost.
       + exact: (ssa_unchanged_program_union2 (ssa_unchanged_program_tl Hvs) Hssa1).
@@ -192,6 +192,6 @@ Section SSAPoly.
     exact: bexp_spec_sound_imp.
   Qed.
 
-  Local Close Scope ssa_scope.
+  Local Close Scope zssa_scope.
 
 End SSAPoly.

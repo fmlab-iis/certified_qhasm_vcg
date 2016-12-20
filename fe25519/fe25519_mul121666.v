@@ -1,18 +1,18 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm Radix .
+From mQhasm Require Import zDSL zRadix .
 From mathcomp Require Import seq .
 
 Open Scope N_scope.
-Open Scope mqhasm_scope.
+Open Scope zdsl_scope.
 
 Definition fe25519_mul121666 : program :=
 
-let          qtwo :=   QConst 2%Z in
+let          qtwo :=   zConst 2%Z in
 let         wsize :=   64%positive in
 
 let concat_shift hi lo w :=       (* (hi.lo) << w *)
-      QBinop QMul (QBinop QAdd (QBinop QMul hi (QPow qtwo wsize)) lo)
-                  (QPow qtwo w) in
+      zBinop zMul (zBinop zAdd (zBinop zMul hi (zPow qtwo wsize)) lo)
+                  (zPow qtwo w) in
 
 let crypto_sign_ed25519_amd64_51_121666_213 :=
                        996687872%Z in (* from consts *)
@@ -118,61 +118,61 @@ let         carry := 999 in
       (*  *)
       (*   #BEGIN MACRO  *)
       (*   rax = *[uint64 *](xp + 0) *)
-QAssign rax (QVar x0);
+zAssign rax (zVar x0);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-QSplit rax tmp (QVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13%positive;
       (*   r0 = rax *)
-QAssign r0 (QVar rax);
+zAssign r0 (zVar rax);
       (*   r1 = rdx *)
-QAssign r1 (QVar rdx);
+zAssign r1 (zVar rdx);
       (*    *)
       (*   rax = *[uint64 *](xp + 8) *)
-QAssign rax (QVar x1);
+zAssign rax (zVar x1);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-QSplit rax tmp (QVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13%positive;
       (*   r1 += rax *)
-QAssign r1 (QBinop QAdd (QVar r1) (QVar rax));
+zAssign r1 (zBinop zAdd (zVar r1) (zVar rax));
       (*   r2 = rdx *)
-QAssign r2 (QVar rdx);
+zAssign r2 (zVar rdx);
       (*    *)
       (*   rax = *[uint64 *](xp + 16) *)
-QAssign rax (QVar x2);
+zAssign rax (zVar x2);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-QSplit rax tmp (QVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13%positive;
       (*   r2 += rax *)
-QAssign r2 (QBinop QAdd (QVar r2) (QVar rax));
+zAssign r2 (zBinop zAdd (zVar r2) (zVar rax));
       (*   r3 = rdx *)
-QAssign r3 (QVar rdx);
+zAssign r3 (zVar rdx);
       (*    *)
       (*   rax = *[uint64 *](xp + 24) *)
-QAssign rax (QVar x3);
+zAssign rax (zVar x3);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-QSplit rax tmp (QVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13%positive;
       (*   r3 += rax *)
-QAssign r3 (QBinop QAdd (QVar r3) (QVar rax));
+zAssign r3 (zBinop zAdd (zVar r3) (zVar rax));
       (*   r4 = rdx *)
-QAssign r4 (QVar rdx);
+zAssign r4 (zVar rdx);
       (*    *)
       (*   rax = *[uint64 *](xp + 32) *)
-QAssign rax (QVar x4);
+zAssign rax (zVar x4);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-QSplit rax tmp (QVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13%positive;
       (*   r4 += rax *)
-QAssign r4 (QBinop QAdd (QVar r4) (QVar rax));
+zAssign r4 (zBinop zAdd (zVar r4) (zVar rax));
       (*   rdx *= 19 *)
-QAssign rdx (QBinop QMul (QVar rdx) (QConst 19%Z));
+zAssign rdx (zBinop zMul (zVar rdx) (zConst 19%Z));
       (*   r0 += rdx *)
-QAssign r0 (QBinop QAdd (QVar r0) (QVar rdx));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar rdx));
       (*   #END MACRO  *)
       (*  *)
       (*   #// var x0 = mem64[xp + 0]@u320 *)
@@ -200,15 +200,15 @@ QAssign r0 (QBinop QAdd (QVar r0) (QVar rdx));
       (*   *)
       (*  *)
       (* *[uint64 *](rp + 0) = r0 *)
-QAssign z0 (QVar r0);
+zAssign z0 (zVar r0);
       (* *[uint64 *](rp + 8) = r1 *)
-QAssign z1 (QVar r1);
+zAssign z1 (zVar r1);
       (* *[uint64 *](rp + 16) = r2 *)
-QAssign z2 (QVar r2);
+zAssign z2 (zVar r2);
       (* *[uint64 *](rp + 24) = r3 *)
-QAssign z3 (QVar r3);
+zAssign z3 (zVar r3);
       (* *[uint64 *](rp + 32) = r4 *)
-QAssign z4 (QVar r4)
+zAssign z4 (zVar r4)
       (*  *)
       (*  *)
       (*   #BEGIN MACRO callerregs_restore *)
@@ -233,7 +233,7 @@ let            x3 :=   3 in
 let            x4 :=   4 in
 VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4].
 
-Definition fe25519_mul121666_pre : bexp := QTrue.
+Definition fe25519_mul121666_pre : bexp := zTrue.
 
 Definition fe25519_mul121666_post : bexp :=
 let            x0 :=   0 in
@@ -247,13 +247,13 @@ let            r2 :=  12 in
 let            r3 :=  13 in
 let            r4 :=  14 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
+zEqMod
   (
-    (radix51 [::QVar x0; QVar x1; QVar x2; QVar x3; QVar x4])
+    (radix51 [::zVar x0; zVar x1; zVar x2; zVar x3; zVar x4])
     @*
-    (QConst 121666)
+    (zConst 121666)
   )
-  (radix51 [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+  (radix51 [::zVar r0; zVar r1; zVar r2; zVar r3; zVar r4])
   (n25519).
 
 Definition fe25519_mul121666_spec :=
@@ -261,10 +261,8 @@ Definition fe25519_mul121666_spec :=
      sprog := fe25519_mul121666;
      spost := fe25519_mul121666_post |}.
 
-Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
-Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import ssreflect eqtype ssrbool.
-From mQhasm Require Import mQhasm SSA PolyGen Verify.
+From mQhasm Require Import Verify.
 
 Lemma valid_fe25519_mul121666 : valid_ispec (fe25519_mul121666_inputs, fe25519_mul121666_spec).
 Proof.
@@ -272,5 +270,5 @@ Proof.
   (* *)
 Qed.
 
-Close Scope mqhasm_scope.
+Close Scope zdsl_scope.
 Close Scope N_scope.

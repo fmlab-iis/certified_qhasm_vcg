@@ -1,9 +1,9 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm Radix .
+From mQhasm Require Import mQhasm zRadix .
 From mathcomp Require Import seq .
 
 Open Scope N_scope.
-Open Scope mqhasm_scope.
+Open Scope zdsl_scope.
 
 Definition bi : Set := N * N * N * N * N.
 
@@ -13,7 +13,7 @@ Definition bi_list (X : bi) :=
 
 Definition bi_limbs (X : bi) :=
   let '(x0, x1, x2, x3, x4) := X in
-  radix51 [:: QVar x0; QVar x1; QVar x2; QVar x3; QVar x4].
+  radix51 [:: zVar x0; zVar x1; zVar x2; zVar x3; zVar x4].
 
 Definition fe25519_add (X Y R : bi) : program :=
 let '(x0, x1, x2, x3, x4) := X in
@@ -21,25 +21,25 @@ let '(y0, y1, y2, y3, y4) := Y in
 let '(r0, r1, r2, r3, r4) := R in
 [::
       (* r0 = x0 *)
-QAssign r0 (QVar x0);
+zAssign r0 (zVar x0);
       (* r1 = x1 *)
-QAssign r1 (QVar x1);
+zAssign r1 (zVar x1);
       (* r2 = x2 *)
-QAssign r2 (QVar x2);
+zAssign r2 (zVar x2);
       (* r3 = x3 *)
-QAssign r3 (QVar x3);
+zAssign r3 (zVar x3);
       (* r4 = x4 *)
-QAssign r4 (QVar x4);
+zAssign r4 (zVar x4);
       (* r0 += y0 *)
-QAssign r0 (QBinop QAdd (QVar r0) (QVar y0));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar y0));
       (* r1 += y1 *)
-QAssign r1 (QBinop QAdd (QVar r1) (QVar y1));
+zAssign r1 (zBinop zAdd (zVar r1) (zVar y1));
       (* r2 += y2 *)
-QAssign r2 (QBinop QAdd (QVar r2) (QVar y2));
+zAssign r2 (zBinop zAdd (zVar r2) (zVar y2));
       (* r3 += y3 *)
-QAssign r3 (QBinop QAdd (QVar r3) (QVar y3));
+zAssign r3 (zBinop zAdd (zVar r3) (zVar y3));
       (* r4 += y4 *)
-QAssign r4 (QBinop QAdd (QVar r4) (QVar y4))
+zAssign r4 (zBinop zAdd (zVar r4) (zVar y4))
       (*  *)
 ] .
 
@@ -53,72 +53,72 @@ let crypto_sign_ed25519_amd64_51_2P1234 :=
                        4503599627370494%Z in (* 0xFFFFFFFFFFFFE from consts *)
 [::
       (* r0 = x0 *)
-QAssign r0 (QVar x0);
+zAssign r0 (zVar x0);
       (* r1 = x1 *)
-QAssign r1 (QVar x1);
+zAssign r1 (zVar x1);
       (* r2 = x2 *)
-QAssign r2 (QVar x2);
+zAssign r2 (zVar x2);
       (* r3 = x3 *)
-QAssign r3 (QVar x3);
+zAssign r3 (zVar x3);
       (* r4 = x4 *)
-QAssign r4 (QVar x4);
+zAssign r4 (zVar x4);
       (* r0 += *[uint64 *] &crypto_sign_ed25519_amd64_51_2P0 *)
-QAssign r0 (QBinop QAdd (QVar r0) (QConst crypto_sign_ed25519_amd64_51_2P0));
+zAssign r0 (zBinop zAdd (zVar r0) (zConst crypto_sign_ed25519_amd64_51_2P0));
       (* r1 += *[uint64 *] &crypto_sign_ed25519_amd64_51_2P1234 *)
-QAssign r1 (QBinop QAdd (QVar r1) (QConst crypto_sign_ed25519_amd64_51_2P1234));
+zAssign r1 (zBinop zAdd (zVar r1) (zConst crypto_sign_ed25519_amd64_51_2P1234));
       (* r2 += *[uint64 *] &crypto_sign_ed25519_amd64_51_2P1234 *)
-QAssign r2 (QBinop QAdd (QVar r2) (QConst crypto_sign_ed25519_amd64_51_2P1234));
+zAssign r2 (zBinop zAdd (zVar r2) (zConst crypto_sign_ed25519_amd64_51_2P1234));
       (* r3 += *[uint64 *] &crypto_sign_ed25519_amd64_51_2P1234 *)
-QAssign r3 (QBinop QAdd (QVar r3) (QConst crypto_sign_ed25519_amd64_51_2P1234));
+zAssign r3 (zBinop zAdd (zVar r3) (zConst crypto_sign_ed25519_amd64_51_2P1234));
       (* r4 += *[uint64 *] &crypto_sign_ed25519_amd64_51_2P1234 *)
-QAssign r4 (QBinop QAdd (QVar r4) (QConst crypto_sign_ed25519_amd64_51_2P1234));
+zAssign r4 (zBinop zAdd (zVar r4) (zConst crypto_sign_ed25519_amd64_51_2P1234));
       (* r0 -= y0 *)
-QAssign r0 (QBinop QSub (QVar r0) (QVar y0));
+zAssign r0 (zBinop zSub (zVar r0) (zVar y0));
       (* r1 -= y1 *)
-QAssign r1 (QBinop QSub (QVar r1) (QVar y1));
+zAssign r1 (zBinop zSub (zVar r1) (zVar y1));
       (* r2 -= y2 *)
-QAssign r2 (QBinop QSub (QVar r2) (QVar y2));
+zAssign r2 (zBinop zSub (zVar r2) (zVar y2));
       (* r3 -= y3 *)
-QAssign r3 (QBinop QSub (QVar r3) (QVar y3));
+zAssign r3 (zBinop zSub (zVar r3) (zVar y3));
       (* r4 -= y4 *)
-QAssign r4 (QBinop QSub (QVar r4) (QVar y4))
+zAssign r4 (zBinop zSub (zVar r4) (zVar y4))
       (*  *)
 ] .
 
 Definition fe25519_mul121666 (X R : bi) : program :=
 let '(x0, x1, x2, x3, x4) := X in
 let '(r0, r1, r2, r3, r4) := R in
-let          qtwo :=   QConst 2%Z in
+let          qtwo :=   zConst 2%Z in
 let         wsize :=   64%positive in
 let           rax :=  1000 in
 let           rdx :=  1001 in
 
 [::
-QAssign rax (QVar x0);
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst 121666)) 51;
-QAssign r0 (QVar rax);
-QAssign r1 (QVar rdx);
+zAssign rax (zVar x0);
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst 121666)) 51;
+zAssign r0 (zVar rax);
+zAssign r1 (zVar rdx);
       (*    *)
-QAssign rax (QVar x1);
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst 121666)) 51;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar rax));
-QAssign r2 (QVar rdx);
+zAssign rax (zVar x1);
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst 121666)) 51;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar rax));
+zAssign r2 (zVar rdx);
       (*    *)
-QAssign rax (QVar x2);
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst 121666)) 51;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar rax));
-QAssign r3 (QVar rdx);
+zAssign rax (zVar x2);
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst 121666)) 51;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar rax));
+zAssign r3 (zVar rdx);
       (*    *)
-QAssign rax (QVar x3);
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst 121666)) 51;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar rax));
-QAssign r4 (QVar rdx);
+zAssign rax (zVar x3);
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst 121666)) 51;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar rax));
+zAssign r4 (zVar rdx);
       (*    *)
-QAssign rax (QVar x4);
-QSplit rdx rax (QBinop QMul (QVar rax) (QConst 121666)) 51;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar rax));
-QAssign rdx (QBinop QMul (QVar rdx) (QConst 19));
-QAssign r0 (QBinop QAdd (QVar r0) (QVar rdx))
+zAssign rax (zVar x4);
+zSplit rdx rax (zBinop zMul (zVar rax) (zConst 121666)) 51;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar rax));
+zAssign rdx (zBinop zMul (zVar rdx) (zConst 19));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar rdx))
 ] .
 
 Definition fe25519_mul (X Y Z : bi) : program :=
@@ -126,9 +126,9 @@ let '(x0, x1, x2, x3, x4) := X in
 let '(y0, y1, y2, y3, y4) := Y in
 let '(z0, z1, z2, z3, z4) := Z in
 
-let          qtwo :=   QConst (2%Z) in
+let          qtwo :=   zConst (2%Z) in
 let         wsize :=   64%positive in
-let      pow2 x n := QBinop QMul x (QPow qtwo n) in
+let      pow2 x n := zBinop zMul x (zPow qtwo n) in
 
 let         carry := 9999 in
 let           tmp := 9998 in
@@ -168,12 +168,12 @@ let       mulx419 :=  1036 in
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 16) *)
       (*   r0 = mulrax *)
       (*   mulr01 = mulrdx *)
-QAssign mulrax (QVar x3);
-QAssign mulrax (QBinop QMul (QVar mulrax) (QConst 19%Z));
-QAssign mulx319 (QVar mulrax);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y2)) wsize;
-QAssign r0 (QVar mulrax);
-QAssign mulr01 (QVar mulrdx);
+zAssign mulrax (zVar x3);
+zAssign mulrax (zBinop zMul (zVar mulrax) (zConst 19%Z));
+zAssign mulx319 (zVar mulrax);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y2)) wsize;
+zAssign r0 (zVar mulrax);
+zAssign mulr01 (zVar mulrdx);
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 32) *)
@@ -182,108 +182,108 @@ QAssign mulr01 (QVar mulrdx);
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 8) *)
       (*   carry? r0 += mulrax *)
       (*   mulr01 += mulrdx + carry *)
-QAssign mulrax (QVar x4);
-QAssign mulrax (QBinop QMul (QVar mulrax) (QConst 19%Z));
-QAssign mulx419 (QVar mulrax);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y1)) wsize;
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mulrax));
-QSplit carry r0 (QVar r0) wsize;
-QAssign mulr01 (QBinop QAdd (QVar mulr01) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x4);
+zAssign mulrax (zBinop zMul (zVar mulrax) (zConst 19%Z));
+zAssign mulx419 (zVar mulrax);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y1)) wsize;
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mulrax));
+zSplit carry r0 (zVar r0) wsize;
+zAssign mulr01 (zBinop zAdd (zVar mulr01) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 0) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 0) *)
       (*   carry? r0 += mulrax *)
       (*   mulr01 += mulrdx + carry *)
-QAssign mulrax (QVar x0);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mulrax));
-QSplit carry r0 (QVar r0) wsize;
-QAssign mulr01 (QBinop QAdd (QVar mulr01) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x0);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y0)) wsize;
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mulrax));
+zSplit carry r0 (zVar r0) wsize;
+zAssign mulr01 (zBinop zAdd (zVar mulr01) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 0) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 8) *)
       (*   r1 = mulrax *)
       (*   mulr11 = mulrdx *)
-QAssign mulrax (QVar x0);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y1)) wsize;
-QAssign r1 (QVar mulrax);
-QAssign mulr11 (QVar mulrdx);
+zAssign mulrax (zVar x0);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y1)) wsize;
+zAssign r1 (zVar mulrax);
+zAssign mulr11 (zVar mulrdx);
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 0) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 16) *)
       (*   r2 = mulrax *)
       (*   mulr21 = mulrdx *)
-QAssign mulrax (QVar x0);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y2)) wsize;
-QAssign r2 (QVar mulrax);
-QAssign mulr21 (QVar mulrdx);
+zAssign mulrax (zVar x0);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y2)) wsize;
+zAssign r2 (zVar mulrax);
+zAssign mulr21 (zVar mulrdx);
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 0) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 24) *)
       (*   r3 = mulrax *)
       (*   mulr31 = mulrdx *)
-QAssign mulrax (QVar x0);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y3)) wsize;
-QAssign r3 (QVar mulrax);
-QAssign mulr31 (QVar mulrdx);
+zAssign mulrax (zVar x0);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y3)) wsize;
+zAssign r3 (zVar mulrax);
+zAssign mulr31 (zVar mulrdx);
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 0) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 32) *)
       (*   r4 = mulrax *)
       (*   mulr41 = mulrdx *)
-QAssign mulrax (QVar x0);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y4)) wsize;
-QAssign r4 (QVar mulrax);
-QAssign mulr41 (QVar mulrdx);
+zAssign mulrax (zVar x0);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y4)) wsize;
+zAssign r4 (zVar mulrax);
+zAssign mulr41 (zVar mulrdx);
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 8) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 0) *)
       (*   carry? r1 += mulrax *)
       (*   mulr11 += mulrdx + carry *)
-QAssign mulrax (QVar x1);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar mulrax));
-QSplit carry r1 (QVar r1) wsize;
-QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x1);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y0)) wsize;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar mulrax));
+zSplit carry r1 (zVar r1) wsize;
+zAssign mulr11 (zBinop zAdd (zVar mulr11) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 8) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 8) *)
       (*   carry? r2 += mulrax *)
       (*   mulr21 += mulrdx + carry *)
-QAssign mulrax (QVar x1);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y1)) wsize;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar mulrax));
-QSplit carry r2 (QVar r2) wsize;
-QAssign mulr21 (QBinop QAdd (QVar mulr21) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x1);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y1)) wsize;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar mulrax));
+zSplit carry r2 (zVar r2) wsize;
+zAssign mulr21 (zBinop zAdd (zVar mulr21) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 8) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 16) *)
       (*   carry? r3 += mulrax *)
       (*   mulr31 += mulrdx + carry *)
-QAssign mulrax (QVar x1);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y2)) wsize;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar mulrax));
-QSplit carry r3 (QVar r3) wsize;
-QAssign mulr31 (QBinop QAdd (QVar mulr31) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x1);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y2)) wsize;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar mulrax));
+zSplit carry r3 (zVar r3) wsize;
+zAssign mulr31 (zBinop zAdd (zVar mulr31) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 8) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 24) *)
       (*   carry? r4 += mulrax *)
       (*   mulr41 += mulrdx + carry *)
-QAssign mulrax (QVar x1);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y3)) wsize;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar mulrax));
-QSplit carry r4 (QVar r4) wsize;
-QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x1);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y3)) wsize;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar mulrax));
+zSplit carry r4 (zVar r4) wsize;
+zAssign mulr41 (zBinop zAdd (zVar mulr41) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 8) *)
@@ -291,45 +291,45 @@ QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 32) *)
       (*   carry? r0 += mulrax *)
       (*   mulr01 += mulrdx + carry *)
-QAssign mulrax (QVar x1);
-QAssign mulrax (QBinop QMul (QVar mulrax) (QConst 19%Z));
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y4)) wsize;
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mulrax));
-QSplit carry r0 (QVar r0) wsize;
-QAssign mulr01 (QBinop QAdd (QVar mulr01) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x1);
+zAssign mulrax (zBinop zMul (zVar mulrax) (zConst 19%Z));
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y4)) wsize;
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mulrax));
+zSplit carry r0 (zVar r0) wsize;
+zAssign mulr01 (zBinop zAdd (zVar mulr01) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 16) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 0) *)
       (*   carry? r2 += mulrax *)
       (*   mulr21 += mulrdx + carry *)
-QAssign mulrax (QVar x2);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar mulrax));
-QSplit carry r2 (QVar r2) wsize;
-QAssign mulr21 (QBinop QAdd (QVar mulr21) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x2);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y0)) wsize;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar mulrax));
+zSplit carry r2 (zVar r2) wsize;
+zAssign mulr21 (zBinop zAdd (zVar mulr21) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 16) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 8) *)
       (*   carry? r3 += mulrax *)
       (*   mulr31 += mulrdx + carry *)
-QAssign mulrax (QVar x2);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y1)) wsize;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar mulrax));
-QSplit carry r3 (QVar r3) wsize;
-QAssign mulr31 (QBinop QAdd (QVar mulr31) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x2);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y1)) wsize;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar mulrax));
+zSplit carry r3 (zVar r3) wsize;
+zAssign mulr31 (zBinop zAdd (zVar mulr31) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 16) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 16) *)
       (*   carry? r4 += mulrax *)
       (*   mulr41 += mulrdx + carry *)
-QAssign mulrax (QVar x2);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y2)) wsize;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar mulrax));
-QSplit carry r4 (QVar r4) wsize;
-QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x2);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y2)) wsize;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar mulrax));
+zSplit carry r4 (zVar r4) wsize;
+zAssign mulr41 (zBinop zAdd (zVar mulr41) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 16) *)
@@ -337,12 +337,12 @@ QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 24) *)
       (*   carry? r0 += mulrax *)
       (*   mulr01 += mulrdx + carry *)
-QAssign mulrax (QVar x2);
-QAssign mulrax (QBinop QMul (QVar mulrax) (QConst 19%Z));
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y3)) wsize;
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mulrax));
-QSplit carry r0 (QVar r0) wsize;
-QAssign mulr01 (QBinop QAdd (QVar mulr01) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x2);
+zAssign mulrax (zBinop zMul (zVar mulrax) (zConst 19%Z));
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y3)) wsize;
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mulrax));
+zSplit carry r0 (zVar r0) wsize;
+zAssign mulr01 (zBinop zAdd (zVar mulr01) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 16) *)
@@ -350,34 +350,34 @@ QAssign mulr01 (QBinop QAdd (QVar mulr01) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 32) *)
       (*   carry? r1 += mulrax *)
       (*   mulr11 += mulrdx + carry *)
-QAssign mulrax (QVar x2);
-QAssign mulrax (QBinop QMul (QVar mulrax) (QConst 19%Z));
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y4)) wsize;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar mulrax));
-QSplit carry r1 (QVar r1) wsize;
-QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x2);
+zAssign mulrax (zBinop zMul (zVar mulrax) (zConst 19%Z));
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y4)) wsize;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar mulrax));
+zSplit carry r1 (zVar r1) wsize;
+zAssign mulr11 (zBinop zAdd (zVar mulr11) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 24) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 0) *)
       (*   carry? r3 += mulrax *)
       (*   mulr31 += mulrdx + carry *)
-QAssign mulrax (QVar x3);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar mulrax));
-QSplit carry r3 (QVar r3) wsize;
-QAssign mulr31 (QBinop QAdd (QVar mulr31) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x3);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y0)) wsize;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar mulrax));
+zSplit carry r3 (zVar r3) wsize;
+zAssign mulr31 (zBinop zAdd (zVar mulr31) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 24) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 8) *)
       (*   carry? r4 += mulrax *)
       (*   mulr41 += mulrdx + carry *)
-QAssign mulrax (QVar x3);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y1)) wsize;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar mulrax));
-QSplit carry r4 (QVar r4) wsize;
-QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x3);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y1)) wsize;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar mulrax));
+zSplit carry r4 (zVar r4) wsize;
+zAssign mulr41 (zBinop zAdd (zVar mulr41) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = mulx319_stack *)
@@ -385,11 +385,11 @@ QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 24) *)
       (*   carry? r1 += mulrax *)
       (*   mulr11 += mulrdx + carry *)
-QAssign mulrax (QVar mulx319);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y3)) wsize;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar mulrax));
-QSplit carry r1 (QVar r1) wsize;
-QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar mulx319);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y3)) wsize;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar mulrax));
+zSplit carry r1 (zVar r1) wsize;
+zAssign mulr11 (zBinop zAdd (zVar mulr11) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = mulx319_stack *)
@@ -397,22 +397,22 @@ QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 32) *)
       (*   carry? r2 += mulrax *)
       (*   mulr21 += mulrdx + carry *)
-QAssign mulrax (QVar mulx319);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y4)) wsize;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar mulrax));
-QSplit carry r2 (QVar r2) wsize;
-QAssign mulr21 (QBinop QAdd (QVar mulr21) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar mulx319);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y4)) wsize;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar mulrax));
+zSplit carry r2 (zVar r2) wsize;
+zAssign mulr21 (zBinop zAdd (zVar mulr21) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = *[uint64 *](xp + 32) *)
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 0) *)
       (*   carry? r4 += mulrax *)
       (*   mulr41 += mulrdx + carry *)
-QAssign mulrax (QVar x4);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y0)) wsize;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar mulrax));
-QSplit carry r4 (QVar r4) wsize;
-QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar x4);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y0)) wsize;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar mulrax));
+zSplit carry r4 (zVar r4) wsize;
+zAssign mulr41 (zBinop zAdd (zVar mulr41) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = mulx419_stack *)
@@ -420,11 +420,11 @@ QAssign mulr41 (QBinop QAdd (QVar mulr41) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 16) *)
       (*   carry? r1 += mulrax *)
       (*   mulr11 += mulrdx + carry *)
-QAssign mulrax (QVar mulx419);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y2)) wsize;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar mulrax));
-QSplit carry r1 (QVar r1) wsize;
-QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar mulx419);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y2)) wsize;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar mulrax));
+zSplit carry r1 (zVar r1) wsize;
+zAssign mulr11 (zBinop zAdd (zVar mulr11) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = mulx419_stack *)
@@ -432,11 +432,11 @@ QAssign mulr11 (QBinop QAdd (QVar mulr11) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 24) *)
       (*   carry? r2 += mulrax *)
       (*   mulr21 += mulrdx + carry *)
-QAssign mulrax (QVar mulx419);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y3)) wsize;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar mulrax));
-QSplit carry r2 (QVar r2) wsize;
-QAssign mulr21 (QBinop QAdd (QVar mulr21) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar mulx419);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y3)) wsize;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar mulrax));
+zSplit carry r2 (zVar r2) wsize;
+zAssign mulr21 (zBinop zAdd (zVar mulr21) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*   mulrax = mulx419_stack *)
@@ -444,11 +444,11 @@ QAssign mulr21 (QBinop QAdd (QVar mulr21) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   (uint128) mulrdx mulrax = mulrax * *[uint64 *](yp + 32) *)
       (*   carry? r3 += mulrax *)
       (*   mulr31 += mulrdx + carry *)
-QAssign mulrax (QVar mulx419);
-QSplit mulrdx mulrax (QBinop QMul (QVar mulrax) (QVar y4)) wsize;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar mulrax));
-QSplit carry r3 (QVar r3) wsize;
-QAssign mulr31 (QBinop QAdd (QVar mulr31) (QBinop QAdd (QVar mulrdx) (QVar carry)));
+zAssign mulrax (zVar mulx419);
+zSplit mulrdx mulrax (zBinop zMul (zVar mulrax) (zVar y4)) wsize;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar mulrax));
+zSplit carry r3 (zVar r3) wsize;
+zAssign mulr31 (zBinop zAdd (zVar mulr31) (zBinop zAdd (zVar mulrdx) (zVar carry)));
       (*  *)
       (*  *)
       (*  *)
@@ -456,36 +456,36 @@ QAssign mulr31 (QBinop QAdd (QVar mulr31) (QBinop QAdd (QVar mulrdx) (QVar carry
       (*   mulredmask = *[uint64 *] &crypto_sign_ed25519_amd64_51_REDMASK51 *)
       (*   mulr01 = (mulr01.r0) << 13 *)
       (*   r0 &= mulredmask *)
-QSplit tmp r0 (QVar r0) 51%positive;
-QAssign mulr01 (QBinop QAdd (pow2 (QVar mulr01) 13%positive) (QVar tmp));
+zSplit tmp r0 (zVar r0) 51%positive;
+zAssign mulr01 (zBinop zAdd (pow2 (zVar mulr01) 13%positive) (zVar tmp));
       (*   mulr11 = (mulr11.r1) << 13 *)
       (*   r1 &= mulredmask *)
       (*   r1 += mulr01 *)
-QSplit tmp r1 (QVar r1) 51%positive;
-QAssign mulr11 (QBinop QAdd (pow2 (QVar mulr11) 13%positive) (QVar tmp));
-QAssign r1 (QBinop QAdd (QVar r1) (QVar mulr01));
+zSplit tmp r1 (zVar r1) 51%positive;
+zAssign mulr11 (zBinop zAdd (pow2 (zVar mulr11) 13%positive) (zVar tmp));
+zAssign r1 (zBinop zAdd (zVar r1) (zVar mulr01));
       (*   mulr21 = (mulr21.r2) << 13 *)
       (*   r2 &= mulredmask *)
       (*   r2 += mulr11 *)
-QSplit tmp r2 (QVar r2) 51%positive;
-QAssign mulr21 (QBinop QAdd (pow2 (QVar mulr21) 13%positive) (QVar tmp));
-QAssign r2 (QBinop QAdd (QVar r2) (QVar mulr11));
+zSplit tmp r2 (zVar r2) 51%positive;
+zAssign mulr21 (zBinop zAdd (pow2 (zVar mulr21) 13%positive) (zVar tmp));
+zAssign r2 (zBinop zAdd (zVar r2) (zVar mulr11));
       (*   mulr31 = (mulr31.r3) << 13 *)
       (*   r3 &= mulredmask *)
       (*   r3 += mulr21 *)
-QSplit tmp r3 (QVar r3) 51%positive;
-QAssign mulr31 (QBinop QAdd (pow2 (QVar mulr31) 13%positive) (QVar tmp));
-QAssign r3 (QBinop QAdd (QVar r3) (QVar mulr21));
+zSplit tmp r3 (zVar r3) 51%positive;
+zAssign mulr31 (zBinop zAdd (pow2 (zVar mulr31) 13%positive) (zVar tmp));
+zAssign r3 (zBinop zAdd (zVar r3) (zVar mulr21));
       (*   mulr41 = (mulr41.r4) << 13 *)
       (*   r4 &= mulredmask *)
       (*   r4 += mulr31 *)
-QSplit tmp r4 (QVar r4) 51%positive;
-QAssign mulr41 (QBinop QAdd (pow2 (QVar mulr41) 13%positive) (QVar tmp));
-QAssign r4 (QBinop QAdd (QVar r4) (QVar mulr31));
+zSplit tmp r4 (zVar r4) 51%positive;
+zAssign mulr41 (zBinop zAdd (pow2 (zVar mulr41) 13%positive) (zVar tmp));
+zAssign r4 (zBinop zAdd (zVar r4) (zVar mulr31));
       (*   mulr41 = mulr41 * 19 *)
-QAssign mulr41 (QBinop QMul (QVar mulr41) (QConst 19%Z));
+zAssign mulr41 (zBinop zMul (zVar mulr41) (zConst 19%Z));
       (*   r0 += mulr41 *)
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mulr41));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mulr41));
       (*  *)
       (*  *)
       (*  *)
@@ -493,45 +493,45 @@ QAssign r0 (QBinop QAdd (QVar r0) (QVar mulr41));
       (*   mult = r0 *)
       (*   (uint64) mult >>= 51 *)
       (*   mult += r1 *)
-QAssign mult (QVar r0);
-QSplit mult tmp (QVar mult) (51%positive);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r1));
+zAssign mult (zVar r0);
+zSplit mult tmp (zVar mult) (51%positive);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r1));
       (*   r1 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r0 &= mulredmask *)
       (*   mult += r2 *)
-QAssign r1 (QVar mult);
-QSplit mult tmp2 (QVar mult) (51%positive);
-QAssign r0 (QVar tmp);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r2));
+zAssign r1 (zVar mult);
+zSplit mult tmp2 (zVar mult) (51%positive);
+zAssign r0 (zVar tmp);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r2));
       (*   r2 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r1 &= mulredmask *)
       (*   mult += r3 *)
-QAssign r2 (QVar mult);
-QSplit mult tmp (QVar mult) (51%positive);
-QAssign r1 (QVar tmp2);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r3));
+zAssign r2 (zVar mult);
+zSplit mult tmp (zVar mult) (51%positive);
+zAssign r1 (zVar tmp2);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r3));
       (*   r3 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r2 &= mulredmask *)
       (*   mult += r4 *)
-QAssign r3 (QVar mult);
-QSplit mult tmp2 (QVar mult) (51%positive);
-QAssign r2 (QVar tmp);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r4));
+zAssign r3 (zVar mult);
+zSplit mult tmp2 (zVar mult) (51%positive);
+zAssign r2 (zVar tmp);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r4));
       (*   r4 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r3 &= mulredmask *)
-QAssign r4 (QVar mult);
-QSplit mult tmp (QVar mult) (51%positive);
-QAssign r3 (QVar tmp2);
+zAssign r4 (zVar mult);
+zSplit mult tmp (zVar mult) (51%positive);
+zAssign r3 (zVar tmp2);
       (*   mult *= 19 *)
       (*   r0 += mult *)
       (*   r4 &= mulredmask *)
-QAssign mult (QBinop QMul (QVar mult) (QConst 19%Z));
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mult));
-QAssign r4 (QVar tmp);
+zAssign mult (zBinop zMul (zVar mult) (zConst 19%Z));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mult));
+zAssign r4 (zVar tmp);
       (*   #END MACRO mul *)
 
       (*  *)
@@ -540,11 +540,11 @@ QAssign r4 (QVar tmp);
       (* *[uint64 *](rp + 16) = r2 *)
       (* *[uint64 *](rp + 24) = r3 *)
       (* *[uint64 *](rp + 32) = r4 *)
-QAssign z0 (QVar r0);
-QAssign z1 (QVar r1);
-QAssign z2 (QVar r2);
-QAssign z3 (QVar r3);
-QAssign z4 (QVar r4)
+zAssign z0 (zVar r0);
+zAssign z1 (zVar r1);
+zAssign z2 (zVar r2);
+zAssign z3 (zVar r3);
+zAssign z4 (zVar r4)
       (*  *)
 
       (* c1 =c1_stack *)
@@ -564,8 +564,8 @@ let '(x0, x1, x2, x3, x4) := X in
 let '(z0, z1, z2, z3, z4) := Z in
 
 let         wsize :=   64%positive in
-let          qtwo :=   QConst (2%Z) in
-let      pow2 x n := QBinop QMul x (QPow qtwo n) in
+let          qtwo :=   zConst (2%Z) in
+let      pow2 x n := zBinop zMul x (zPow qtwo n) in
 
 let            r0 :=  1000 in
 let            r1 :=  1001 in
@@ -670,160 +670,160 @@ let         carry := 9999 in
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 0) *)
       (*   r0 = rax *)
       (*   r01 = rdx *)
-QAssign rax (QVar x0);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x0)) wsize;
-QAssign r0 (QVar rax);
-QAssign r01 (QVar rdx);
+zAssign rax (zVar x0);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x0)) wsize;
+zAssign r0 (zVar rax);
+zAssign r01 (zVar rdx);
       (*   rax = *[uint64 *](xp + 0) *)
       (*   rax <<= 1 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 8) *)
       (*   r1 = rax *)
       (*   r11 = rdx *)
-QAssign rax (QVar x0);
-QAssign rax (QBinop QMul (QVar rax) qtwo);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x1)) wsize;
-QAssign r1 (QVar rax);
-QAssign r11 (QVar rdx);
+zAssign rax (zVar x0);
+zAssign rax (zBinop zMul (zVar rax) qtwo);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x1)) wsize;
+zAssign r1 (zVar rax);
+zAssign r11 (zVar rdx);
       (*   rax = *[uint64 *](xp + 0) *)
       (*   rax <<= 1 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 16) *)
       (*   r2 = rax *)
       (*   r21 = rdx *)
-QAssign rax (QVar x0);
-QAssign rax (QBinop QMul (QVar rax) qtwo);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x2)) wsize;
-QAssign r2 (QVar rax);
-QAssign r21 (QVar rdx);
+zAssign rax (zVar x0);
+zAssign rax (zBinop zMul (zVar rax) qtwo);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x2)) wsize;
+zAssign r2 (zVar rax);
+zAssign r21 (zVar rdx);
       (*   rax = *[uint64 *](xp + 0) *)
       (*   rax <<= 1 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 24) *)
       (*   r3 = rax *)
       (*   r31 = rdx *)
-QAssign rax (QVar x0);
-QAssign rax (QBinop QMul (QVar rax) qtwo);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x3)) wsize;
-QAssign r3 (QVar rax);
-QAssign r31 (QVar rdx);
+zAssign rax (zVar x0);
+zAssign rax (zBinop zMul (zVar rax) qtwo);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x3)) wsize;
+zAssign r3 (zVar rax);
+zAssign r31 (zVar rdx);
       (*   rax = *[uint64 *](xp + 0) *)
       (*   rax <<= 1 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 32) *)
       (*   r4 = rax *)
       (*   r41 = rdx *)
-QAssign rax (QVar x0);
-QAssign rax (QBinop QMul (QVar rax) qtwo);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x4)) wsize;
-QAssign r4 (QVar rax);
-QAssign r41 (QVar rdx);
+zAssign rax (zVar x0);
+zAssign rax (zBinop zMul (zVar rax) qtwo);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x4)) wsize;
+zAssign r4 (zVar rax);
+zAssign r41 (zVar rdx);
       (*  *)
       (*   rax = *[uint64 *](xp + 8) *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 8) *)
       (*   carry? r2 += rax *)
       (*   r21 += rdx + carry *)
-QAssign rax (QVar x1);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x1)) wsize;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar rax));
-QSplit carry r2 (QVar r2) wsize;
-QAssign r21 (QBinop QAdd (QVar r21) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x1);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x1)) wsize;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar rax));
+zSplit carry r2 (zVar r2) wsize;
+zAssign r21 (zBinop zAdd (zVar r21) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*   rax = *[uint64 *](xp + 8) *)
       (*   rax <<= 1 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 16) *)
       (*   carry? r3 += rax *)
       (*   r31 += rdx + carry *)
-QAssign rax (QVar x1);
-QAssign rax (QBinop QMul (QVar rax) qtwo);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x2)) wsize;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar rax));
-QSplit carry r3 (QVar r3) wsize;
-QAssign r31 (QBinop QAdd (QVar r31) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x1);
+zAssign rax (zBinop zMul (zVar rax) qtwo);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x2)) wsize;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar rax));
+zSplit carry r3 (zVar r3) wsize;
+zAssign r31 (zBinop zAdd (zVar r31) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*   rax = *[uint64 *](xp + 8) *)
       (*   rax <<= 1 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 24) *)
       (*   carry? r4 += rax *)
       (*   r41 += rdx + carry *)
-QAssign rax (QVar x1);
-QAssign rax (QBinop QMul (QVar rax) qtwo);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x3)) wsize;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar rax));
-QSplit carry r4 (QVar r4) wsize;
-QAssign r41 (QBinop QAdd (QVar r41) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x1);
+zAssign rax (zBinop zMul (zVar rax) qtwo);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x3)) wsize;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar rax));
+zSplit carry r4 (zVar r4) wsize;
+zAssign r41 (zBinop zAdd (zVar r41) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*   rax = *[uint64 *](xp + 8) *)
       (*   rax *= 38 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 32) *)
       (*   carry? r0 += rax *)
       (*   r01 += rdx + carry *)
-QAssign rax (QVar x1);
-QAssign rax (QBinop QMul (QVar rax) (QConst 38%Z));
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x4)) wsize;
-QAssign r0 (QBinop QAdd (QVar r0) (QVar rax));
-QSplit carry r0 (QVar r0) wsize;
-QAssign r01 (QBinop QAdd (QVar r01) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x1);
+zAssign rax (zBinop zMul (zVar rax) (zConst 38%Z));
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x4)) wsize;
+zAssign r0 (zBinop zAdd (zVar r0) (zVar rax));
+zSplit carry r0 (zVar r0) wsize;
+zAssign r01 (zBinop zAdd (zVar r01) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*    *)
       (*   rax = *[uint64 *](xp + 16) *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 16) *)
       (*   carry? r4 += rax *)
       (*   r41 += rdx + carry *)
-QAssign rax (QVar x2);
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x2)) wsize;
-QAssign r4 (QBinop QAdd (QVar r4) (QVar rax));
-QSplit carry r4 (QVar r4) wsize;
-QAssign r41 (QBinop QAdd (QVar r41) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x2);
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x2)) wsize;
+zAssign r4 (zBinop zAdd (zVar r4) (zVar rax));
+zSplit carry r4 (zVar r4) wsize;
+zAssign r41 (zBinop zAdd (zVar r41) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*   rax = *[uint64 *](xp + 16) *)
       (*   rax *= 38 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 24) *)
       (*   carry? r0 += rax *)
       (*   r01 += rdx + carry *)
-QAssign rax (QVar x2);
-QAssign rax (QBinop QMul (QVar rax) (QConst 38%Z));
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x3)) wsize;
-QAssign r0 (QBinop QAdd (QVar r0) (QVar rax));
-QSplit carry r0 (QVar r0) wsize;
-QAssign r01 (QBinop QAdd (QVar r01) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x2);
+zAssign rax (zBinop zMul (zVar rax) (zConst 38%Z));
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x3)) wsize;
+zAssign r0 (zBinop zAdd (zVar r0) (zVar rax));
+zSplit carry r0 (zVar r0) wsize;
+zAssign r01 (zBinop zAdd (zVar r01) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*   rax = *[uint64 *](xp + 16) *)
       (*   rax *= 38 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 32) *)
       (*   carry? r1 += rax *)
       (*   r11 += rdx + carry *)
-QAssign rax (QVar x2);
-QAssign rax (QBinop QMul (QVar rax) (QConst 38%Z));
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x4)) wsize;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar rax));
-QSplit carry r1 (QVar r1) wsize;
-QAssign r11 (QBinop QAdd (QVar r11) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x2);
+zAssign rax (zBinop zMul (zVar rax) (zConst 38%Z));
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x4)) wsize;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar rax));
+zSplit carry r1 (zVar r1) wsize;
+zAssign r11 (zBinop zAdd (zVar r11) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*    *)
       (*   rax = *[uint64 *](xp + 24) *)
       (*   rax *= 19 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 24) *)
       (*   carry? r1 += rax *)
       (*   r11 += rdx + carry *)
-QAssign rax (QVar x3);
-QAssign rax (QBinop QMul (QVar rax) (QConst 19%Z));
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x3)) wsize;
-QAssign r1 (QBinop QAdd (QVar r1) (QVar rax));
-QSplit carry r1 (QVar r1) wsize;
-QAssign r11 (QBinop QAdd (QVar r11) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x3);
+zAssign rax (zBinop zMul (zVar rax) (zConst 19%Z));
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x3)) wsize;
+zAssign r1 (zBinop zAdd (zVar r1) (zVar rax));
+zSplit carry r1 (zVar r1) wsize;
+zAssign r11 (zBinop zAdd (zVar r11) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*   rax = *[uint64 *](xp + 24) *)
       (*   rax *= 38 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 32) *)
       (*   carry? r2 += rax *)
       (*   r21 += rdx + carry *)
-QAssign rax (QVar x3);
-QAssign rax (QBinop QMul (QVar rax) (QConst 38%Z));
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x4)) wsize;
-QAssign r2 (QBinop QAdd (QVar r2) (QVar rax));
-QSplit carry r2 (QVar r2) wsize;
-QAssign r21 (QBinop QAdd (QVar r21) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x3);
+zAssign rax (zBinop zMul (zVar rax) (zConst 38%Z));
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x4)) wsize;
+zAssign r2 (zBinop zAdd (zVar r2) (zVar rax));
+zSplit carry r2 (zVar r2) wsize;
+zAssign r21 (zBinop zAdd (zVar r21) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*    *)
       (*   rax = *[uint64 *](xp + 32) *)
       (*   rax *= 19 *)
       (*   (uint128) rdx rax = rax * *[uint64 *](xp + 32) *)
       (*   carry? r3 += rax *)
       (*   r31 += rdx + carry *)
-QAssign rax (QVar x4);
-QAssign rax (QBinop QMul (QVar rax) (QConst 19%Z));
-QSplit rdx rax (QBinop QMul (QVar rax) (QVar x4)) wsize;
-QAssign r3 (QBinop QAdd (QVar r3) (QVar rax));
-QSplit carry r3 (QVar r3) wsize;
-QAssign r31 (QBinop QAdd (QVar r31) (QBinop QAdd (QVar rdx) (QVar carry)));
+zAssign rax (zVar x4);
+zAssign rax (zBinop zMul (zVar rax) (zConst 19%Z));
+zSplit rdx rax (zBinop zMul (zVar rax) (zVar x4)) wsize;
+zAssign r3 (zBinop zAdd (zVar r3) (zVar rax));
+zSplit carry r3 (zVar r3) wsize;
+zAssign r31 (zBinop zAdd (zVar r31) (zBinop zAdd (zVar rdx) (zVar carry)));
       (*  *)
       (*  *)
       (*  *)
@@ -831,40 +831,40 @@ QAssign r31 (QBinop QAdd (QVar r31) (QBinop QAdd (QVar rdx) (QVar carry)));
       (*   redmask = *[uint64 *] &crypto_sign_ed25519_amd64_51_REDMASK51 *)
       (*   r01 = (r01.r0) << 13 *)
       (*   r0 &= redmask *)
-QSplit tmp r0 (QVar r0) 51%positive;
-QAssign r01 (QBinop QAdd (pow2 (QVar r01) 13%positive) (QVar tmp));
+zSplit tmp r0 (zVar r0) 51%positive;
+zAssign r01 (zBinop zAdd (pow2 (zVar r01) 13%positive) (zVar tmp));
       (*    *)
       (*   r11 = (r11.r1) << 13 *)
       (*   r1 &= redmask *)
       (*   r1 += r01 *)
-QSplit tmp r1 (QVar r1) 51%positive;
-QAssign r11 (QBinop QAdd (pow2 (QVar r11) 13%positive) (QVar tmp));
-QAssign r1 (QBinop QAdd (QVar r1) (QVar r01));
+zSplit tmp r1 (zVar r1) 51%positive;
+zAssign r11 (zBinop zAdd (pow2 (zVar r11) 13%positive) (zVar tmp));
+zAssign r1 (zBinop zAdd (zVar r1) (zVar r01));
       (*    *)
       (*   r21 = (r21.r2) << 13 *)
       (*   r2 &= redmask *)
       (*   r2 += r11 *)
-QSplit tmp r2 (QVar r2) 51%positive;
-QAssign r21 (QBinop QAdd (pow2 (QVar r21) 13%positive) (QVar tmp));
-QAssign r2 (QBinop QAdd (QVar r2) (QVar r11));
+zSplit tmp r2 (zVar r2) 51%positive;
+zAssign r21 (zBinop zAdd (pow2 (zVar r21) 13%positive) (zVar tmp));
+zAssign r2 (zBinop zAdd (zVar r2) (zVar r11));
       (*    *)
       (*   r31 = (r31.r3) << 13 *)
       (*   r3 &= redmask *)
       (*   r3 += r21 *)
-QSplit tmp r3 (QVar r3) 51%positive;
-QAssign r31 (QBinop QAdd (pow2 (QVar r31) 13%positive) (QVar tmp));
-QAssign r3 (QBinop QAdd (QVar r3) (QVar r21));
+zSplit tmp r3 (zVar r3) 51%positive;
+zAssign r31 (zBinop zAdd (pow2 (zVar r31) 13%positive) (zVar tmp));
+zAssign r3 (zBinop zAdd (zVar r3) (zVar r21));
       (*    *)
       (*   r41 = (r41.r4) << 13 *)
       (*   r4 &= redmask *)
       (*   r4 += r31 *)
-QSplit tmp r4 (QVar r4) 51%positive;
-QAssign r41 (QBinop QAdd (pow2 (QVar r41) 13%positive) (QVar tmp));
-QAssign r4 (QBinop QAdd (QVar r4) (QVar r31));
+zSplit tmp r4 (zVar r4) 51%positive;
+zAssign r41 (zBinop zAdd (pow2 (zVar r41) 13%positive) (zVar tmp));
+zAssign r4 (zBinop zAdd (zVar r4) (zVar r31));
       (*   r41 = r41 * 19 *)
-QAssign r41 (QBinop QMul (QVar r41) (QConst 19%Z));
+zAssign r41 (zBinop zMul (zVar r41) (zConst 19%Z));
       (*   r0 += r41 *)
-QAssign r0 (QBinop QAdd (QVar r0) (QVar r41));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar r41));
       (*  *)
       (*  *)
       (*  *)
@@ -873,63 +873,63 @@ QAssign r0 (QBinop QAdd (QVar r0) (QVar r41));
       (*   (uint64) t >>= 51 *)
       (*   t += r1 *)
       (*   r0 &= redmask *)
-QAssign t (QVar r0);
-QSplit t tmp (QVar t) (51%positive);
-QAssign t (QBinop QAdd (QVar t) (QVar r1));
-QAssign r0 (QVar tmp);
+zAssign t (zVar r0);
+zSplit t tmp (zVar t) (51%positive);
+zAssign t (zBinop zAdd (zVar t) (zVar r1));
+zAssign r0 (zVar tmp);
       (*    *)
       (*   r1 = t *)
       (*   (uint64) t >>= 51 *)
       (*   t += r2 *)
       (*   r1 &= redmask *)
-QAssign r1 (QVar t);
-QSplit t tmp (QVar t) (51%positive);
-QAssign t (QBinop QAdd (QVar t) (QVar r2));
-QAssign r1 (QVar tmp);
+zAssign r1 (zVar t);
+zSplit t tmp (zVar t) (51%positive);
+zAssign t (zBinop zAdd (zVar t) (zVar r2));
+zAssign r1 (zVar tmp);
       (*    *)
       (*   r2 = t *)
       (*   (uint64) t >>= 51 *)
       (*   t += r3 *)
       (*   r2 &= redmask *)
-QAssign r2 (QVar t);
-QSplit t tmp (QVar t) (51%positive);
-QAssign t (QBinop QAdd (QVar t) (QVar r3));
-QAssign r2 (QVar tmp);
+zAssign r2 (zVar t);
+zSplit t tmp (zVar t) (51%positive);
+zAssign t (zBinop zAdd (zVar t) (zVar r3));
+zAssign r2 (zVar tmp);
       (*    *)
       (*   r3 = t *)
       (*   (uint64) t >>= 51 *)
       (*   t += r4 *)
       (*   r3 &= redmask *)
-QAssign r3 (QVar t);
-QSplit t tmp (QVar t) (51%positive);
-QAssign t (QBinop QAdd (QVar t) (QVar r4));
-QAssign r3 (QVar tmp);
+zAssign r3 (zVar t);
+zSplit t tmp (zVar t) (51%positive);
+zAssign t (zBinop zAdd (zVar t) (zVar r4));
+zAssign r3 (zVar tmp);
       (*    *)
       (*   r4 = t *)
       (*   (uint64) t >>= 51 *)
       (*   t *= 19 *)
       (*   r0 += t *)
       (*   r4 &= redmask *)
-QAssign r4 (QVar t);
-QSplit t tmp (QVar t) (51%positive);
-QAssign t (QBinop QMul (QVar t) (QConst 19%Z));
-QAssign r0 (QBinop QAdd (QVar r0) (QVar t));
-QAssign r4 (QVar tmp);
+zAssign r4 (zVar t);
+zSplit t tmp (zVar t) (51%positive);
+zAssign t (zBinop zMul (zVar t) (zConst 19%Z));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar t));
+zAssign r4 (zVar tmp);
       (*   #END MACRO  *)
       (*  *)
       (*  *)
       (*  *)
       (*  *)
       (* *[uint64 *](rp + 0) = r0 *)
-QAssign z0 (QVar r0);
+zAssign z0 (zVar r0);
       (* *[uint64 *](rp + 8) = r1 *)
-QAssign z1 (QVar r1);
+zAssign z1 (zVar r1);
       (* *[uint64 *](rp + 16) = r2 *)
-QAssign z2 (QVar r2);
+zAssign z2 (zVar r2);
       (* *[uint64 *](rp + 24) = r3 *)
-QAssign z3 (QVar r3);
+zAssign z3 (zVar r3);
       (* *[uint64 *](rp + 32) = r4 *)
-QAssign z4 (QVar r4)
+zAssign z4 (zVar r4)
       (*   *)
       (*  *)
       (* c1 =c1_stack *)
@@ -1013,7 +1013,7 @@ let T9   := (230, 231, 232, 233, 234) in
 VSLemmas.OP.P.of_list (bi_list X1 ++ bi_list X2 ++ bi_list Z2 ++
                                bi_list X3 ++ bi_list Z3).
 
-Definition fe25519_ladderstep_pre : bexp := QTrue.
+Definition fe25519_ladderstep_pre : bexp := zTrue.
 
 Definition fe25519_ladderstep_post1 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1040,9 +1040,9 @@ let T7   := (210, 211, 212, 213, 214) in
 let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
+zEqMod
   (bi_limbs X2')
-  (QPow (qsub (QPow (bi_limbs X2) 2) (QPow (bi_limbs Z2) 2)) 2)
+  (zPow (qsub (zPow (bi_limbs X2) 2) (zPow (bi_limbs Z2) 2)) 2)
   n25519.
 
 Definition fe25519_ladderstep_post2 : bexp :=
@@ -1070,14 +1070,14 @@ let T7   := (210, 211, 212, 213, 214) in
 let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
+zEqMod
   (bi_limbs Z2')
-  (qmuls [:: QConst 4;
+  (qmuls [:: zConst 4;
             bi_limbs X2;
             bi_limbs Z2;
-            qadds [:: QPow (bi_limbs X2) 2;
-                     qmuls [:: QConst 486662; bi_limbs X2; bi_limbs Z2];
-                     QPow (bi_limbs Z2) 2]
+            qadds [:: zPow (bi_limbs X2) 2;
+                     qmuls [:: zConst 486662; bi_limbs X2; bi_limbs Z2];
+                     zPow (bi_limbs Z2) 2]
          ])
   n25519.
 
@@ -1106,13 +1106,13 @@ let T7   := (210, 211, 212, 213, 214) in
 let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
+zEqMod
   (qmul (bi_limbs X3')
         (qmul (bi_limbs X1)
-              (QPow (qsub (qmul (bi_limbs X3) (bi_limbs Z2))
+              (zPow (qsub (qmul (bi_limbs X3) (bi_limbs Z2))
                           (qmul (bi_limbs X2) (bi_limbs Z3))) 2)))
   (qmul (bi_limbs Z3')
-        (QPow (qsub (qmul (bi_limbs X2) (bi_limbs X3))
+        (zPow (qsub (qmul (bi_limbs X2) (bi_limbs X3))
                     (qmul (bi_limbs Z2) (bi_limbs Z3))) 2))
   n25519.
 
@@ -1141,10 +1141,10 @@ let T7   := (210, 211, 212, 213, 214) in
 let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
+zEqMod
   (bi_limbs X3')
-  (qmul (QConst 4)
-        (QPow (qsub (qmul (bi_limbs X2) (bi_limbs X3))
+  (qmul (zConst 4)
+        (zPow (qsub (qmul (bi_limbs X2) (bi_limbs X3))
                     (qmul (bi_limbs Z2) (bi_limbs Z3))) 2))
   n25519.
 
@@ -1173,11 +1173,11 @@ let T7   := (210, 211, 212, 213, 214) in
 let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
+zEqMod
   (bi_limbs Z3')
-  (qmul (QConst 4)
+  (qmul (zConst 4)
         (qmul (bi_limbs X1)
-              (QPow (qsub (qmul (bi_limbs X3) (bi_limbs Z2))
+              (zPow (qsub (qmul (bi_limbs X3) (bi_limbs Z2))
                           (qmul (bi_limbs X2) (bi_limbs Z3))) 2)))
   n25519.
 
@@ -1224,5 +1224,5 @@ Proof.
   time "valid_fe25519_ladderstep3_2" verify_ispec.
 Qed.
 
-Close Scope mqhasm_scope.
+Close Scope zdsl_scope.
 Close Scope N_scope.

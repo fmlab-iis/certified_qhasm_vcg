@@ -2,7 +2,7 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool eqtype.
 From Common Require Import Types ZAriths.
-From mQhasm Require Import mQhasm.
+From mQhasm Require Import zDSL.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

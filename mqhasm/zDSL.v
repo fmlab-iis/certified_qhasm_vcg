@@ -1,5 +1,5 @@
 
-(** * Integer programs as mini Qhasm+ *)
+(** * A domain specific language *)
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
@@ -9,9 +9,9 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Delimit Scope mqhasm_scope with mqhasm.
+Delimit Scope zdsl_scope with zdsl.
 
-Local Open Scope mqhasm_scope.
+Local Open Scope zdsl_scope.
 
 
 Reserved Notation "@- x" (at level 35, right associativity).
@@ -29,7 +29,7 @@ Reserved Notation "f ===> g" (at level 82, no associativity).
 Reserved Notation "{{ f }} p {{ g }}" (at level 82, no associativity).
 Reserved Notation "|= s" (at level 83, no associativity).
 
-Module MakeQhasm (V : SsrOrderedType).
+Module MakeZDSL (V : SsrOrderedType).
 
   Module VS := FSetList.Make V.
   Module VSLemmas := FSetLemmas VS.
@@ -41,73 +41,73 @@ Module MakeQhasm (V : SsrOrderedType).
   Definition var : Type := V.t.
 
   Inductive unop : Set :=
-  | QNeg.
+  | zNeg.
 
   Inductive binop : Set :=
-  | QAdd
-  | QSub
-  | QMul.
+  | zAdd
+  | zSub
+  | zMul.
 
   Inductive exp : Type :=
-  | QVar : var -> exp
-  | QConst : Z -> exp
-  | QUnop : unop -> exp -> exp
-  | QBinop : binop -> exp -> exp -> exp
-  | QPow : exp -> positive -> exp.
+  | zVar : var -> exp
+  | zConst : Z -> exp
+  | zUnop : unop -> exp -> exp
+  | zBinop : binop -> exp -> exp -> exp
+  | zPow : exp -> positive -> exp.
 
   Inductive instr : Type :=
-  | QAssign : var -> exp -> instr
-  | QSplit : var -> var -> exp -> positive -> instr.
+  | zAssign : var -> exp -> instr
+  | zSplit : var -> var -> exp -> positive -> instr.
 
-  Global Arguments QConst n%Z.
+  Global Arguments zConst n%Z.
 
-  Definition qneg e : exp := QUnop QNeg e.
-  Definition qadd e1 e2 : exp := QBinop QAdd e1 e2.
-  Definition qsub e1 e2 : exp := QBinop QSub e1 e2.
-  Definition qmul e1 e2 : exp := QBinop QMul e1 e2.
-  Definition qpow2 n : exp := QPow (QConst 2) n.
-  Definition qconcat n h l : exp :=
-    qadd l (qmul h (qpow2 n)).
-  Fixpoint qadds es : exp :=
+  Definition zneg e : exp := zUnop zNeg e.
+  Definition zadd e1 e2 : exp := zBinop zAdd e1 e2.
+  Definition zsub e1 e2 : exp := zBinop zSub e1 e2.
+  Definition zmul e1 e2 : exp := zBinop zMul e1 e2.
+  Definition zpow2 n : exp := zPow (zConst 2) n.
+  Definition zconcat n h l : exp :=
+    zadd l (zmul h (zpow2 n)).
+  Fixpoint zadds es : exp :=
     match es with
-    | [::] => QConst 0
+    | [::] => zConst 0
     | e::[::] => e
-    | hd::tl => qadd hd (qadds tl)
+    | hd::tl => zadd hd (zadds tl)
     end.
-  Fixpoint qmuls es : exp :=
+  Fixpoint zmuls es : exp :=
     match es with
-    | [::] => QConst 0
+    | [::] => zConst 0
     | e::[::] => e
-    | hd::tl => qmul hd (qmuls tl)
+    | hd::tl => zmul hd (zmuls tl)
     end.
 
   Definition program : Type := seq instr.
 
   Fixpoint vars_exp (e : exp) : VS.t :=
     match e with
-    | QVar v => VS.singleton v
-    | QConst _ => VS.empty
-    | QUnop _ e => vars_exp e
-    | QBinop _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | QPow e _ => vars_exp e
+    | zVar v => VS.singleton v
+    | zConst _ => VS.empty
+    | zUnop _ e => vars_exp e
+    | zBinop _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | zPow e _ => vars_exp e
     end.
 
   Definition vars_instr (i : instr) : VS.t :=
     match i with
-    | QAssign v e => VS.add v (vars_exp e)
-    | QSplit vh vl e _ => VS.add vh (VS.add vl (vars_exp e))
+    | zAssign v e => VS.add v (vars_exp e)
+    | zSplit vh vl e _ => VS.add vh (VS.add vl (vars_exp e))
     end.
 
   Definition lvs_instr (i : instr) : VS.t :=
     match i with
-    | QAssign v e => VS.singleton v
-    | QSplit vh vl e _ => VS.add vh (VS.singleton vl)
+    | zAssign v e => VS.singleton v
+    | zSplit vh vl e _ => VS.add vh (VS.singleton vl)
     end.
 
   Definition rvs_instr (i : instr) : VS.t :=
     match i with
-    | QAssign v e => vars_exp e
-    | QSplit vh vl e _ => vars_exp e
+    | zAssign v e => vars_exp e
+    | zSplit vh vl e _ => vars_exp e
     end.
 
   Fixpoint vars_program (p : program) : VS.t :=
@@ -128,8 +128,8 @@ Module MakeQhasm (V : SsrOrderedType).
     | hd::tl => VS.union (rvs_instr hd) (rvs_program tl)
     end.
 
-  Definition qzero : exp := QConst 0.
-  Definition qtwo : exp := QConst 2.
+  Definition zzero : exp := zConst 0.
+  Definition ztwo : exp := zConst 2.
 
   Lemma vars_instr_split i :
     VS.Equal (vars_instr i) (VS.union (lvs_instr i) (rvs_instr i)).
@@ -438,29 +438,29 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Definition eval_unop (op : unop) (v : value) : value :=
     match op with
-    | QNeg => (-v)%Z
+    | zNeg => (-v)%Z
     end.
 
   Definition eval_binop (op : binop) (v1 v2 : value) : value :=
     match op with
-    | QAdd => (v1 + v2)%Z
-    | QSub => (v1 - v2)%Z
-    | QMul => (v1 * v2)%Z
+    | zAdd => (v1 + v2)%Z
+    | zSub => (v1 - v2)%Z
+    | zMul => (v1 * v2)%Z
     end.
 
   Fixpoint eval_exp (e : exp) (s : State.t) : value :=
     match e with
-    | QVar v => State.acc v s
-    | QConst n => n
-    | QUnop op e => eval_unop op (eval_exp e s)
-    | QBinop op e1 e2 => eval_binop op (eval_exp e1 s) (eval_exp e2 s)
-    | QPow e p => (eval_exp e s) ^ (Zpos p)
+    | zVar v => State.acc v s
+    | zConst n => n
+    | zUnop op e => eval_unop op (eval_exp e s)
+    | zBinop op e1 e2 => eval_binop op (eval_exp e1 s) (eval_exp e2 s)
+    | zPow e p => (eval_exp e s) ^ (Zpos p)
     end.
 
   Definition eval_instr (s : State.t) (i : instr) : State.t :=
     match i with
-    | QAssign v e => State.upd v (eval_exp e s) s
-    | QSplit vh vl e i =>
+    | zAssign v e => State.upd v (eval_exp e s) s
+    | zSplit vh vl e i =>
       let (q, r) := Z.div_eucl (eval_exp e s) (2^(Zpos i)) in
       State.upd2 vh q vl r s
     end.
@@ -531,32 +531,32 @@ Module MakeQhasm (V : SsrOrderedType).
   (** Specification *)
 
   Inductive bexp : Type :=
-  | QTrue : bexp
-  | QEq : exp -> exp -> bexp
-  | QEqMod : exp -> exp -> positive -> bexp
-  | QAnd : bexp -> bexp -> bexp.
+  | zTrue : bexp
+  | zEq : exp -> exp -> bexp
+  | zEqMod : exp -> exp -> positive -> bexp
+  | zAnd : bexp -> bexp -> bexp.
 
-  Fixpoint qands es : bexp :=
+  Fixpoint zands es : bexp :=
     match es with
-    | [::] => QTrue
+    | [::] => zTrue
     | hd::[::] => hd
-    | hd::tl => QAnd hd (qands tl)
+    | hd::tl => zAnd hd (zands tl)
     end.
 
   Fixpoint vars_bexp (e : bexp) : VS.t :=
     match e with
-    | QTrue => VS.empty
-    | QEq e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | QEqMod e1 e2 _ => VS.union (vars_exp e1) (vars_exp e2)
-    | QAnd e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
+    | zTrue => VS.empty
+    | zEq e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | zEqMod e1 e2 _ => VS.union (vars_exp e1) (vars_exp e2)
+    | zAnd e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
 
   Fixpoint eval_bexp (e : bexp) (s : State.t) : Prop :=
     match e with
-    | QTrue => True
-    | QEq e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | QEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) (Zpos p)
-    | QAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
+    | zTrue => True
+    | zEq e1 e2 => eval_exp e1 s = eval_exp e2 s
+    | zEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) (Zpos p)
+    | zAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
     end.
 
   Definition valid (f : bexp) : Prop :=
@@ -643,7 +643,7 @@ Module MakeQhasm (V : SsrOrderedType).
     forall f g1 g2 p,
       |= {{ f }} p {{ g1 }} ->
       |= {{ f }} p {{ g2 }} ->
-      |= {{ f }} p {{ QAnd g1 g2 }}.
+      |= {{ f }} p {{ zAnd g1 g2 }}.
   Proof.
     move=> f g1 g2 p Hg1 Hg2 s1 s2 /= Hf Hp.
     move: (Hg1 s1 s2 Hf Hp) => /= {Hg1} Hg1.
@@ -657,8 +657,8 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Definition well_formed_instr (vs : VS.t) (i : instr) : bool :=
     match i with
-    | QAssign v e => VS.subset (vars_exp e) vs
-    | QSplit vh vl e p => (vh != vl) && (VS.subset (vars_exp e) vs)
+    | zAssign v e => VS.subset (vars_exp e) vs
+    | zSplit vh vl e p => (vh != vl) && (VS.subset (vars_exp e) vs)
     end.
 
   Fixpoint well_formed_program (vs : VS.t) (p : program) : bool :=
@@ -913,8 +913,8 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Definition instr_qsne i : bool :=
     match i with
-    | QAssign _ _ => true
-    | QSplit vh vl _ _ => vh != vl
+    | zAssign _ _ => true
+    | zSplit vh vl _ _ => vh != vl
     end.
 
   Fixpoint program_qsne p : bool :=
@@ -996,13 +996,13 @@ Module MakeQhasm (V : SsrOrderedType).
 
     Fixpoint limbs_rec vs (n : nat) : exp :=
       match vs with
-      | [::] => QConst 0
+      | [::] => zConst 0
       | hd::[::] => if n == 0 then hd
-                    else qmul hd (qpow2 (Pos.of_nat n))
+                    else zmul hd (zpow2 (Pos.of_nat n))
       | hd::tl =>
         let m := (n + w) in
-        if n == 0 then qadd hd (limbs_rec tl m)
-        else qadd (qmul hd (qpow2 (Pos.of_nat n))) (limbs_rec tl m)
+        if n == 0 then zadd hd (limbs_rec tl m)
+        else zadd (zmul hd (zpow2 (Pos.of_nat n))) (limbs_rec tl m)
       end.
 
     Definition limbs (vs : seq exp) : exp :=
@@ -1234,10 +1234,10 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Definition slice_instr vs i :=
     match i with
-    | QAssign v e => if VS.mem v vs
+    | zAssign v e => if VS.mem v vs
                      then (VS.union (vars_exp e) (VS.remove v vs), Some i)
                      else (vs, None)
-    | QSplit vh vl e p => if VS.mem vh vs || VS.mem vl vs
+    | zSplit vh vl e p => if VS.mem vh vs || VS.mem vl vs
                           then (VS.union (vars_exp e)
                                          (VS.remove vh (VS.remove vl vs)), Some i)
                           else (vs, None)
@@ -2067,24 +2067,24 @@ Module MakeQhasm (V : SsrOrderedType).
 
   Fixpoint slice_bexp vs e : bexp :=
     match e with
-    | QTrue => e
-    | QEq e1 e2 =>
+    | zTrue => e
+    | zEq e1 e2 =>
       if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
-      then QTrue
+      then zTrue
       else e
-    | QEqMod e1 e2 p =>
+    | zEqMod e1 e2 p =>
       if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
-      then QTrue
+      then zTrue
       else e
-    | QAnd e1 e2 => QAnd (slice_bexp vs e1) (slice_bexp vs e2)
+    | zAnd e1 e2 => zAnd (slice_bexp vs e1) (slice_bexp vs e2)
     end.
 
   Fixpoint split_qands e : seq bexp :=
     match e with
-    | QTrue => [::]
-    | QEq _ _ => [:: e]
-    | QEqMod _ _ _ => [:: e]
-    | QAnd e1 e2 => (split_qands e1) ++ (split_qands e2)
+    | zTrue => [::]
+    | zEq _ _ => [:: e]
+    | zEqMod _ _ _ => [:: e]
+    | zAnd e1 e2 => (split_qands e1) ++ (split_qands e2)
     end.
 
   Fixpoint related_vars_bexp_once vs es :=
@@ -2170,18 +2170,18 @@ Module MakeQhasm (V : SsrOrderedType).
   Qed.
 
   (* Slice program and then precondition. *)
-  Definition qslice s : spec :=
+  Definition zslice s : spec :=
     let (vs, ss) := slice_spec' s in
     let vs' := related_vars_bexp_rec (VS.cardinal (vars_bexp (spre ss)))
                                      vs (split_qands (spre ss)) in
     slice_pre vs' ss.
 
-  Lemma qslice_well_formed vs s :
+  Lemma zslice_well_formed vs s :
     well_formed_spec vs s ->
-    well_formed_spec vs (qslice s).
+    well_formed_spec vs (zslice s).
   Proof.
     destruct s as (f, p, g).
-    rewrite /qslice.
+    rewrite /zslice.
     set tmp := slice_spec' ({{f}} p {{g}}).
     have: tmp = slice_spec' ({{f}} p {{g}}) by reflexivity.
     destruct tmp as (xs, ss).
@@ -2192,11 +2192,11 @@ Module MakeQhasm (V : SsrOrderedType).
     by apply.
   Qed.
 
-  Lemma qslice_sound s :
-    valid_spec (qslice s) -> valid_spec s.
+  Lemma zslice_sound s :
+    valid_spec (zslice s) -> valid_spec s.
   Proof.
     destruct s as (f, p, g).
-    rewrite /qslice.
+    rewrite /zslice.
     set tmp := slice_spec' ({{f}} p {{g}}).
     have: tmp = slice_spec' ({{f}} p {{g}}) by reflexivity.
     destruct tmp as (xs, ss).
@@ -2206,24 +2206,24 @@ Module MakeQhasm (V : SsrOrderedType).
     exact: (slice_pre_sound Hsp).
   Qed.
 
-End MakeQhasm.
+End MakeZDSL.
 
-Module Qhasm := MakeQhasm VarOrder.
-Export Qhasm.
-Arguments Qhasm.QVar v%N.
+Module zDSL := MakeZDSL VarOrder.
+Export zDSL.
+Arguments zDSL.zVar v%N.
 
-Notation "@- x" := (QNeg x) (at level 35, right associativity) : mqhasm_scope.
-Notation "x @+ y" := (QBinop QAdd x y) (at level 50, left associativity) : mqhasm_scope.
-Notation "x @- y" := (QBinop QSub x y)  (at level 50, left associativity) : mqhasm_scope.
-Notation "x @* y" := (QBinop QMul x y)  (at level 40, left associativity) : mqhasm_scope.
-Notation "x @^ y" := (QPow x y)  (at level 30, right associativity) : mqhasm_scope.
-Notation "x @:= y" := (QAssign x%N y) (at level 70, no associativity) : mqhasm_scope.
-Notation "[ x , y ] @:= z # p" := (QSplit x%N y%N z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : qhasm_scope.
-Notation "x @= y" := (QEq x y) (at level 70, no associativity) : mqhasm_scope.
-Notation "x @= y 'mod' z" := (QEqMod x y z) (at level 70, y at next level, no associativity) : mqhasm_scope.
-Notation "x @&& y" := (QAnd x y) (at level 70, no associativity) : mqhasm_scope.
+Notation "@- x" := (zNeg x) (at level 35, right associativity) : zdsl_scope.
+Notation "x @+ y" := (zBinop zAdd x y) (at level 50, left associativity) : zdsl_scope.
+Notation "x @- y" := (zBinop zSub x y)  (at level 50, left associativity) : zdsl_scope.
+Notation "x @* y" := (zBinop zMul x y)  (at level 40, left associativity) : zdsl_scope.
+Notation "x @^ y" := (zPow x y)  (at level 30, right associativity) : zdsl_scope.
+Notation "x @:= y" := (zAssign x%N y) (at level 70, no associativity) : zdsl_scope.
+Notation "[ x , y ] @:= z # p" := (zSplit x%N y%N z p) (at level 0, format "[ x , y ] @:= z # p", only parsing) : zdsl_scope.
+Notation "x @= y" := (zEq x y) (at level 70, no associativity) : zdsl_scope.
+Notation "x @= y 'mod' z" := (zEqMod x y z) (at level 70, y at next level, no associativity) : zdsl_scope.
+Notation "x @&& y" := (zAnd x y) (at level 70, no associativity) : zdsl_scope.
 
-Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : mqhasm_scope.
-Notation "f ===> g" := (entails f g) (at level 82, no associativity) : mqhasm_scope.
-Notation "{{ f }} p {{ g }}" := ({| spre := f; sprog := p; spost := g |}) (at level 82, no associativity) : mqhasm_scope.
-Notation "|= s" := (valid_spec s) (at level 83, no associativity) : mqhasm_scope.
+Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : zdsl_scope.
+Notation "f ===> g" := (entails f g) (at level 82, no associativity) : zdsl_scope.
+Notation "{{ f }} p {{ g }}" := ({| spre := f; sprog := p; spost := g |}) (at level 82, no associativity) : zdsl_scope.
+Notation "|= s" := (valid_spec s) (at level 83, no associativity) : zdsl_scope.

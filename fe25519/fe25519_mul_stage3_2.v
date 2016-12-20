@@ -1,18 +1,18 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm Radix .
+From mQhasm Require Import zDSL zRadix .
 From mathcomp Require Import seq .
 
 Open Scope N_scope.
-Open Scope mqhasm_scope.
+Open Scope zdsl_scope.
 
 Definition fe25519_mul_stage3_2 : program :=
 
-let          qtwo :=   QConst (2%Z) in
+let          qtwo :=   zConst (2%Z) in
 let         wsize :=   64%positive in
-let      pow2 x n := QBinop QMul x (QPow qtwo n) in
+let      pow2 x n := zBinop zMul x (zPow qtwo n) in
 let concat_shift hi lo w :=       (* (hi.lo) << w *)
-      QBinop QMul (QBinop QAdd (QBinop QMul hi (QPow qtwo wsize)) lo)
-                  (QPow qtwo w) in
+      zBinop zMul (zBinop zAdd (zBinop zMul hi (zPow qtwo wsize)) lo)
+                  (zPow qtwo w) in
 
 let crypto_sign_ed25519_amd64_51_REDMASK51 :=
                        2251799813685247%Z in (* 0x7FFFFFFFFFFFF from consts *)
@@ -64,54 +64,54 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 [::
-QAssign z0 (QVar r0);
-QAssign z1 (QVar r1);
-QAssign z2 (QVar r2);
-QAssign z3 (QVar r3);
-QAssign z4 (QVar r4);
+zAssign z0 (zVar r0);
+zAssign z1 (zVar r1);
+zAssign z2 (zVar r2);
+zAssign z3 (zVar r3);
+zAssign z4 (zVar r4);
       (*  *)
       (*   mult = r0 *)
       (*   (uint64) mult >>= 51 *)
       (*   mult += r1 *)
-QAssign mult (QVar r0);
-QSplit mult tmp (QVar mult) (51%positive);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r1));
+zAssign mult (zVar r0);
+zSplit mult tmp (zVar mult) (51%positive);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r1));
       (*   r1 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r0 &= mulredmask *)
       (*   mult += r2 *)
-QAssign r1 (QVar mult);
-QSplit mult tmp2 (QVar mult) (51%positive);
-QAssign r0 (QVar tmp);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r2));
+zAssign r1 (zVar mult);
+zSplit mult tmp2 (zVar mult) (51%positive);
+zAssign r0 (zVar tmp);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r2));
       (*   r2 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r1 &= mulredmask *)
       (*   mult += r3 *)
-QAssign r2 (QVar mult);
-QSplit mult tmp (QVar mult) (51%positive);
-QAssign r1 (QVar tmp2);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r3));
+zAssign r2 (zVar mult);
+zSplit mult tmp (zVar mult) (51%positive);
+zAssign r1 (zVar tmp2);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r3));
       (*   r3 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r2 &= mulredmask *)
       (*   mult += r4 *)
-QAssign r3 (QVar mult);
-QSplit mult tmp2 (QVar mult) (51%positive);
-QAssign r2 (QVar tmp);
-QAssign mult (QBinop QAdd (QVar mult) (QVar r4));
+zAssign r3 (zVar mult);
+zSplit mult tmp2 (zVar mult) (51%positive);
+zAssign r2 (zVar tmp);
+zAssign mult (zBinop zAdd (zVar mult) (zVar r4));
       (*   r4 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r3 &= mulredmask *)
-QAssign r4 (QVar mult);
-QSplit mult tmp (QVar mult) (51%positive);
-QAssign r3 (QVar tmp2);
+zAssign r4 (zVar mult);
+zSplit mult tmp (zVar mult) (51%positive);
+zAssign r3 (zVar tmp2);
       (*   mult *= 19 *)
       (*   r0 += mult *)
       (*   r4 &= mulredmask *)
-QAssign mult (QBinop QMul (QVar mult) (QConst 19%Z));
-QAssign r0 (QBinop QAdd (QVar r0) (QVar mult));
-QAssign r4 (QVar tmp)
+zAssign mult (zBinop zMul (zVar mult) (zConst 19%Z));
+zAssign r0 (zBinop zAdd (zVar r0) (zVar mult));
+zAssign r4 (zVar tmp)
       (*   #END MACRO mul *)
 
       (*  *)
@@ -170,7 +170,7 @@ let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 VSLemmas.OP.P.of_list [:: r0; r1; r2; r3; r4].
 
-Definition fe25519_mul_stage3_2_pre : bexp := QTrue.
+Definition fe25519_mul_stage3_2_pre : bexp := zTrue.
 
 Definition fe25519_mul_stage3_2_post : bexp :=
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
@@ -214,9 +214,9 @@ let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
-QEqMod
-  (radix51 [::QVar z0; QVar z1; QVar z2; QVar z3; QVar z4])
-  (radix51 [::QVar r0; QVar r1; QVar r2; QVar r3; QVar r4])
+zEqMod
+  (radix51 [::zVar z0; zVar z1; zVar z2; zVar z3; zVar z4])
+  (radix51 [::zVar r0; zVar r1; zVar r2; zVar r3; zVar r4])
   (n25519).
 
 Definition fe25519_mul_stage3_2_spec :=
@@ -232,5 +232,5 @@ Proof.
   time "valid_fe25519_mul_stage3_2" verify_ispec.
 Qed.
 
-Close Scope mqhasm_scope.
+Close Scope zdsl_scope.
 Close Scope N_scope.

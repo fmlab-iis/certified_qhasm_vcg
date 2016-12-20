@@ -36,7 +36,7 @@ Module State := TStoreAdapter NOrder ZType.
 Fixpoint eval_exp (e : exp) (s : State.t) : Z :=
   match e with
   | SVar v => State.acc v s
-  | SConst n => 0 (* tbd *)
+  | SConst n => n (* tbd *)
   | SAdd e1 e2 => 0 (* tbd *)
   | SSub e1 e2 => 0 (* tbd *)
   | SMul e1 e2 => 0 (* tbd *)

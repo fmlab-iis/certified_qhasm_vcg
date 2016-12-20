@@ -33,9 +33,9 @@ qhasm/IProgGenAMD64.v
 # Strict style
 sqhasm/IProg.v
 sqhasm/MiniQhasmPlusAMD64.v
-# Integer programs as mini Qhasm+
-mqhasm/mQhasm.v
-mqhasm/SSA.v
-mqhasm/PolyGen.v
-mqhasm/Radix.v
+# Domain specific language
+mqhasm/zDSL.v
+mqhasm/zSSA.v
+mqhasm/zPoly.v
+mqhasm/zRadix.v
 mqhasm/Verify.v

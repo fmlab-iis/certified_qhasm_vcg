@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
-From mQhasm Require Import mQhasm SSA PolyGen.
+From mQhasm Require Import zDSL zSSA zPoly.
 From GBArith Require Import GBCompute.
 From PolyOp Require Import Modp.
 
@@ -11,7 +11,7 @@ Import Prenex Implicits.
 
 
 
-Open Scope mqhasm_scope.
+Open Scope zdsl_scope.
 
 (** Options *)
 
@@ -142,9 +142,9 @@ Definition vconfig flags : verify_options :=
 
 
 
-(** ispec *)
+(** ispec - specification with specified input variables *)
 
-Definition ispec : Type := (VS.t * Qhasm.spec).
+Definition ispec : Type := (VS.t * zDSL.spec).
 
 Definition valid_ispec (s : ispec) : Prop :=
   well_formed_spec (fst s) (snd s) /\ valid_spec (snd s).
@@ -185,11 +185,11 @@ Ltac apply_spec_split_post o :=
   | false => idtac
   end.
 
-Ltac apply_qslice_sound o :=
+Ltac apply_zslice_sound o :=
   let b := constr:(opt_slicing o) in
   let b := eval compute in b in
   match b with
-  | true => apply: qslice_sound; rewrite /qslice /slice_pre /=
+  | true => apply: zslice_sound; rewrite /zslice /slice_pre /=
   | false => idtac
   end.
 
@@ -222,7 +222,7 @@ Ltac ispec_to_poly_with o :=
         by (simpl_with o; reflexivity)
            || fail "The specification is not well formed" |
         apply_spec_split_post o;
-        (apply_qslice_sound o;
+        (apply_zslice_sound o;
         apply: ssa_spec_sound;
         apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
           by (simpl_with o; reflexivity) |
@@ -398,12 +398,12 @@ Tactic Notation "solve_ispec" := solve_ispec_with default_options.
 
 Ltac verify_bexp_with o :=
   match goal with
-  | |- valid (QEq _ _) => move=> s; simplZ; nsatz_with o
+  | |- valid (zEq _ _) => move=> s; simplZ; nsatz_with o
   | |- _ = _ => nsatz_with o
-  | |- valid (QEqMod _ _ _) => move=> s; simplZ; gbarith_with o
+  | |- valid (zEqMod _ _ _) => move=> s; simplZ; gbarith_with o
   | |- modulo _ _ _ => gbarith_with o
   | |- exists k : Z, (_ - _)%Z = (k * _)%Z => gbarith_with o
-  | |- valid (QAnd _ _) => split; verify_bexp_with o
+  | |- valid (zAnd _ _) => split; verify_bexp_with o
   | |- _ /\ _ => split; verify_bexp_with o
   end.
 

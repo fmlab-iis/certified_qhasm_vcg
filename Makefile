@@ -138,10 +138,10 @@ VFILES:=lib/CompCert/Coqlib.v\
   qhasm/IProgGenAMD64.v\
   sqhasm/IProg.v\
   sqhasm/MiniQhasmPlusAMD64.v\
-  mqhasm/mQhasm.v\
-  mqhasm/SSA.v\
-  mqhasm/PolyGen.v\
-  mqhasm/Radix.v\
+  mqhasm/zDSL.v\
+  mqhasm/zSSA.v\
+  mqhasm/zPoly.v\
+  mqhasm/zRadix.v\
   mqhasm/Verify.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)

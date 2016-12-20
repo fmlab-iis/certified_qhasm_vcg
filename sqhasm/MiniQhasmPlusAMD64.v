@@ -406,7 +406,9 @@ Lemma state_eqmod_qconst E (n : const) (qst : State.t E) (ist : IProg.State.t) :
   state_eqmod qst ist ->
   (toZ (eval_atomic a qst))%Z == eval_exp (conv_atomic a) ist.
 Proof.
-Admitted.
+  move=> a [Hs Hc] /=.
+  exact: eqxx.
+Qed.
 
 Lemma state_eqmod_atomic E (a : atomic E) (qst : State.t E) (ist : IProg.State.t) :
   state_eqmod qst ist ->
