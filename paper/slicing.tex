@@ -3,25 +3,25 @@
   \begin{algorithmic}[1]
     \Match{$e$}
       \Case{$V$}
-        $\{ e \}$
+        \Return $\{ e \}$
       \EndCase
       \Case{$C$}
-        $\emptyset$
+        \Return $\emptyset$
       \EndCase
       \Case{$-e'$}
-        \textit{VarsInE} ($e'$)
+        \Return \textit{VarsInE} ($e'$)
       \EndCase
       \Case{$e' + e''$}
-        \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+        \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
       \EndCase
       \Case{$e' - e''$}
-        \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+        \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
       \EndCase
       \Case{$e' \times e''$}
-        \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+        \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
       \EndCase
       \Case{$\dslcode{Pow}(e', \uscore)$}
-        \textit{VarsInE} ($e'$)
+        \Return \textit{VarsInE} ($e'$)
       \EndCase
     \EndMatch
   \end{algorithmic}
@@ -35,13 +35,13 @@
       $\emptyset$
     \EndCase
     \Case{$e_0 = e_1$}
-      \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
+      \Return \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
     \EndCase
     \Case{$e_0 \equiv e_1 \mod \uscore$}
-      \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
+      \Return \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
     \EndCase
     \Case{$q_0 \wedge q_1$}
-      \textit{VarsInQ} ($q_0$) $\cup$ \textit{VarsInQ} ($q_1$)
+      \Return \textit{VarsInQ} ($q_0$) $\cup$ \textit{VarsInQ} ($q_1$)
     \EndCase
   \EndMatch
 \end{algorithmic}
@@ -53,15 +53,15 @@
     \Match{$s$}
       \Case{$v \leftarrow e$}
         \IfThenElse{$v \in \mathit{vars}$}
-          {\textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
+          {\Return \textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
             v \})$, $s$}
-          {$\mathit{vars}$}
+          {\Return $\mathit{vars}$}
       \EndCase
       \Case{$v_h, v_l \leftarrow \dslcode{Split} (e, \uscore)$}
         \IfThenElse{$v_h \in \mathit{vars}$ \textbf{or} $v_l \in \mathit{vars}$}
-          {\textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
+          {\Return \textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
             v_h, v_h \})$, $s$}
-          {$\mathit{vars}$}
+          {\Return $\mathit{vars}$}
       \EndCase
     \EndMatch
   \end{algorithmic}
@@ -72,15 +72,15 @@
   \begin{algorithmic}[1]
     \Match{$p$}
       \Case{$\epsilon$}
-        $\epsilon$
+        \Return $\epsilon$
       \EndCase
       \Case{$pp; s;$}
         \Match{\textit{SliceStatement} ($\mathit{vars}$, $s$)}
           \Case{$\mathit{vars}'$}
-            \textit{SliceProgram} ($\mathit{vars}'$, $pp;$)
+            \Return \textit{SliceProgram} ($\mathit{vars}'$, $pp;$)
           \EndCase
           \Case{$\mathit{vars}'$, $s'$}
-            \textit{SliceProgram} ($\mathit{vars}'$, $pp$)$\ s';$
+            \Return \textit{SliceProgram} ($\mathit{vars}'$, $pp$)$\ s';$
           \EndCase
         \EndMatch
       \EndCase

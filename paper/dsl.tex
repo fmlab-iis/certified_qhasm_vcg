@@ -1,27 +1,27 @@
 
 \begin{eqnarray*}
-  N & ::= & \mathsf{1}\ |\ \mathsf{2}\ |\ \cdots\\
-  C & ::= & \cdots \ |\ \mathsf{-2}\ |\ \mathsf{-1} \ |\ 0\ |\ 
-            \mathsf{1}\ |\ \mathsf{2}\ |\ \cdots\\
-  V & ::= & \mathsf{x_0}\ |\ \mathsf{x_1}\ |\ \mathsf{x_2}\ |\ \cdots\\
-  E & ::= &  C \ |\ V \ |\  \mathsf{-}E \ |\ E \mathsf{+} E 
-             \ |\ E \mathsf{-} E
-             \ |\ E \mathsf{\times} E \ |\ \mathsf{Pow} (E, N)
+  N & ::= & \dslcode{1}\ |\ \dslcode{2}\ |\ \cdots\\
+  C & ::= & \cdots \ |\ \dslcode{-2}\ |\ \dslcode{-1} \ |\ 0\ |\ 
+            \dslcode{1}\ |\ \dslcode{2}\ |\ \cdots\\
+  V & ::= & \dslcode{x} \ |\ \dslcode{y} \ |\ \dslcode{z} \ |\ \cdots\\
+  E & ::= &  C \ |\ V \ |\  \dslcode{-}E \ |\ E \dslcode{+} E 
+             \ |\ E \dslcode{-} E
+             \ |\ E \times E \ |\ \dslcode{Pow} (E, N)
 \end{eqnarray*}
 
 \begin{eqnarray*}
-  S & ::= & V \mathsf{\leftarrow} E 
-            \ |\  V, V \mathsf{\leftarrow} \mathsf{Split} (E, N)\\
-  P & ::= & S \ |\ P; S
+  S & ::= & V \leftarrow E 
+            \ |\  V, V \leftarrow \dslcode{Split} (E, N)\\
+  P & ::= & \epsilon \ |\ S; P
 \end{eqnarray*}
 
 \begin{eqnarray*}
-  B & ::= & \mathsf{\top}
-     \ |\   E \mathsf{=} E
-     \ |\   E \mathsf{\equiv} E \mod N
-     \ |\   B \wedge B
+  Q & ::= & \top
+     \ |\   E = E
+     \ |\   E \equiv E \mod N
+     \ |\   Q \wedge Q
 \end{eqnarray*}
 
 \begin{eqnarray*}
-  H & ::= & \{ B \} P \{ B \}
+  H & ::= & \cond{Q} P \cond{Q}
 \end{eqnarray*}

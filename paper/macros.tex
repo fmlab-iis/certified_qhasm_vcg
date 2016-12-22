@@ -1,2 +1,17 @@
 
 \newcommand{\defn}{\overset{\triangle}{=}}
+\newcommand{\dslcode}[1]{\mbox{\textsf{#1}}}
+\newcommand{\code}[1]{\mbox{#1}}
+\newcommand{\uscore}[0]{{\char95}}
+\newcommand{\cond}[1]{{(\!|}{#1}{|\!)}}
+
+\algnewcommand\algorithmicmatch{\textbf{match}}
+\algnewcommand\algorithmicwith{\textbf{with}}
+\algnewcommand\algorithmiccase{\textbf{case}}
+% New "environments"
+\algdef{SE}[MATCH]{Match}{EndMatch}[1]{\algorithmicmatch\ {#1}\ \algorithmicwith}{\algorithmicend\ \algorithmicmatch}%
+\algdef{SE}[CASE]{Case}{EndCase}[1]{\algorithmiccase\ {#1}:}{\algorithmicend\ \algorithmiccase}%
+\algtext*{EndMatch}%
+\algtext*{EndCase}%
+\algnewcommand{\IfThenElse}[3]{% \IfThenElse{<if>}{<then>}{<else>}
+  \State \algorithmicif\ #1\ \algorithmicthen\ #2\ \algorithmicelse\ #3}
