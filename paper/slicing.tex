@@ -1,0 +1,100 @@
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$e$}
+      \Case{$V$}
+        $\{ e \}$
+      \EndCase
+      \Case{$C$}
+        $\emptyset$
+      \EndCase
+      \Case{$-e'$}
+        \textit{VarsInE} ($e'$)
+      \EndCase
+      \Case{$e' + e''$}
+        \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+      \EndCase
+      \Case{$e' - e''$}
+        \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+      \EndCase
+      \Case{$e' \times e''$}
+        \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+      \EndCase
+      \Case{$\dslcode{Pow}(e', \uscore)$}
+        \textit{VarsInE} ($e'$)
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{VarsInE} ($e$)}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}[1]
+  \Match{$q$}
+    \Case{$\top$}
+      $\emptyset$
+    \EndCase
+    \Case{$e_0 = e_1$}
+      \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
+    \EndCase
+    \Case{$e_0 \equiv e_1 \mod \uscore$}
+      \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
+    \EndCase
+    \Case{$q_0 \wedge q_1$}
+      \textit{VarsInQ} ($q_0$) $\cup$ \textit{VarsInQ} ($q_1$)
+    \EndCase
+  \EndMatch
+\end{algorithmic}
+\caption{\textit{VarsInQ} ($q$)}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$s$}
+      \Case{$v \leftarrow e$}
+        \IfThenElse{$v \in \mathit{vars}$}
+          {\textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
+            v \})$, $s$}
+          {$\mathit{vars}$}
+      \EndCase
+      \Case{$v_h, v_l \leftarrow \dslcode{Split} (e, \uscore)$}
+        \IfThenElse{$v_h \in \mathit{vars}$ \textbf{or} $v_l \in \mathit{vars}$}
+          {\textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
+            v_h, v_h \})$, $s$}
+          {$\mathit{vars}$}
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{SliceStatement} ($\mathit{vars}$, $s$)}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$p$}
+      \Case{$\epsilon$}
+        $\epsilon$
+      \EndCase
+      \Case{$pp; s;$}
+        \Match{\textit{SliceStatement} ($\mathit{vars}$, $s$)}
+          \Case{$\mathit{vars}'$}
+            \textit{SliceProgram} ($\mathit{vars}'$, $pp;$)
+          \EndCase
+          \Case{$\mathit{vars}'$, $s'$}
+            \textit{SliceProgram} ($\mathit{vars}'$, $pp$)$\ s';$
+          \EndCase
+        \EndMatch
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{SliceProgram} ($\mathit{vars}$, $p$)}
+\end{algorithm}
+
+\begin{theorem}
+  For every $Q, Q'$ and $P$,
+  \begin{center}
+  $\cond{Q}$ $P$ $\cond{Q'}$ if and only if
+  $\cond{Q}$ \textit{SliceProgram} (\textit{VarsInQ} ($Q'$), $P$)
+  $\cond{Q'}$.
+  \end{center}
+
+\end{theorem}
