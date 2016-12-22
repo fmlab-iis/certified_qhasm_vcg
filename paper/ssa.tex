@@ -1,1 +1,95 @@
 
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$e$}
+      \Case{$V$} \Return $e^{\theta(e)}$ \EndCase
+      \Case{$C$} \Return $e$ \EndCase
+      \Case{$-e'$} \Return $-$\textit{SSAE} ($\theta$, $e'$) \EndCase
+      \Case{$e' + e''$} 
+        \Return \textit{SSAE} ($\theta$, $e'$) $+$ 
+                \textit{SSAE} ($\theta$, $e''$)
+      \EndCase
+      \Case{$e' - e''$} 
+        \Return \textit{SSAE} ($\theta$, $e'$) $-$ 
+                \textit{SSAE} ($\theta$, $e''$)
+      \EndCase
+      \Case{$e' \times e''$} 
+        \Return \textit{SSAE} ($\theta$, $e'$) $\times$ 
+                \textit{SSAE} ($\theta$, $e''$)
+      \EndCase
+      \Case{$\dslcode{Pow}$($e'$, $n$)}
+        \Return $\dslcode{Pow}$(\textit{SSAE} ($\theta$, $e'$), $n$)
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{SSAE} ($\theta$, $e$)}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$q$}
+      \Case{$\top$} \Return $\top$ \EndCase
+      \Case{$e' = e''$} 
+        \Return \textit{SSAE} ($\theta$, $e$) = \textit{SSAE} ($\theta$, $e'$)
+      \EndCase
+      \Case{$e' \equiv e'' \mod n$} 
+        \Return \textit{SSAE} ($\theta$, $e$) $\equiv$ 
+                \textit{SSAE} ($\theta$, $e'$) $\mod n$
+      \EndCase
+      \Case{$q' \wedge q''$}
+        \Return \textit{SSAQ} ($\theta$, $q'$) $\wedge$
+                \textit{SSAQ} ($\theta$, $q''$)
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{SSAQ} ($\theta$, $q$)}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$s$}
+      \Case{$v \leftarrow e$}
+        \Return $\theta[v \mapsto \theta(v) + 1]$, 
+                $v^{\theta(v) + 1} \leftarrow$ \textit{SSAE} ($\theta$, $e$)
+      \EndCase
+      \Case{$v_h, v_l \leftarrow \dslcode{Split}(e, n)$}
+        \State{\Return $\theta[v_h \mapsto \theta(v_h) + 1]
+                       [v_l \mapsto \theta(v_l) + 1]$,
+                $v_h^{\theta(v_h) + 1}, v_l^{\theta(v_l) + 1} \leftarrow
+                \dslcode{Split}($\textit{SSAE} $(\theta, e), n)$}
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{SSAStatement} ($\theta$, $s$)}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$p$}
+      \Case{$\epsilon$}
+        \Return $\theta$, $\epsilon$
+      \EndCase
+      \Case{$s; pp;$}
+        \State{$\theta', s' \leftarrow$ 
+                 \textit{SSAStatement} ($\theta$, $s$)}
+        \State{$\theta'', pp'' \leftarrow$ 
+                 \textit{SSAProgram} ($\theta'$, $pp$)}
+        \State{\Return $\theta''$, $s'; pp''$}
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{SSAProgram} ($\theta$, $p$)}
+\end{algorithm}
+
+\begin{theorem}
+  Let $\theta_0(v) = 0$ for every $v \in V$. For every $q, q' \in Q$
+  and $p \in P$,
+  \begin{center}
+    $\cond{q}$ $p$ $\cond{q'}$ if and only if
+    $\cond{\textmd{\textit{SSAQ}}(\theta_0, q)}$
+    $\hat{p}$
+    $\cond{\textmd{\textit{SSAQ}}(\hat{\theta}, q')}$
+  \end{center}
+  where $\hat{\theta}, \hat{p} =
+  \textmd{\textit{SSAProgram}}(\theta_0, p)$.
+\end{theorem}

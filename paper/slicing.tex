@@ -34,14 +34,14 @@
     \Case{$\top$}
       $\emptyset$
     \EndCase
-    \Case{$e_0 = e_1$}
-      \Return \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
+    \Case{$e' = e''$}
+      \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
     \EndCase
-    \Case{$e_0 \equiv e_1 \mod \uscore$}
-      \Return \textit{VarsInE} ($e_0$) $\cup$ \textit{VarsInE} ($e_1$)
+    \Case{$e' \equiv e'' \mod \uscore$}
+      \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
     \EndCase
-    \Case{$q_0 \wedge q_1$}
-      \Return \textit{VarsInQ} ($q_0$) $\cup$ \textit{VarsInQ} ($q_1$)
+    \Case{$q' \wedge q''$}
+      \Return \textit{VarsInQ} ($q'$) $\cup$ \textit{VarsInQ} ($q''$)
     \EndCase
   \EndMatch
 \end{algorithmic}
@@ -90,11 +90,11 @@
 \end{algorithm}
 
 \begin{theorem}
-  For every $Q, Q'$ and $P$,
+  For every $q, q' \in Q$ and $p \in P$,
   \begin{center}
-  $\cond{Q}$ $P$ $\cond{Q'}$ if and only if
-  $\cond{Q}$ \textit{SliceProgram} (\textit{VarsInQ} ($Q'$), $P$)
-  $\cond{Q'}$.
+  $\cond{q}$ $p$ $\cond{q'}$ if and only if
+  $\cond{q}$ \textit{SliceProgram} (\textit{VarsInQ} ($q'$), $p$)
+  $\cond{q'}$.
   \end{center}
 
 \end{theorem}
