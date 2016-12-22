@@ -1,0 +1,35 @@
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$s$}
+      \Case{$v \leftarrow e$}
+        \Return $v = e$
+      \EndCase
+      \Case{$v_h, v_l \leftarrow \dslcode{Split}(e, n)$}
+        \Return $v_h \times 2^n + v_l = e$
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{StatementToQ} ($s$)}
+\end{algorithm}
+
+\begin{algorithm}
+  \begin{algorithmic}[1]
+    \Match{$p$}
+      \Case{$\epsilon$} \Return $\top$ \EndCase
+      \Case{$s; pp$}
+        \Return \textit{StatementToQ} ($s$) $\wedge$
+                \textit{ProgramToQ} ($pp$)
+      \EndCase
+    \EndMatch
+  \end{algorithmic}
+  \caption{\textit{ProgramToQ} ($p$)}
+\end{algorithm}
+
+\begin{theorem}
+  Let $q, q' \in Q$ and $p \in P$.
+  Suppose $\valueof{q \wedge \textmd{\textit{ProgramToQ}}(p)}_\nu$
+  implies $\valueof{q'}_\nu$ for every valuation $\nu$. 
+  Then $\cond{q}$ $p$ $\cond{q'}$.
+\end{theorem}
+
