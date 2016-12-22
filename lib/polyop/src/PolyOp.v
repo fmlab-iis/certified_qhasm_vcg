@@ -1,6 +1,12 @@
 
 From Coq Require Import ZArith.
 
+Inductive engine : Set :=
+| Singular
+| Magma.
+
+Definition default_engine : engine := Singular.
+
 Inductive term : Set :=
 | Zero : term
 | Const : Z -> positive -> term
@@ -13,8 +19,10 @@ Inductive term : Set :=
 
 Declare ML Module "polyop_plugin".
 
-Ltac pdiv p c k :=
+Ltac pdiv_with eng p c k :=
   let id := fresh in
-  pdiv_ml id p c;
+  pdiv_ml eng id p c;
   let res := eval compute in id in
   k res.
+
+Ltac pdiv p c k := pdiv_with Singular p c k || pdiv_with Magma p c k.
