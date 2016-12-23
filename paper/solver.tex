@@ -1,1 +1,46 @@
 
+Consider the following system of $r + s$ (modulo) equations:
+\begin{equation}
+  \label{equation:modulo-polynomials}
+  \begin{array}{rclcrcl}
+    e_1 (\vec{x}) & = & e'_1 (\vec{x}) 
+    & \hspace{.05\textwidth} &
+    f_1 (\vec{x}) & \equiv & f'_1 (\vec{x}) \mod n_1\\
+    & \vdots & & & & \vdots \\
+    e_i (\vec{x}) & = & e'_i (\vec{x}) & &
+    f_j (\vec{x}) & \equiv & f'_j (\vec{x}) \mod n_j\\
+    & \vdots & & & & \vdots \\
+    e_r (\vec{x}) & = & e'_r (\vec{x}) & &
+    f_s (\vec{x}) & \equiv & f'_s (\vec{x}) \mod n_s
+  \end{array}
+\end{equation}
+Our goal is to establish $g (\vec{x}) = g' (\vec{x})$ or $h (\vec{x})
+\equiv h (\vec{x}) \mod m$ for every $\vec{x}$ satisfying the system
+of equations~(\ref{equation:modulo-polynomials}). In order to prove it
+in \coq, we first rewrite modulo equations $f_j (\vec{x}) \equiv f'_j
+(\vec{x}) \mod n_j$ to existentially quantified equations $\exists d_j
+\in \bbfZ, f_j (\vec{x}) = f'_j (\vec{x}) + n_j \times d_j$. In other
+words, we want to show that for every $\vec{x} \in \bbfZ^{|\vec{x}|}$
+satisfying 
+\begin{equation}
+  \label{equation:polynomials}
+  \begin{array}{rclcrcl}
+    e_1 (\vec{x}) & = & e'_1 (\vec{x}) 
+    & \hspace{.05\textwidth} &
+    f_1 (\vec{x}) & = & f'_1 (\vec{x}) + n_1 \times d_1 \\
+    & \vdots & & & & \vdots \\
+    e_i (\vec{x}) & = & e'_i (\vec{x}) & &
+    f_j (\vec{x}) & = & f'_j (\vec{x}) + n_j \times d_j \\
+    & \vdots & & & & \vdots \\
+    e_r (\vec{x}) & = & e'_r (\vec{x}) & &
+    f_s (\vec{x}) & = & f'_s (\vec{x}) + n_s \times d_s
+  \end{array}
+\end{equation}
+with some $d_1, \ldots, d_s$, then $g (\vec{x}) = g' (\vec{x})$ or $h
+(\vec{x}) \equiv h' (\vec{x}) \mod m$. There are two \coq tactics to
+construct formal proofs. The tactic \dslcode{nsatz} is able to prove
+equalities in integral domains. The tactic \dslcode{gbarith} is able
+to prove modulo equalities in integral domains. We hence define a
+\coq tactic which invokes \dslcode{nsatz} or \dslcode{gbarith} when
+it tries to prove $g (\vec{x}) = g' (\vec{x})$ or $h (\vec{x}) \equiv
+h' (\vec{x}) \mod m$ respectively.
