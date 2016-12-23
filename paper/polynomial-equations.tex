@@ -6,7 +6,7 @@
         \Return $v = e$
       \EndCase
       \Case{$v_h, v_l \leftarrow \dslcode{Split}(e, n)$}
-        \Return $v_h \times 2^n + v_l = e$
+        \Return $v_l + v_h \times 2^n = e$
       \EndCase
     \EndMatch
   \end{algorithmic}
@@ -24,6 +24,7 @@
     \EndMatch
   \end{algorithmic}
   \caption{\textit{ProgramToQ} ($p$)}
+  \label{algorithm:programtoq}
 \end{algorithm}
 
 \begin{theorem}
