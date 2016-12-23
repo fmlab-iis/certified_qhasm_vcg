@@ -3,47 +3,47 @@ Consider the following system of $r + s$ (modulo) equations:
 \begin{equation}
   \label{equation:modulo-polynomials}
   \begin{array}{rclcrcl}
-    e_1 (\vec{x}) & = & e'_1 (\vec{x}) 
+    e_1 (\vx) & = & e'_1 (\vx) 
     & \hspace{.05\textwidth} &
-    f_1 (\vec{x}) & \equiv & f'_1 (\vec{x}) \mod n_1\\
+    f_1 (\vx) & \equiv & f'_1 (\vx) \mod n_1\\
     & \vdots & & & & \vdots \\
-    e_i (\vec{x}) & = & e'_i (\vec{x}) & &
-    f_j (\vec{x}) & \equiv & f'_j (\vec{x}) \mod n_j\\
+    e_i (\vx) & = & e'_i (\vx) & &
+    f_j (\vx) & \equiv & f'_j (\vx) \mod n_j\\
     & \vdots & & & & \vdots \\
-    e_r (\vec{x}) & = & e'_r (\vec{x}) & &
-    f_s (\vec{x}) & \equiv & f'_s (\vec{x}) \mod n_s
+    e_r (\vx) & = & e'_r (\vx) & &
+    f_s (\vx) & \equiv & f'_s (\vx) \mod n_s
   \end{array}
 \end{equation}
-Our goal is to establish $g (\vec{x}) = g' (\vec{x})$ or $h (\vec{x})
-\equiv h (\vec{x}) \mod m$ for every $\vec{x}$ satisfying the system
+Our goal is to establish $g (\vx) = g' (\vx)$ or $h (\vx)
+\equiv h (\vx) \mod m$ for every $\vx$ satisfying the system
 of equations~(\ref{equation:modulo-polynomials}). In order to prove it
-in \coq, we first rewrite modulo equations $f_j (\vec{x}) \equiv f'_j
-(\vec{x}) \mod n_j$ to existentially quantified equations $\exists d_j
-\in \bbfZ, f_j (\vec{x}) = f'_j (\vec{x}) + n_j \times d_j$. In other
-words, we want to show that for every $\vec{x} \in \bbfZ^{|\vec{x}|}$
+in \coq, we first rewrite modulo equations $f_j (\vx) \equiv f'_j
+(\vx) \mod n_j$ to existentially quantified equations $\exists d_j
+\in \bbfZ, f_j (\vx) = f'_j (\vx) + n_j \times d_j$. In other
+words, we want to show that for every $\vx \in \bbfZ^{|\vx|}$
 satisfying 
 \begin{equation}
   \label{equation:polynomials}
   \begin{array}{rclcrcl}
-    e_1 (\vec{x}) & = & e'_1 (\vec{x}) 
+    e_1 (\vx) & = & e'_1 (\vx) 
     & \hspace{.05\textwidth} &
-    f_1 (\vec{x}) & = & f'_1 (\vec{x}) + n_1 \times d_1 \\
+    f_1 (\vx) & = & f'_1 (\vx) + n_1 \times d_1 \\
     & \vdots & & & & \vdots \\
-    e_i (\vec{x}) & = & e'_i (\vec{x}) & &
-    f_j (\vec{x}) & = & f'_j (\vec{x}) + n_j \times d_j \\
+    e_i (\vx) & = & e'_i (\vx) & &
+    f_j (\vx) & = & f'_j (\vx) + n_j \times d_j \\
     & \vdots & & & & \vdots \\
-    e_r (\vec{x}) & = & e'_r (\vec{x}) & &
-    f_s (\vec{x}) & = & f'_s (\vec{x}) + n_s \times d_s
+    e_r (\vx) & = & e'_r (\vx) & &
+    f_s (\vx) & = & f'_s (\vx) + n_s \times d_s
   \end{array}
 \end{equation}
-with some $d_1, \ldots, d_s$, then $g (\vec{x}) = g' (\vec{x})$ or $h
-(\vec{x}) \equiv h' (\vec{x}) \mod m$. There are two \coq tactics to
+with some $d_1, \ldots, d_s$, then $g (\vx) = g' (\vx)$ or $h
+(\vx) \equiv h' (\vx) \mod m$. There are two \coq tactics to
 construct formal proofs. The tactic \dslcode{nsatz} is able to prove
 equalities in integral domains. The tactic \dslcode{gbarith} is able
 to prove modulo equalities in integral domains. We hence define a
 \coq tactic which invokes \dslcode{nsatz} or \dslcode{gbarith} when
-it tries to prove $g (\vec{x}) = g' (\vec{x})$ or $h (\vec{x}) \equiv
-h' (\vec{x}) \mod m$ respectively.
+it tries to prove $g (\vx) = g' (\vx)$ or $h (\vx) \equiv
+h' (\vx) \mod m$ respectively.
 
 The tactics \dslcode{nsatz} and \dslcode{gbarith} however are not very
 scalable. \todo{explain briefly} 
@@ -61,6 +61,6 @@ safely be removed after every occurrences of $x$ are replaced with $E$
 or $E - 2^c y$. The number of polynomial equations is thus greatly
 reduced. We hence define a \coq tactic to rewrite variables and then
 remove corresponding polynomial equations. For proving a polynomial
-equation $g (\vec{x}) = g' (\vec{x})$, it turns out that the \coq tactic
-\dslcode{ring} suffices. For a modulo equation $h (\vec{x}) \equiv
-h' (\vec{x}) \mod m$, \todo{we need what?}
+equation $g (\vx) = g' (\vx)$, it turns out that the \coq tactic
+\dslcode{ring} suffices. For a modulo equation $h (\vx) \equiv
+h' (\vx) \mod m$, \todo{we need what?}

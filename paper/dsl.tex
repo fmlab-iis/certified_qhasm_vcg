@@ -25,3 +25,73 @@
 \begin{eqnarray*}
   H & ::= & \cond{Q} P \cond{Q}
 \end{eqnarray*}
+
+
+\begin{figure}
+  \centering
+  \[
+  \begin{array}{lclcl}
+    \begin{array}{rcl}
+    \textmd{1:} && \dslcode{r}_0 \leftarrow \dslcode{x}_0; \\
+    \textmd{2:} && \dslcode{r}_1 \leftarrow \dslcode{x}_1; \\
+    \textmd{3:} && \dslcode{r}_2 \leftarrow \dslcode{x}_2; \\
+    \textmd{4:} && \dslcode{r}_3 \leftarrow \dslcode{x}_3; \\
+    \textmd{5:} && \dslcode{r}_5 \leftarrow \dslcode{x}_4; \\
+    \end{array}
+    &\hspace{.05\textwidth}&
+    \begin{array}{rcl}
+    \textmd{6:} && 
+      \dslcode{r}_0 \leftarrow \dslcode{r}_0 + \dslcode{4503599627370458}; \\
+    \textmd{7:} &&
+      \dslcode{r}_1 \leftarrow \dslcode{r}_1 + \dslcode{4503599627370494}; \\
+    \textmd{8:} &&
+      \dslcode{r}_2 \leftarrow \dslcode{r}_2 + \dslcode{4503599627370494}; \\
+    \textmd{9:} &&
+      \dslcode{r}_3 \leftarrow \dslcode{r}_3 + \dslcode{4503599627370494}; \\
+    \textmd{10:} && 
+      \dslcode{r}_4 \leftarrow \dslcode{r}_4 + \dslcode{4503599627370494};\\
+    \end{array}
+    &\hspace{.05\textwidth}&
+    \begin{array}{rcl}
+    \textmd{11:} && \dslcode{r}_0 \leftarrow \dslcode{r}_0 - \dslcode{y}_0; \\
+    \textmd{12:} && \dslcode{r}_1 \leftarrow \dslcode{r}_1 - \dslcode{y}_1; \\
+    \textmd{13:} && \dslcode{r}_2 \leftarrow \dslcode{r}_2 - \dslcode{y}_2; \\
+    \textmd{14:} && \dslcode{r}_3 \leftarrow \dslcode{r}_3 - \dslcode{y}_3; \\
+    \textmd{15:} && \dslcode{r}_4 \leftarrow \dslcode{r}_4 - \dslcode{y}_4;
+    \end{array}
+  \end{array}
+  \]
+  \caption{Subtraction \dslcode{sub}$(\dslcode{x}_0, \dslcode{x}_1, 
+    \dslcode{x}_2, \dslcode{x}_3, \dslcode{x}_4, \dslcode{y}_0,
+    \dslcode{y}_1, \dslcode{y}_2, \dslcode{y}_3, \dslcode{y}_4)$}
+  \label{figure:dsl:subtraction}
+\end{figure}
+
+In Figure~\ref{figure:dsl:subtraction}, a number in $\bbfGF(2^{255}-19)$ 
+is represented by five 51-bit unsigned integers. The variables
+$\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2, \dslcode{x}_3,
+\dslcode{x}_4$ for instance represent 
+$\mathit{radix51}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
+\dslcode{x}_3, \dslcode{x}_4) \defn
+\dslcode{x}_0 + 2^{51} \dslcode{x}_1 + 2^{102} \dslcode{x}_2 +
+2^{153} \dslcode{x}_3 + 2^{204} \dslcode{x}_4$. The result of
+subtraction is stored in the variables $\dslcode{r}_0, \dslcode{r}_1,
+\dslcode{r}_2, \dslcode{r}_3, \dslcode{r}_4$. The specification of the
+program is therefore
+\[
+\begin{array}{c}
+\cond{\top}\\
+\dslcode{sub}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
+  \dslcode{x}_3, \dslcode{x}_4, \dslcode{y}_0, \dslcode{y}_1,
+  \dslcode{y}_2, \dslcode{y}_3, \dslcode{y}_4)\\
+\cond{\mathit{radix}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
+\dslcode{x}_3, \dslcode{x}_4) -
+\mathit{radix51}(\dslcode{y}_0, \dslcode{y}_1, \dslcode{y}_2,
+\dslcode{y}_3, \dslcode{y}_4)
+\equiv
+\mathit{radix51}(\dslcode{r}_0, \dslcode{r}_1, \dslcode{r}_2,
+\dslcode{r}_3, \dslcode{r}_4)
+\mod 2^{255}-19
+}.
+\end{array}
+\]
