@@ -90,14 +90,14 @@ Definition set_bool_flag f b o : verify_options :=
                opt_slicing := opt_slicing o;
                opt_to_assign := opt_to_assign o;
                opt_lazy := b;
-               opt_native := opt_native o;
+               opt_native := ~~b;
                opt_singular := opt_singular o;
                opt_magma := opt_magma o;
                opt_profiling := opt_profiling o |}
   | Native => {| opt_split := opt_split o;
                  opt_slicing := opt_slicing o;
                  opt_to_assign := opt_to_assign o;
-                 opt_lazy := opt_lazy o;
+                 opt_lazy := ~~b;
                  opt_native := b;
                  opt_singular := opt_singular o;
                  opt_magma := opt_magma o;
@@ -108,14 +108,14 @@ Definition set_bool_flag f b o : verify_options :=
                    opt_lazy := opt_lazy o;
                    opt_native := opt_native o;
                    opt_singular := b;
-                   opt_magma := opt_magma o;
+                   opt_magma := ~~b;
                    opt_profiling := opt_profiling o |}
   | Magma => {| opt_split := opt_split o;
                 opt_slicing := opt_slicing o;
                 opt_to_assign := opt_to_assign o;
                 opt_lazy := opt_lazy o;
                 opt_native := opt_native o;
-                opt_singular := opt_singular o;
+                opt_singular := ~~b;
                 opt_magma := b;
                 opt_profiling := opt_profiling o |}
   | Profiling => {| opt_split := opt_split o;
@@ -364,9 +364,15 @@ Ltac gbarith_with o :=
     | false => gbarith_choice a
     end
   | |- _ =>
+    let a :=
+        match a with
+        | (true, _) => PolyOp.Singular
+        | (_, true) => PolyOp.Magma
+        | _ => fail 100 "No polynomial engine is selected."
+        end in
     match b with
-    | true => time "modp_find_witness" modp_find_witness
-    | false => modp_find_witness
+    | true => time "modp_find_witness" (modp_find_witness_with a)
+    | false => modp_find_witness_with a
     end
   end.
 

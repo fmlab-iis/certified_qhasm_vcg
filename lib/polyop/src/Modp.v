@@ -155,17 +155,19 @@ Fixpoint interpret t fv {struct t} : Z :=
 Ltac simplZ :=
   cbv beta iota zeta delta -[Zmult Zplus Zpower Z.pow_pos Zminus Zopp Zdiv Zmod].
 
-Ltac modp_find_witness :=
+Ltac modp_find_witness_with eng :=
   match goal with
   | |- exists k : Z, ?p = k * ?c =>
     let l := variables p in
     let ap := abstrait p l in
     let ac := abstrait c l in
-    pdiv ap ac ltac:(fun w =>
+    pdiv_with eng ap ac ltac:(fun w =>
       let w := constr:(interpret w l) in
       idtac "Witness:" w;
       exists w; simplZ; ring
     )
   end.
+
+Tactic Notation "modp_find_witness" := (modp_find_witness_with default_engine).
 
 Close Scope Z_scope.

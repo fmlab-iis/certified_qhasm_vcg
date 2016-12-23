@@ -7,6 +7,9 @@ let singular_path = "Singular"
 let magma_path = "magma"
 let vname = "x"
 
+type engine = Singular | Magma
+
+let default_engine = Singular
 
 (* ------------------------------------------------------------------------- *)
 (*  Debugging                                                                *)
@@ -150,6 +153,8 @@ module CoqTerm = struct
   let _Sub : Term.constr lazy_t = lazy (init_constant path "Sub")
   let _Mul : Term.constr lazy_t = lazy (init_constant path "Mul")
   let _Pow : Term.constr lazy_t = lazy (init_constant path "Pow")
+  let _Singular : Term.constr lazy_t = lazy (init_constant path "Singular")
+  let _Magma : Term.constr lazy_t = lazy (init_constant path "Magma")
 end
 
 type vname = string
@@ -239,6 +244,30 @@ let rec oterm_of_cterm (t : Constr.t) : term =
 
 
 (* ------------------------------------------------------------------------- *)
+(*  Engines                                                                  *)
+(* ------------------------------------------------------------------------- *)
+
+let coq_singular = 1
+let coq_magma = 2
+
+let convert_coq_engine (v : Globnames.global_reference) : engine =
+  match v with
+  | Globnames.ConstructRef ((ind, _), idx) when Names.MutInd.to_string ind = "PolyOp.PolyOp.engine" ->
+     if idx = coq_singular then Singular
+     else if idx = coq_magma then Magma
+     else failwith "Unknown algorithm."
+  | Globnames.ConstRef cr ->
+     begin
+     match Global.body_of_constant cr with
+     | None -> failwith "Unknown algorithm."
+     | Some c ->
+        if Constr.equal c (Lazy.force CoqTerm._Singular) then Singular
+        else if Constr.equal c (Lazy.force CoqTerm._Magma) then Magma
+        else failwith "Unknown algorithm."
+     end
+  | _ -> failwith "Unknown algorithm."
+
+(* ------------------------------------------------------------------------- *)
 (*  Find witness                                                             *)
 (* ------------------------------------------------------------------------- *)
 
@@ -312,7 +341,32 @@ let rec singular_string_of_term (t : term) : string =
      ^ " ^ "
      ^ string_of_int t2
 
-let write_input file vars p c =
+let rec magma_string_of_term (t : term) : string =
+  match t with
+  | Zero -> "0"
+  | Const n -> Num.string_of_num n
+  | Var v -> vname ^ v
+  | Opp t ->
+     if is_atomic t then "-" ^ magma_string_of_term t ^ ""
+     else "-(" ^ magma_string_of_term t ^ ")"
+  | Add (t1, t2) ->
+     (if is_atomic t1 then magma_string_of_term t1 else "(" ^ magma_string_of_term t1 ^ ")")
+     ^ " + "
+     ^ (if is_atomic t2 then magma_string_of_term t2 else "(" ^ magma_string_of_term t2 ^ ")")
+  | Sub (t1, t2) ->
+     (if is_atomic t1 then magma_string_of_term t1 else "(" ^ magma_string_of_term t1 ^ ")")
+     ^ " - "
+     ^ (if is_atomic t2 then magma_string_of_term t2 else "(" ^ magma_string_of_term t2 ^ ")")
+  | Mul (t1, t2) ->
+     (if is_atomic t1 then magma_string_of_term t1 else "(" ^ magma_string_of_term t1 ^ ")")
+     ^ " * "
+     ^ (if is_atomic t2 then magma_string_of_term t2 else "(" ^ magma_string_of_term t2 ^ ")")
+  | Pow (t1, t2) ->
+     (if is_atomic t1 then magma_string_of_term t1 else "(" ^ magma_string_of_term t1 ^ ")")
+     ^ " ^ "
+     ^ string_of_int t2
+
+let write_singular_input file vars p c =
   let input_text =
     "ring r = integer, (" ^ (String.concat "," vars) ^ "), lp;\n"
     ^ "poly f = " ^ (singular_string_of_term p) ^ ";\n"
@@ -325,9 +379,36 @@ let write_input file vars p c =
   unix ("cat " ^ file ^ " >>  " ^ gbdir ^ "/log_gb");
   trace ""
 
-let run_cmd ifile ofile =
+let write_magma_input file vars p c =
+  let input_text =
+    "R := IntegerRing();\n"
+    ^ "S<" ^ (String.concat "," vars) ^ "> := PolynomialRing(R, " ^ string_of_int (List.length vars) ^ ");\n"
+    ^ "f := " ^ (magma_string_of_term p) ^ ";\n"
+    ^ "g := " ^ (magma_string_of_term c) ^ ";\n"
+    ^ "h, r := Quotrem(f, g);\n"
+    ^ "h;\n"
+    ^ "exit;\n" in
+  let ch = open_out file in
+  let _ = output_string ch input_text; close_out ch in
+  trace "INPUT TO MAGMA:";
+  unix ("cat " ^ file ^ " >>  " ^ gbdir ^ "/log_gb");
+  trace ""
+
+let run_singular ifile ofile =
+  let t1 = Unix.gettimeofday() in
   unix (singular_path ^ " -q " ^ ifile ^ " 1> " ^ ofile ^ " 2>&1");
+  let t2 = Unix.gettimeofday() in
+  trace ("Execution time of Singular: " ^ string_of_float (t2 -. t1) ^ " seconds");
   trace "OUTPUT FROM SINGULAR:";
+  unix ("cat " ^ ofile ^ " >>  " ^ gbdir ^ "/log_gb");
+  trace ""
+
+let run_magma ifile ofile =
+  let t1 = Unix.gettimeofday() in
+  unix (magma_path ^ " -b " ^ ifile ^ " 1> " ^ ofile ^ " 2>&1");
+  let t2 = Unix.gettimeofday() in
+  trace ("Execution time of Magma: " ^ string_of_float (t2 -. t1) ^ " seconds");
+  trace "OUTPUT FROM MAGMA:";
   unix ("cat " ^ ofile ^ " >>  " ^ gbdir ^ "/log_gb");
   trace ""
 
@@ -360,7 +441,7 @@ let term_of_string str =
   let mons = List.map (mon_of_string) (split_regexp "[\\+]" str) in
   sum_terms mons
 
-let read_output file vars =
+let read_singular_output file vars =
   (* read the output *)
   let line = ref "" in
   let ch = open_in file in
@@ -375,13 +456,44 @@ let read_output file vars =
   trace ("parsed witness: " ^ string_of_term res);
   res
 
-let pdiv p c =
+let read_magma_output file vars =
+  (* read the output *)
+  let lines_rev = ref [] in
+  let ch = open_in file in
+  let _ =
+    try
+      while true do
+	    lines_rev := input_line ch::!lines_rev
+      done
+    with End_of_file ->
+      () in
+  let _ = close_in ch in
+  (* parse the output *)
+  let line = replace " " "" (String.concat "" (List.rev !lines_rev)) in
+  let res = term_of_string line in
+  trace ("parsed witness: " ^ string_of_term res);
+  res
+
+let pdiv ?engine:engine p c =
   init_trace();
+  let eng =
+    match engine with
+    | None -> default_engine
+    | Some e -> e in
   let ifile = Filename.temp_file "inputfgb_" "" in
   let ofile = Filename.temp_file "outputfgb_" "" in
   let nvars = num_of_vars p in
   let vars = gen_vars nvars in
-  let _ = write_input ifile vars p c in
-  let _ = run_cmd ifile ofile in
-  let res = read_output ofile vars in
+  let res =
+    match eng with
+    | Singular ->
+       let _ = write_singular_input ifile vars p c in
+       let _ = run_singular ifile ofile in
+       let res = read_singular_output ofile vars in
+       res
+    | Magma ->
+       let _ = write_magma_input ifile vars p c in
+       let _ = run_magma ifile ofile in
+       let res = read_magma_output ofile vars in
+       res in
   res

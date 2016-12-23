@@ -1,5 +1,5 @@
 From Coq Require Import ZArith .
-From mQhasm Require Import mQhasm zRadix .
+From mQhasm Require Import zDSL zRadix .
 From mathcomp Require Import seq .
 
 Open Scope N_scope.
@@ -1042,7 +1042,7 @@ let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 zEqMod
   (bi_limbs X2')
-  (zPow (qsub (zPow (bi_limbs X2) 2) (zPow (bi_limbs Z2) 2)) 2)
+  (zPow (zsub (zPow (bi_limbs X2) 2) (zPow (bi_limbs Z2) 2)) 2)
   n25519.
 
 Definition fe25519_ladderstep_post2 : bexp :=
@@ -1072,11 +1072,11 @@ let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 zEqMod
   (bi_limbs Z2')
-  (qmuls [:: zConst 4;
+  (zmuls [:: zConst 4;
             bi_limbs X2;
             bi_limbs Z2;
-            qadds [:: zPow (bi_limbs X2) 2;
-                     qmuls [:: zConst 486662; bi_limbs X2; bi_limbs Z2];
+            zadds [:: zPow (bi_limbs X2) 2;
+                     zmuls [:: zConst 486662; bi_limbs X2; bi_limbs Z2];
                      zPow (bi_limbs Z2) 2]
          ])
   n25519.
@@ -1107,13 +1107,13 @@ let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 zEqMod
-  (qmul (bi_limbs X3')
-        (qmul (bi_limbs X1)
-              (zPow (qsub (qmul (bi_limbs X3) (bi_limbs Z2))
-                          (qmul (bi_limbs X2) (bi_limbs Z3))) 2)))
-  (qmul (bi_limbs Z3')
-        (zPow (qsub (qmul (bi_limbs X2) (bi_limbs X3))
-                    (qmul (bi_limbs Z2) (bi_limbs Z3))) 2))
+  (zmul (bi_limbs X3')
+        (zmul (bi_limbs X1)
+              (zPow (zsub (zmul (bi_limbs X3) (bi_limbs Z2))
+                          (zmul (bi_limbs X2) (bi_limbs Z3))) 2)))
+  (zmul (bi_limbs Z3')
+        (zPow (zsub (zmul (bi_limbs X2) (bi_limbs X3))
+                    (zmul (bi_limbs Z2) (bi_limbs Z3))) 2))
   n25519.
 
 Definition fe25519_ladderstep_post3_1 : bexp :=
@@ -1143,9 +1143,9 @@ let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 zEqMod
   (bi_limbs X3')
-  (qmul (zConst 4)
-        (zPow (qsub (qmul (bi_limbs X2) (bi_limbs X3))
-                    (qmul (bi_limbs Z2) (bi_limbs Z3))) 2))
+  (zmul (zConst 4)
+        (zPow (zsub (zmul (bi_limbs X2) (bi_limbs X3))
+                    (zmul (bi_limbs Z2) (bi_limbs Z3))) 2))
   n25519.
 
 Definition fe25519_ladderstep_post3_2 : bexp :=
@@ -1175,14 +1175,14 @@ let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 zEqMod
   (bi_limbs Z3')
-  (qmul (zConst 4)
-        (qmul (bi_limbs X1)
-              (zPow (qsub (qmul (bi_limbs X3) (bi_limbs Z2))
-                          (qmul (bi_limbs X2) (bi_limbs Z3))) 2)))
+  (zmul (zConst 4)
+        (zmul (bi_limbs X1)
+              (zPow (zsub (zmul (bi_limbs X3) (bi_limbs Z2))
+                          (zmul (bi_limbs X2) (bi_limbs Z3))) 2)))
   n25519.
 
 Definition fe25519_ladderstep_post : bexp :=
-  qands [:: fe25519_ladderstep_post1;
+  zands [:: fe25519_ladderstep_post1;
             fe25519_ladderstep_post2;
             fe25519_ladderstep_post3 ].
 
