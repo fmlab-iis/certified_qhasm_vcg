@@ -27,9 +27,41 @@
 \end{algorithm}
 
 \begin{theorem}
+  \label{theorem:program-to-q-soundness}
   Let $q, q' \in Q$ and $p \in P$.
   Suppose $\valueof{q \wedge \textmd{\textit{ProgramToQ}}(p)}_\nu$
   implies $\valueof{q'}_\nu$ for every valuation $\nu$. 
   Then $\cond{q}$ $p$ $\cond{q'}$.
 \end{theorem}
 
+Recall the definition of $Q$. By
+Theorem~\ref{theorem:program-to-q-soundness}, it remains to establish
+that for every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
+\[
+  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
+  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+  \implies
+  \bigwedge\limits_k g_k (\vec{x}) = g'_k (\vec{x}) \wedge
+  \bigwedge\limits_l   h_l (\vec{x}) \equiv h'_l (\vec{x}) \mod m_l
+\]
+where
+$e_i (\vec{x}), e'_i (\vec{x}), f_j (\vec{x}), f'_j (\vec{x}),
+ g_k (\vec{x}), g'_k (\vec{x}), h_l (\vec{x}), h'_l (\vec{x})$
+are multivariant polynomials over $\vec{x}$, and
+$n_j, m_l \in \bbfN $. Since the conclusion is a conjunction of
+(modulo) equations, we will prove one conjunct at a time. That is, for
+every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
+\[
+  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
+  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+  \implies
+  g (\vec{x}) = g' (\vec{x})
+\] where $g (\vec{x})$ and $g' (\vec{x})$ are multivariant polynomials
+over $\vec{x}$. Or,
+\[
+  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
+  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+  \implies
+  h (\vec{x}) \equiv h' (\vec{x}) \mod m
+\] where $h (\vec{x})$ and $h' (\vec{x})$ are multivariant polynomials
+over $\vec{x}$ and $m \in \bbfN$.
