@@ -1,14 +1,21 @@
 
 Given $q, q' \in Q$ and $p \in P$, we reduce the problem of checking
-$\models \cond{q} p \cond{q'}$ to a problem of checking (modular)
+$\models \hoaretriple{q}{p}{q'}$ to a problem of checking (modular)
 polynomial equalities under a system of polynomial equations over
-integral domains.
-
+integral domains. The reduction is carried out by the following three
+transformations:
 \begin{enumerate}
-\item Slicing. (Section~\ref{subsection:translation:slicing})
-\item Static single
-  assignments. (Section~\ref{subsection:translation:static-single-assignment})
-\item Multivariant polynomial
-  equations. (Section~\ref{subsection:translation:multivariant-polynomial-equations})
+\item Program slicing. To improve efficiency, the segments of the program $p$
+  irrelevant to the post-condition $q$ are removed by program slicing 
+  (Section~\ref{subsection:translation:slicing}). 
+\item Static single assignments. The sliced program is transformed
+  into static single assignments. Variables in the pre- and
+  post-conditions are renamed accordingly
+  (Section~\ref{subsection:translation:static-single-assignment}).
+\item Multivariant polynomial equations. The resultant program
+  specification is transformed into checking (modular)
+  polynomial equalities under a system of polynomial equations
+  (Section~\ref{subsection:translation:multivariant-polynomial-equations}).
 \end{enumerate}
 
+For each transformation, we 
