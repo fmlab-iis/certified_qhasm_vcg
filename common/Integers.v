@@ -202,7 +202,7 @@ Module ByteOrderMinimal <: SsrOrderedTypeMinimal.
     assumption.
   Qed.
 
-  Lemma compare : forall x y : t, Compare lt eq x y.
+  Definition compare : forall x y : t, Compare lt eq x y.
   Proof.
     move=> x y.
     case Heq: (x == y); last case Hlt: (lt x y).
@@ -260,7 +260,7 @@ Module IntOrderMinimal <: SsrOrderedTypeMinimal.
     assumption.
   Qed.
 
-  Lemma compare : forall x y : t, Compare lt eq x y.
+  Definition compare : forall x y : t, Compare lt eq x y.
   Proof.
     move=> x y.
     case Heq: (x == y); last case Hlt: (lt x y).
@@ -318,7 +318,7 @@ Module Int64OrderMinimal <: SsrOrderedTypeMinimal.
     assumption.
   Qed.
 
-  Lemma compare : forall x y : t, Compare lt eq x y.
+  Definition compare : forall x y : t, Compare lt eq x y.
   Proof.
     move=> x y.
     case Heq: (x == y); last case Hlt: (lt x y).
@@ -346,8 +346,84 @@ Module Int64Order <: SsrOrderedType := MakeSsrOrderedType Int64OrderMinimal.
 
 
 
-(** Others *)
+(** Additional functions added to CompCert modules Byte, Int, and Int64 *)
 
-Definition byte_pow_pos x := Pos.iter (Byte.mul x) Byte.one.
-Definition int_pow_pos x := Pos.iter (Int.mul x) Int.one.
-Definition int64_pow_pos x := Pos.iter (Int64.mul x) Int64.one.
+Module Byte.
+  Include CompCert.Integers.Byte.
+  Definition pow_pos x := Pos.iter (Byte.mul x) Byte.one.
+  Definition of_bool b := if b then Byte.one else Byte.zero.
+  Definition to_bool n := if n == zero then false else true.
+  Lemma to_boolK : forall b : bool, to_bool (of_bool b) = b.
+  Proof.
+    by case.
+  Qed.
+  Lemma of_boolK1 : forall n : byte, n = zero -> of_bool (to_bool n) = zero.
+  Proof.
+    move=> n H; rewrite H.
+    reflexivity.
+  Qed.
+  Lemma of_boolK2 : forall n : byte, n <> zero -> of_bool (to_bool n) = one.
+  Proof.
+    move=> n H.
+    rewrite /of_bool /to_bool.
+    move/eqP/negPf: H => H.
+    by rewrite H.
+  Qed.
+End Byte.
+
+Module Int.
+  Include CompCert.Integers.Int.
+  Definition pow_pos x := Pos.iter (Int.mul x) Int.one.
+  Definition of_bool b := if b then Int.one else Int.zero.
+  Definition to_bool n := if n == zero then false else true.
+  Lemma to_boolK : forall b : bool, to_bool (of_bool b) = b.
+  Proof.
+    by case.
+  Qed.
+  Lemma of_boolK1 : forall n : int, n = zero -> of_bool (to_bool n) = zero.
+  Proof.
+    move=> n H; rewrite H.
+    reflexivity.
+  Qed.
+  Lemma of_boolK2 : forall n : int, n <> zero -> of_bool (to_bool n) = one.
+  Proof.
+    move=> n H.
+    rewrite /of_bool /to_bool.
+    move/eqP/negPf: H => H.
+    by rewrite H.
+  Qed.
+End Int.
+
+Module Int64.
+  Include CompCert.Integers.Int64.
+  Definition int64_pow_pos x := Pos.iter (Int64.mul x) Int64.one.
+  Definition of_bool b := if b then Int64.one else Int64.zero.
+  Definition to_bool n := if n == zero then false else true.
+  Lemma to_boolK : forall b : bool, to_bool (of_bool b) = b.
+  Proof.
+    by case.
+  Qed.
+  Lemma of_boolK1 : forall n : int64, n = zero -> of_bool (to_bool n) = zero.
+  Proof.
+    move=> n H; rewrite H.
+    reflexivity.
+  Qed.
+  Lemma of_boolK2 : forall n : int64, n <> zero -> of_bool (to_bool n) = one.
+  Proof.
+    move=> n H.
+    rewrite /of_bool /to_bool.
+    move/eqP/negPf: H => H.
+    by rewrite H.
+  Qed.
+End Int64.
+
+Strategy 0 [Wordsize_32.wordsize].
+Notation int := Int.int.
+
+Strategy 0 [Wordsize_8.wordsize].
+Notation byte := Byte.int.
+
+Strategy 0 [Wordsize_64.wordsize].
+Notation int64 := Int64.int.
+
+Global Opaque Int.repr Int64.repr Byte.repr.
