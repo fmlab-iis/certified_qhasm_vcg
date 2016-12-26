@@ -42,8 +42,9 @@ into a sequence of assignments.
 
 For specifications, our domain specific language allows arbitrary
 conjunctions of (modulo) equations over expressions. The notation
-$\top$ denotes the Boolean value $\mathit{tt}$. A program
-\textit{state} is a mapping from variables to integers. Given $q \in
+$\top$ denotes the Boolean value $\mathit{tt}$. We follow Hoare's
+formalism in cryptographic program specifications~\cite{H:69:ABCP}. A program
+\textit{state} is a mapping from variables to integers. For any $q \in
 Q$, a \emph{$q$-state} is a state satisfying $q$.
 Given $q, q' \in Q$ and $p \in P$, $\models \cond{q} p \cond{q'}$
 denotes that the program $p$ will terminate and end in a $q'$-state
