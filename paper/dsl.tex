@@ -1,4 +1,6 @@
 
+Consider the following syntactic class for expressions in our domain
+specific language:
 
 \begin{eqnarray*}
   N & ::= & \dslcode{1}\ |\ \dslcode{2}\ |\ \cdots\\
@@ -10,25 +12,53 @@
              \ |\ E \times E \ |\ \dslcode{Pow} (E, N)
 \end{eqnarray*}
 
+We allow exact integers as constants in the domain specific
+language. Variables are thus integer variables. An expression can be a
+constant, a variable, or a negative expression. Addition, subtraction,
+and multiplication of expressions are available. The expression
+$\dslcode{Pow}(e, n)$ denotes $e^n$ for any expression $e$ and positive
+integer $n$. For low-level cryptographic programs over large Galois
+fields, division is computed via multiplication; the bit-wise
+left-shifting can be modeled by multiplying
+$\dslcode{Pow}(\dslcode{2}, n)$. They are not necessary in our
+domain specific language. 
+
 \begin{eqnarray*}
   S & ::= & V \leftarrow E 
             \ |\  V, V \leftarrow \dslcode{Split} (E, N)\\
   P & ::= & \epsilon \ |\ S; P
 \end{eqnarray*}
 
+For low-level cryptographic programs, the only statements are
+assignments. The statement $v \leftarrow e$ assigns the value of $e$
+to the variable $v$. The statement $v_h, v_l \leftarrow
+\dslcode{Split}(e, n)$ splits the value of $e$ into higher and lowest
+$n$ bits. The higher and lower bits are stored in $v_h$ and $v_l$
+respectively. A program is a sequence of statements. We denote the
+empty program by $\epsilon$. Observe that conditional branches are not
+allowed in cryptographic programs to prevent timing attacks. Every
+loop must repeat a fixed number of times and hence can be unfolded
+into a sequence of assignments.
+
+For specifications, our domain specific language allows arbitrary
+conjunctions of (modulo) equations over expressions. The notation
+$\top$ denotes the Boolean value $\mathit{tt}$. A program
+\textit{state} is a mapping from variables to integers. Given $q \in
+Q$, a \emph{$q$-state} is a state satisfying $q$.
+Given $q, q' \in Q$ and $p \in P$, $\models \cond{q} p \cond{q'}$
+denotes that the program $p$ will terminate and end in a $q'$-state
+provided it starts from any $q$-state.
+
 \begin{eqnarray*}
   Q & ::= & \top
      \ |\   E = E
      \ |\   E \equiv E \mod N
-     \ |\   Q \wedge Q
-\end{eqnarray*}
-
-\begin{eqnarray*}
+     \ |\   Q \wedge Q\\
   H & ::= & \cond{Q} P \cond{Q}
 \end{eqnarray*}
 
 
-\begin{figure}
+\begin{figure}[ht]
   \centering
   \[
   \begin{array}{lclcl}
