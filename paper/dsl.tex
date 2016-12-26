@@ -1,10 +1,11 @@
 
+
 \begin{eqnarray*}
   N & ::= & \dslcode{1}\ |\ \dslcode{2}\ |\ \cdots\\
-  C & ::= & \cdots \ |\ \dslcode{-2}\ |\ \dslcode{-1} \ |\ 0\ |\ 
+  Z & ::= & \cdots \ |\ \dslcode{-2}\ |\ \dslcode{-1} \ |\ 0\ |\ 
             \dslcode{1}\ |\ \dslcode{2}\ |\ \cdots\\
   V & ::= & \dslcode{x} \ |\ \dslcode{y} \ |\ \dslcode{z} \ |\ \cdots\\
-  E & ::= &  C \ |\ V \ |\  \dslcode{-}E \ |\ E \dslcode{+} E 
+  E & ::= &  Z \ |\ V \ |\  \dslcode{-}E \ |\ E \dslcode{+} E 
              \ |\ E \dslcode{-} E
              \ |\ E \times E \ |\ \dslcode{Pow} (E, N)
 \end{eqnarray*}
@@ -67,7 +68,9 @@
   \label{figure:dsl:subtraction}
 \end{figure}
 
-In Figure~\ref{figure:dsl:subtraction}, a number in $\bbfGF(2^{255}-19)$ 
+Figure~\ref{figure:dsl:subtraction} gives a simple yet real
+implementation of subtraction over $\bbfGF(\myprime)$. 
+In the figure, a number in $\bbfGF(\varrho)$ 
 is represented by five 51-bit unsigned integers. The variables
 $\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2, \dslcode{x}_3,
 \dslcode{x}_4$ for instance represent 
@@ -76,8 +79,11 @@ $\mathit{radix51}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
 \dslcode{x}_0 + 2^{51} \dslcode{x}_1 + 2^{102} \dslcode{x}_2 +
 2^{153} \dslcode{x}_3 + 2^{204} \dslcode{x}_4$. The result of
 subtraction is stored in the variables $\dslcode{r}_0, \dslcode{r}_1,
-\dslcode{r}_2, \dslcode{r}_3, \dslcode{r}_4$. The specification of the
-program is therefore
+\dslcode{r}_2, \dslcode{r}_3, \dslcode{r}_4$. 
+Given $0 \leq \dslcode{x}_0,$ $\dslcode{x}_1,$ $\dslcode{x}_2,$
+$\dslcode{x}_3,$ $\dslcode{x}_4,$ $\dslcode{y}_0,$ $\dslcode{y}_1,$
+$\dslcode{y}_2,$ $\dslcode{y}_3,$ $\dslcode{y}_4 < 2^{51}$, 
+the specification of the program is therefore
 \[
 \begin{array}{c}
 \cond{\top}\\
@@ -91,7 +97,31 @@ program is therefore
 \equiv
 \mathit{radix51}(\dslcode{r}_0, \dslcode{r}_1, \dslcode{r}_2,
 \dslcode{r}_3, \dslcode{r}_4)
-\mod 2^{255}-19
+\mod \myprime
 }.
 \end{array}
 \]
+
+Note that the variables $\dslcode{r}_i$'s are added with constants
+after they are initizlied with $\dslcode{x}_i$'s but before
+$\dslcode{y}_i$'s are subtracted from them. It is not hard to see that
+$2\myprime = \mathit{radix51} (4503599627370458,$ $4503599627370494,$
+$4503599627370494,$ $4503599627370494,$ $4503599627370494)$
+after tedious computation. Hence $\mathit{radix51}(\dslcode{r}_0,$
+$\dslcode{r}_1,$ $\dslcode{r}_2,$ $\dslcode{r}_3,$ $\dslcode{r}_4)$ $=$
+$\mathit{radix51}(\dslcode{x}_0,$ $\dslcode{x}_1,$ $\dslcode{x}_2,$
+$\dslcode{x}_3,$ $\dslcode{x}_4)$ $+$ $2 \myprime $ $-$
+$\mathit{radix51}(\dslcode{y}_0,$ $\dslcode{y}_1,$ $\dslcode{y}_2,$
+$\dslcode{y}_3,$ $\dslcode{y}_4)$ $\equiv $
+$\mathit{radix51}(\dslcode{x}_0,$ $\dslcode{x}_1,$ $\dslcode{x}_2,$
+$\dslcode{x}_3,$ $\dslcode{x}_4)$ $-$
+$\mathit{radix51}(\dslcode{y}_0,$ $\dslcode{y}_1,$ $\dslcode{y}_2,$
+$\dslcode{y}_3,$ $\dslcode{y}_4)$ $\mod \myprime $. The program in
+Figure~\ref{figure:dsl:subtraction} is correct. The reason for
+adding constants is to prevent underflow. If the constants were not
+added, the subtraction in lines~11 to 15 could give negative and hence
+incorrect results. Indeed, characteristics of large Galois fields are
+regularly exploited in cryptographic programs for correctness and
+efficiency. Our domain specific language can easily model such
+specialized programming techniques and is most suitable for low-level
+cryptographic programs.
