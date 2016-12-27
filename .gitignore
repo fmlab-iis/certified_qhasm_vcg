@@ -3,3 +3,10 @@
 *.vo
 *.v.d
 Makefile.bak
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.brf
+paper/*.log
+paper/*.out
+paper/*.pdf
