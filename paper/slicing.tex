@@ -5,7 +5,21 @@ program $p$ may contain portions irrevelant to $q'$. Program slicing
 is a simple yet effective technique to improve efficiency of
 verification through simplifying programs. \todo{reference?} 
 
-\begin{algorithm}
+Here we slice programs in a backward manner. We initialize the set
+of \emph{cared} variables to be the variables appeared in the
+post-condition $q'$. Starting from the last statement, we check if the
+it assigns any cared variables. If not, we skip the last statement and
+move to the last but one statement. If it does, we keep the last
+statement, update the cared variables, and examine the second-to-last
+statement. This process repeats until the first statement of the
+program is processed.
+
+Our program slicing algorithm requires several auxiliary functions. 
+Algorithm~\ref{algorithm:variables-in-expressions} shows how to
+compute all variables occurred in an expression by structural
+induction on the expression. 
+
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{VarsInE}{$e$}
     \Match{$e$}
@@ -33,10 +47,11 @@ verification through simplifying programs. \todo{reference?}
     \EndMatch
     \EndFunction
   \end{algorithmic}
-  \caption{Variables Occurred in an Expression}
+  \caption{Variables Occurred in Expressions}
+  \label{algorithm:variables-in-expressions}
 \end{algorithm}
 
-\begin{algorithm}
+\begin{algorithm}[ht]
 \begin{algorithmic}[1]
   \Function{VarsInQ}{$q$}
   \Match{$q$}
@@ -56,33 +71,56 @@ verification through simplifying programs. \todo{reference?}
   \EndFunction
 \end{algorithmic}
 \caption{Variables Occurred in Predicates}
+\label{algorithm:variables-in-predicates}
 \end{algorithm}
 
-\begin{algorithm}
+Similarly, Algorithm~\ref{algorithm:variables-in-predicates} computes
+the variables appeared in a predicate. Using a \coq formalization of
+sets, both algorithms are specified in the proof assistant easily.
+
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{SliceStatement}{$\mathit{vars}$, $s$}
     \Match{$s$}
       \Case{$v \leftarrow e$}
         \IfThenElse{$v \in \mathit{vars}$}
-          {\Return \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
-            v \})$, $s$}
+          {\Return $\langle$
+            \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
+            v \})$, $s$ $\rangle$}
           {\Return $\mathit{vars}$}
       \EndCase
       \Case{$v_h, v_l \leftarrow \dslcode{Split} (e, \uscore)$}
-        \IfThenElse{$v_h \in \mathit{vars}$ \textbf{or} $v_l \in \mathit{vars}$}
-          {\Return \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
-            v_h, v_h \})$, $s$}
+        \IfThenElse{$v_h$ or $v_l \in \mathit{vars}$}
+          {\Return $\langle$
+            \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
+            v_h, v_l \})$, $s$ $\rangle$}
           {\Return $\mathit{vars}$}
       \EndCase
     \EndMatch
     \EndFunction
   \end{algorithmic}
-  \caption{Slicing a Statement}
+  \caption{Slicing Statements}
+  \label{algorithm:slicing-statements}
 \end{algorithm}
 
-\begin{algorithm}
+For each statement, we check if the variables in the left hand side are
+cared variables. If these variables are not, we leave the cared
+variables intact. If they are cared variables, we update the cared
+variables by excluding the variables on the left hand side but adding
+the variables appeared on the right hand
+side~(Algorithm~\ref{algorithm:slicing-statements}). In the algorithm, 
+the parameter $\mathit{vars}$ denotes the set of cared variables.
+Observe that irrelevant statements are not returned by the algorithm.
+
+To slice a program, our algorithm proceeds from the last statement
+(Algorithm~\ref{algorithm:slicing-programs}). It invokes
+\textsc{SliceStatement} to see if the current statement is relevant
+and update cared variables if necessary. The algorithm recurses with
+the updated cared variables and previous statements.
+
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
-    \Function{SliceProgram}{$\mathit{vars}$, $pp$}
+    \Function{SliceProgram}{$\mathit{vars}$, $p$}
     \Match{$p$}
       \Case{$\epsilon$}
         \Return $\epsilon$
@@ -90,9 +128,9 @@ verification through simplifying programs. \todo{reference?}
       \Case{$pp; s;$}
         \Match{\Call{SliceStatement}{$\mathit{vars}$, $s$}}
           \Case{$\mathit{vars}'$}
-            \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp$}
+            \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp;$}
           \EndCase
-          \Case{$\mathit{vars}'$, $s'$}
+          \Case{$\langle$ $\mathit{vars}'$, $s'$ $\rangle$}
             \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp$}$\ s';$
           \EndCase
         \EndMatch
@@ -100,8 +138,14 @@ verification through simplifying programs. \todo{reference?}
     \EndMatch
     \EndFunction
   \end{algorithmic}
-  \caption{Slicing a Program}
+  \caption{Slicing Programs}
+  \label{algorithm:slicing-programs}
 \end{algorithm}
+
+We specify Algorithms~\ref{algorithm:slicing-statements}
+and~\ref{algorithm:slicing-programs} in \coq. Using the proof
+assistant, we show our program slicing algorithm is both sound and
+complete. That is, the proof of the following theorem is certified.
 
 \begin{theorem}
   For every $q, q' \in Q$ and $p \in P$,
