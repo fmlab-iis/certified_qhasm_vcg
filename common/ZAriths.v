@@ -2,7 +2,7 @@
 From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssralg ssrfun choice eqtype.
 From mathcomp Require ssrnat.
-From Common Require Import Types Nats.
+From Common Require Import Types SsrOrdered Nats.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

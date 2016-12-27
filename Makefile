@@ -121,6 +121,7 @@ VFILES:=lib/CompCert/Coqlib.v\
   common/Tactics.v\
   common/Arch.v\
   common/Types.v\
+  common/SsrOrdered.v\
   common/Lists.v\
   common/FMaps.v\
   common/FSets.v\

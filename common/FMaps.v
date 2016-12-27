@@ -5,7 +5,7 @@
 
 From Coq Require Import FMaps OrderedType.
 From mathcomp Require Import ssreflect ssrbool.
-From Common Require Import Types.
+From Common Require Import Types SsrOrdered.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

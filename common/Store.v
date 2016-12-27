@@ -3,7 +3,7 @@
 
 From Coq Require Import Program Program.Tactics FMaps ZArith.
 From mathcomp Require Import ssreflect ssrbool eqtype.
-From Common Require Import Types HList FMaps ZAriths Env Var.
+From Common Require Import Types SsrOrdered HList FMaps ZAriths Env Var.
 Import HEnv.
 
 Set Implicit Arguments.

@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
-From Common Require Import Types Lists FSets Bools ZAriths Var Store.
+From Common Require Import Types SsrOrdered Lists FSets Bools ZAriths Var Store.
 From mQhasm Require Import zDSL.
 
 Set Implicit Arguments.
@@ -15,7 +15,7 @@ Delimit Scope zssa_scope with zssa.
 Local Open Scope zssa_scope.
 
 Module MakeZSSA (VO : SsrOrderedType) (IO : SsrOrderedType).
-  Module V := MakeSsrPairOrderedType VO IO.
+  Module V := MakeProdOrdered VO IO.
   Module Q := MakeZDSL V.
   Include Q.
 End MakeZSSA.

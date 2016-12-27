@@ -3,7 +3,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
-From Common Require Import Types ZAriths FSets Var Store.
+From Common Require Import Types SsrOrdered ZAriths FSets Var Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
