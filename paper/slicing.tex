@@ -1,6 +1,7 @@
 
 \begin{algorithm}
   \begin{algorithmic}[1]
+    \Function{VarsInE}{$e$}
     \Match{$e$}
       \Case{$V$}
         \Return $\{ e \}$
@@ -9,93 +10,99 @@
         \Return $\emptyset$
       \EndCase
       \Case{$-e'$}
-        \Return \textit{VarsInE} ($e'$)
+        \Return \Call{VarsInE}{$e'$}
       \EndCase
       \Case{$e' + e''$}
-        \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+        \Return \Call{VarsInE}{$e'$} $\cup$ \Call{VarsInE}{$e''$}
       \EndCase
       \Case{$e' - e''$}
-        \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+        \Return \Call{VarsInE}{$e'$} $\cup$ \Call{VarsInE}{$e''$}
       \EndCase
       \Case{$e' \times e''$}
-        \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+        \Return \Call{VarsInE}{$e'$} $\cup$ \Call{VarsInE}{$e''$}
       \EndCase
       \Case{$\dslcode{Pow}(e', \uscore)$}
-        \Return \textit{VarsInE} ($e'$)
+        \Return \Call{VarsInE}{$e'$}
       \EndCase
     \EndMatch
+    \EndFunction
   \end{algorithmic}
-  \caption{\textit{VarsInE} ($e$)}
+  \caption{Variables Occurred in an Expression}
 \end{algorithm}
 
 \begin{algorithm}
 \begin{algorithmic}[1]
+  \Function{VarsInQ}{$q$}
   \Match{$q$}
     \Case{$\top$}
       $\emptyset$
     \EndCase
     \Case{$e' = e''$}
-      \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+      \Return \Call{VarsInE}{$e'$} $\cup$ \Call{VarsInE}{$e''$}
     \EndCase
     \Case{$e' \equiv e'' \mod \uscore$}
-      \Return \textit{VarsInE} ($e'$) $\cup$ \textit{VarsInE} ($e''$)
+      \Return \Call{VarsInE}{$e'$} $\cup$ \Call{VarsInE}{$e''$}
     \EndCase
     \Case{$q' \wedge q''$}
-      \Return \textit{VarsInQ} ($q'$) $\cup$ \textit{VarsInQ} ($q''$)
+      \Return \Call{VarsInQ}{$q'$} $\cup$ \Call{VarsInQ}{$q''$}
     \EndCase
   \EndMatch
+  \EndFunction
 \end{algorithmic}
-\caption{\textit{VarsInQ} ($q$)}
+\caption{Variables Occurred in Predicates}
 \end{algorithm}
 
 \begin{algorithm}
   \begin{algorithmic}[1]
+    \Function{SliceStatement}{$\mathit{vars}$, $s$}
     \Match{$s$}
       \Case{$v \leftarrow e$}
         \IfThenElse{$v \in \mathit{vars}$}
-          {\Return \textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
+          {\Return \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
             v \})$, $s$}
           {\Return $\mathit{vars}$}
       \EndCase
       \Case{$v_h, v_l \leftarrow \dslcode{Split} (e, \uscore)$}
         \IfThenElse{$v_h \in \mathit{vars}$ \textbf{or} $v_l \in \mathit{vars}$}
-          {\Return \textit{VarsInE} ($e$) $\cup$ $(\mathit{vars} \setminus \{
+          {\Return \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
             v_h, v_h \})$, $s$}
           {\Return $\mathit{vars}$}
       \EndCase
     \EndMatch
+    \EndFunction
   \end{algorithmic}
-  \caption{\textit{SliceStatement} ($\mathit{vars}$, $s$)}
+  \caption{Slicing a Statement}
 \end{algorithm}
 
 \begin{algorithm}
   \begin{algorithmic}[1]
+    \Function{SliceProgram}{$\mathit{vars}$, $pp$}
     \Match{$p$}
       \Case{$\epsilon$}
         \Return $\epsilon$
       \EndCase
       \Case{$pp; s;$}
-        \Match{\textit{SliceStatement} ($\mathit{vars}$, $s$)}
+        \Match{\Call{SliceStatement}{$\mathit{vars}$, $s$}}
           \Case{$\mathit{vars}'$}
-            \Return \textit{SliceProgram} ($\mathit{vars}'$, $pp;$)
+            \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp$}
           \EndCase
           \Case{$\mathit{vars}'$, $s'$}
-            \Return \textit{SliceProgram} ($\mathit{vars}'$, $pp$)$\ s';$
+            \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp$}$\ s';$
           \EndCase
         \EndMatch
       \EndCase
     \EndMatch
+    \EndFunction
   \end{algorithmic}
-  \caption{\textit{SliceProgram} ($\mathit{vars}$, $p$)}
+  \caption{Slicing a Program}
 \end{algorithm}
 
 \begin{theorem}
   For every $q, q' \in Q$ and $p \in P$,
   \begin{center}
-  $\cond{q}$ $p$ $\cond{q'}$ if and only if
-  $\cond{q}$ 
-  $\textmd{\textit{SliceProgram}}(\textmd{\textit{VarsInQ}}(q'), p)$
-  $\cond{q'}$.
+  $\models \hoaretriple{q}{p}{q'}$ if and only if
+  $\models \hoaretriple{q}{\textsc{SliceProgram}(\textsc{VarsInQ}(q'), p)}
+  {q'}$.
   \end{center}
 
 \end{theorem}
