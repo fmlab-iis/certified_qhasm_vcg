@@ -73,25 +73,27 @@ assistant.
 \end{algorithm}
 
 Statement transformation is slightly more complicated. For
-expressions on the right hand side, they are transformed by the finite
-mapping $\theta$. Algorithm~\ref{algorithm:ssa-statements} then
+expressions on the right hand side, they are transformed by the given
+finite mapping $\theta$. Algorithm~\ref{algorithm:ssa-statements} then
 updates the mapping and renames variables on the left hand side of
-statements. In the algorithm, $\theta\mymapsto{\vv}{\vn}$
-denotes the finite mapping which simultaneously maps $\vv$ to
-$\vn$ and $u$ to $\theta(u)$ for every $u \not\in \vv$.
+statements. In the algorithm, $\theta\mymapsto{v}{n}$
+denotes the finite mapping which simultaneously maps $v$ to
+$n$ and $u$ to $\theta(u)$ for every $u \neq v$.
 
 \begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{SSAStatement}{$\theta$, $s$}
     \Match{$s$}
       \Case{$v \leftarrow e$}
-        \Return $\langle \theta\mymapsto{v}{\theta(v) + 1}$, 
-                $v^{\theta(v) + 1} \leftarrow$ \Call{SSAE}{$\theta$, $e$}$\rangle$
+        \State{$\theta' \leftarrow \theta\mymapsto{v}{\theta(v) + 1}$}
+        \State{\Return $\langle \theta'$, 
+                $v^{\theta'(v)} \leftarrow$ \Call{SSAE}{$\theta$, $e$}$\rangle$}
       \EndCase
       \Case{$\concat{v_h}{v_l} \leftarrow \dslcode{Split}(e, n)$}
-        \State{\Return $\langle \theta\mymapsto{v_h,
-            v_l}{\theta(v_h) + 1, \theta(v_l) + 1}$,
-                $\concat{v_h^{\theta(v_h) + 1}}{v_l^{\theta(v_l) + 1}} \leftarrow
+        \State{$\theta_h \leftarrow \theta\mymapsto{v_h}{\theta(v_h) + 1}$}
+        \State{$\theta_l \leftarrow \theta_h\mymapsto{v_l}{\theta_h(v_l) + 1}$}
+        \State{\Return $\langle \theta_l$,
+                $\concat{v_h^{\theta_h(v_h)}}{v_l^{\theta_l(v_l)}} \leftarrow
                 \dslcode{Split}($\Call{SSAE}{$\theta$, $e$}$, n)
                 \rangle$
               }
