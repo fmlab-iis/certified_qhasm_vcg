@@ -1,10 +1,18 @@
 
-\begin{definition}
-  A program is in \emph{single static assignment} form if every
-  variable is never defined twice (or more).
-\end{definition}
+A program is in \emph{single static assignment} form if every variable
+is assigned at most once. \todo{reference?} 
+Our next task is to correctly transform any
+program specification $\hoaretriple{q}{p}{q'}$ to single static
+assignments for any $q, q' \in Q$ and $p \in P$. Our transformation
+maintains a finite mapping $\theta$ from program variables to
+non-negative integers. For any program variable $v$, $v^{\theta(v)}$ is
+the most recently assigned program variable corresponding to $v$. 
+Such variables are always referred in
+expressions. Algorithm~\ref{algorithm:ssa-expressions} shows how
+to transform expressions with the finite mapping $\theta$ by
+structural induction.
 
-\begin{algorithm}
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{SSAE}{$\theta$, $e$}
     \Match{$e$}
@@ -30,9 +38,18 @@
     \EndFunction
   \end{algorithmic}
   \caption{Single Static Assignment Transformation for Expressions}
+  \label{algorithm:ssa-expressions}
 \end{algorithm}
 
-\begin{algorithm}
+Similarly, predicates always refer to most recently assigned
+variables. They are transformed by the finite mapping $\theta$
+accordingly (Algorithm~\ref{algorithm:ssa-predicates}). Thanks to the
+formalization of finite mappings in \coq. Both
+Algorithms~\ref{algorithm:ssa-expressions}
+and~\ref{algorithm:ssa-predicates} are easily specified in the proof
+assistant.
+
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{SSAQ}{$\theta$, $q$}
     \Match{$q$}
@@ -52,63 +69,93 @@
     \EndFunction
   \end{algorithmic}
   \caption{Single Static Assignment Transformation for Predicates}
+  \label{algorithm:ssa-predicates}
 \end{algorithm}
 
-\begin{algorithm}
+Statement transformation is slightly more complicated. For
+expressions on the right hand side, they are transformed by the finite
+mapping $\theta$. Algorithm~\ref{algorithm:ssa-statements} then
+updates the mapping and renames variables on the left hand side of
+statements. In the algorithm, $\theta\mymapsto{\vv}{\vn}$
+denotes the finite mapping which simultaneously maps $\vv$ to
+$\vn$ and $u$ to $\theta(u)$ for every $u \not\in \vv$.
+
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{SSAStatement}{$\theta$, $s$}
     \Match{$s$}
       \Case{$v \leftarrow e$}
-        \Return $\theta[v \mapsto \theta(v) + 1]$, 
-                $v^{\theta(v) + 1} \leftarrow$ \Call{SSAE}{$\theta$, $e$}
+        \Return $\langle \theta\mymapsto{v}{\theta(v) + 1}$, 
+                $v^{\theta(v) + 1} \leftarrow$ \Call{SSAE}{$\theta$, $e$}$\rangle$
       \EndCase
-      \Case{$v_h, v_l \leftarrow \dslcode{Split}(e, n)$}
-        \State{\Return $\theta[v_h \mapsto \theta(v_h) + 1]
-                       [v_l \mapsto \theta(v_l) + 1]$,
-                $v_h^{\theta(v_h) + 1}, v_l^{\theta(v_l) + 1} \leftarrow
-                \dslcode{Split}($\Call{SSAE}{$\theta$, $e$}$, n)$}
+      \Case{$\concat{v_h}{v_l} \leftarrow \dslcode{Split}(e, n)$}
+        \State{\Return $\langle \theta\mymapsto{v_h,
+            v_l}{\theta(v_h) + 1, \theta(v_l) + 1}$,
+                $\concat{v_h^{\theta(v_h) + 1}}{v_l^{\theta(v_l) + 1}} \leftarrow
+                \dslcode{Split}($\Call{SSAE}{$\theta$, $e$}$, n)
+                \rangle$
+              }
       \EndCase
     \EndMatch
     \EndFunction
   \end{algorithmic}
   \caption{Single Static Assignement Transformation for Statements}
+  \label{algorithm:ssa-statements}
 \end{algorithm}
 
-\begin{algorithm}
+It is now straightforward to transform programs to single static
+assignment form. Using an initial mapping from variables to integers,
+the transformation starts from the first statement and obtains an
+updated mapping with a statement in single static assignment form. It
+continues to transform the next statement with the updated mapping
+(Algorithm~\ref{algorithm:ssa-programs}). 
+
+\begin{algorithm}[ht]
   \begin{algorithmic}[1]
     \Function{SSAProgram}{$\theta$, $p$}
     \Match{$p$}
       \Case{$\epsilon$}
-        \Return $\theta$, $\epsilon$
+        \Return $\langle \theta,$ $\epsilon \rangle$
       \EndCase
       \Case{$s; pp$}
-        \State{$\theta', s' \leftarrow$ 
+        \State{$\langle \theta'$, $s' \rangle$ $\leftarrow$ 
                  \Call{SSAStatement}{$\theta$, $s$}}
-        \State{$\theta'', pp'' \leftarrow$ 
+        \State{$\langle \theta''$, $pp'' \rangle$ $\leftarrow$ 
                  \Call{SSAProgram}{$\theta'$, $pp$}}
-        \State{\Return $\theta''$, $s'; pp''$}
+        \State{\Return $\langle \theta''$, $s'; pp'' \rangle$}
       \EndCase
     \EndMatch
     \EndFunction
   \end{algorithmic}
   \caption{Single Static Assignment for Programs}
+  \label{algorithm:ssa-programs}
 \end{algorithm}
+
+With the \coq specifications, we establish the correctness of our
+algorithms in two steps. We first show that the transformation indeed
+produces a program in single static assignment form.
 
 \begin{theorem}
   Let $\theta_0(v) = 0$ for every $v \in V$ and $p \in P$.
-  If $\hat{\theta}, \hat{p} = \textsc{SSAProgram}(\theta_0, p)$, then
+  If $\langle \hat{\theta}, \hat{p} \rangle$ $=
+  \textsc{SSAProgram}(\theta_0, p)$, then 
   $\hat{p}$ is in single static assignment form.
 \end{theorem}
+
+The next theorem states that our transformation is both sound and
+complete. That is, a program specification is valid if and only if its
+corresponding specification in single static assignment form is valid.
+Both theorems are formally certified in \coq. 
 
 \begin{theorem}
   Let $\theta_0(v) = 0$ for every $v \in V$. For every $q, q' \in Q$
   and $p \in P$,
   \begin{center}
-    $\cond{q}$ $p$ $\cond{q'}$ if and only if
-    $\cond{\textmd{\textit{SSAQ}}(\theta_0, q)}$
+    $\models$ $\cond{q}$ $p$ $\cond{q'}$ if and only if
+    $\models$ $\cond{\textmd{\textit{SSAQ}}(\theta_0, q)}$
     $\hat{p}$
     $\cond{\textmd{\textit{SSAQ}}(\hat{\theta}, q')}$
   \end{center}
-  where $\hat{\theta}, \hat{p} =
+  where $\langle \hat{\theta}, \hat{p} \rangle =
   \textmd{\textit{SSAProgram}}(\theta_0, p)$.
 \end{theorem}

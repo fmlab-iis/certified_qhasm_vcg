@@ -84,16 +84,14 @@ sets, both algorithms are specified in the proof assistant easily.
     \Match{$s$}
       \Case{$v \leftarrow e$}
         \IfThenElse{$v \in \mathit{vars}$}
-          {\Return $\langle$
-            \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
-            v \})$, $s$ $\rangle$}
+          {\Return $\langle$\Call{VarsInE}{$e$} 
+            $\cup$ $(\mathit{vars} \setminus \{ v \})$, $s \rangle$}
           {\Return $\mathit{vars}$}
       \EndCase
-      \Case{$v_h, v_l \leftarrow \dslcode{Split} (e, \uscore)$}
+      \Case{$\concat{v_h}{v_l} \leftarrow \dslcode{Split} (e, \uscore)$}
         \IfThenElse{$v_h$ or $v_l \in \mathit{vars}$}
-          {\Return $\langle$
-            \Call{VarsInE}{$e$} $\cup$ $(\mathit{vars} \setminus \{
-            v_h, v_l \})$, $s$ $\rangle$}
+          {\Return $\langle$\Call{VarsInE}{$e$} $\cup$ 
+            $(\mathit{vars} \setminus \{ v_h, v_l \})$, $s \rangle$}
           {\Return $\mathit{vars}$}
       \EndCase
     \EndMatch
@@ -130,7 +128,7 @@ the updated cared variables and previous statements.
           \Case{$\mathit{vars}'$}
             \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp;$}
           \EndCase
-          \Case{$\langle$ $\mathit{vars}'$, $s'$ $\rangle$}
+          \Case{$\langle \mathit{vars}'$, $s' \rangle$}
             \Return \Call{SliceProgram}{$\mathit{vars}'$, $pp$}$\ s';$
           \EndCase
         \EndMatch

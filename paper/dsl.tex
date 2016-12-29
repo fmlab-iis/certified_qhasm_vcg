@@ -29,13 +29,13 @@ domain specific language.
 
 \begin{eqnarray*}
   S & ::= & V \leftarrow E 
-            \ |\  V, V \leftarrow \dslcode{Split} (E, N)\\
+            \ |\  \concat{V}{V} \leftarrow \dslcode{Split} (E, N)\\
   P & ::= & \epsilon \ |\ S; P
 \end{eqnarray*}
 
 For low-level cryptographic programs, the only statements are
 assignments. The statement $v \leftarrow e$ assigns the value of $e$
-to the variable $v$. The statement $v_h, v_l \leftarrow
+to the variable $v$. The statement $\concat{v_h}{v_l} \leftarrow
 \dslcode{Split}(e, n)$ splits the value of $e$ into higher and lowest
 $n$ bits. The higher and lower bits are stored in $v_h$ and $v_l$
 respectively. A program is a sequence of statements. We denote the
