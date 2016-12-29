@@ -1,8 +1,8 @@
 
 The last step transforms any program specification to the 
 \emph{modular polynomial equation entailment} problem which decides
-whether 
-\[\forall \vx.
+whether for every $\vx \in \bbfZ^{|\vx|}$,
+\[
   \bigwedge\limits_i e_i (\vx) = e'_i (\vx) \wedge
   \bigwedge\limits_j f_j (\vx) \equiv f'_j (\vx) \mod n_j
   \implies
@@ -14,6 +14,16 @@ $e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx),
  g_k (\vx), g'_k (\vx), h_l (\vx), h'_l (\vx) \in \bbfZ[\vx]$
 for every $i, j, k, l$.
 
+Observe that predicates are but conjunctions of modular polynomial
+equations. They need not be transformed. It remains to transform
+programs to conjunctions of modular polynomial equations. For each
+statement, it is not hard to find its corresponding polynomial
+equation if the program is in single static assignment form. For an
+assignment statement, it is translated to an equation with a single
+variable on the left hand side. For a $\dslcode{Split}$ statement, it
+is transformed to an equation with a linear expression of the 
+assigned variables on the left hand side
+(Algorithm~\ref{algorithm:polynomial-statements}). 
 \begin{algorithm}
   \begin{algorithmic}[1]
     \Function{StatementToPolyEQ}{$s$}
@@ -21,14 +31,20 @@ for every $i, j, k, l$.
       \Case{$v \leftarrow e$}
         \Return $v = e$
       \EndCase
-      \Case{$v_h, v_l \leftarrow \dslcode{Split}(e, n)$}
-        \Return $v_l + v_h \times 2^n = e$
+      \Case{$\concat{v_h}{v_l} \leftarrow \dslcode{Split}(e, n)$}
+        \Return $v_l + 2^n v_h = e$
       \EndCase
     \EndMatch
     \EndFunction
   \end{algorithmic}
   \caption{Polynomial Equation Transformation for Statements}
+  \label{algorithm:polynomial-statements}
 \end{algorithm}
+
+A program is simply transformed to the conjunction of polynomial
+equations corresponding to its statements
+(Algorithm~\ref{algorithm:polynomial-programs}). Both algorithm are
+specified straightforwardly in \coq.
 
 \begin{algorithm}
   \begin{algorithmic}[1]
@@ -36,14 +52,14 @@ for every $i, j, k, l$.
     \Match{$p$}
       \Case{$\epsilon$} \Return $\top$ \EndCase
       \Case{$s; pp$}
-        \Return \Call{StatementToPolyEQ} ($s$) $\wedge$
-                \Call{ProgramToPolyEQ} ($pp$)
+        \Return \Call{StatementToPolyEQ}{$s$} $\wedge$
+                \Call{ProgramToPolyEQ}{$pp$}
       \EndCase
     \EndMatch
     \EndFunction
   \end{algorithmic}
   \caption{Polynomial Equation Transformation for Programs}
-  \label{algorithm:programtoq}
+  \label{algorithm:polynomial-programs}
 \end{algorithm}
 
 \begin{definition}
