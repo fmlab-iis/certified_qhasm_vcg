@@ -37,7 +37,19 @@ satisfying
   \end{array}
 \end{equation}
 with some $d_1, \ldots, d_s$, then $g (\vx) = g' (\vx)$ or $h
-(\vx) \equiv h' (\vx) \mod m$. There are two \coq tactics to
+(\vx) \equiv h' (\vx) \mod m$. 
+
+Consider the 
+\emph{polynomial equation entailment} problem which decides whether
+\[
+\forall \vx. \bigwedge\limits^m_{i=1} e_i(\vx) = 0
+             \implies \exists y_1, y_2, \ldots, y_n.
+             p_1(\vx) y_1 + p_2(\vx) y_2 + \cdots + p_n(\vx) y_n = a(\vx)
+\]
+where $e_i(\vx), p_j(\vx), a(\vx) \in \bbfZ[\vx]$ are given for $i =
+1, \ldots, m$ and $j = 1, \ldots, n$~\cite{H:07:AENTP}.
+
+There are two \coq tactics to
 construct formal proofs. The tactic \dslcode{nsatz} is able to prove
 equalities in integral domains. The tactic \dslcode{gbarith} is able
 to prove modulo equalities in integral domains. We hence define a

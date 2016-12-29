@@ -1,4 +1,19 @@
 
+The last step transforms any program specification to the 
+\emph{modular polynomial equation entailment} problem which decides
+whether 
+\[\forall \vx.
+  \bigwedge\limits_i e_i (\vx) = e'_i (\vx) \wedge
+  \bigwedge\limits_j f_j (\vx) \equiv f'_j (\vx) \mod n_j
+  \implies
+  \bigwedge\limits_k g_k (\vx) = g'_k (\vx) \wedge
+  \bigwedge\limits_l   h_l (\vx) \equiv h'_l (\vx) \mod m_l
+\]
+with 
+$e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx),
+ g_k (\vx), g'_k (\vx), h_l (\vx), h'_l (\vx) \in \bbfZ[\vx]$
+for every $i, j, k, l$.
+
 \begin{algorithm}
   \begin{algorithmic}[1]
     \Function{StatementToPolyEQ}{$s$}
