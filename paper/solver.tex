@@ -1,50 +1,68 @@
 
-Observe that the modular polynomial equation entailment problem is to
-decide whether for every $\vx \in \bbfZ^{|\vx|}$,
+By Theorem~\ref{theorem:program-to-q-soundness}, it remains to show 
+that 
 \[
-  \bigwedge\limits_i e_i (\vx) = e'_i (\vx) \wedge
-  \bigwedge\limits_j f_j (\vx) \equiv f'_j (\vx) \mod n_j
+\begin{array}{l}
+  \forall \vx \in \bbfZ^{|\vx|}.
+  \bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+  \bigwedge\limits_{j \in [J]} f_j (\vx) \equiv f'_j (\vx) \mod n_j
   \implies
-  \bigwedge\limits_k g_k (\vx) = g'_k (\vx) \wedge
-  \bigwedge\limits_l   h_l (\vx) \equiv h'_l (\vx) \mod m_l
-\]
-with 
-$e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx),
- g_k (\vx), g'_k (\vx), h_l (\vx), h'_l (\vx) \in \bbfZ[\vx]$
-for every $i, j, k, l$.
-
-By
-Theorem~\ref{theorem:program-to-q-soundness}, it remains to establish
-that for every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
-\[
-  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
-  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
-  \implies
-  \bigwedge\limits_k g_k (\vec{x}) = g'_k (\vec{x}) \wedge
-  \bigwedge\limits_l   h_l (\vec{x}) \equiv h'_l (\vec{x}) \mod m_l
+  \\
+  \hspace{.3\textwidth}
+  \bigwedge\limits_{k \in [K]} g_k (\vx) = g'_k (\vx) \wedge
+  \bigwedge\limits_{l \in [L]} h_l (\vx) \equiv h'_l (\vx) \mod m_l
+\end{array}
 \]
 where
-$e_i (\vec{x}), e'_i (\vec{x}), f_j (\vec{x}), f'_j (\vec{x}),
- g_k (\vec{x}), g'_k (\vec{x}), h_l (\vec{x}), h'_l (\vec{x})$
-are multivariant polynomials over $\vec{x}$, and
-$n_j, m_l \in \bbfN $. Since the conclusion is a conjunction of
-(modulo) equations, we will prove one conjunct at a time. That is, for
-every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
-\[
-  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
-  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+$e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx),
+ g_k (\vx), g'_k (\vx), h_l (\vx), h'_l (\vx) \in
+ \bbfZ[\vx]$, $n_j, m_l \in \bbfN$ for $i \in [I]$, $j \in [J]$, $k
+ \in [K]$, and $l \in [L]$. Since the
+implicant is a conjunction of (modulo) equations, it suffces to 
+prove one conjunct at a time. That is, we aim to show that 
+\begin{equation}
+  \label{eq:polynomial-equation-implicant}
+  \forall \vx \in \bbfZ^{|\vx|}.
+  \bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+  \bigwedge\limits_{j \in [J]} f_j (\vx) \equiv f'_j (\vx) \mod n_j
   \implies
-  g (\vec{x}) = g' (\vec{x})
-\] where $g (\vec{x})$ and $g' (\vec{x})$ are multivariant polynomials
-over $\vec{x}$. Or,
-\[
-  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
-  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
-  \implies
-  h (\vec{x}) \equiv h' (\vec{x}) \mod m
-\] where $h (\vec{x})$ and $h' (\vec{x})$ are multivariant polynomials
-over $\vec{x}$ and $m \in \bbfN$.
+  g (\vx) = g' (\vx)
+\end{equation}
+where $e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx), g (\vx), g' (\vx)
+\in \bbfZ[\vx]$ for $i \in [I], j \in [J]$; or, 
+ \begin{equation}
+   \label{eq:modular-polynomial-equation-implicant}
+   \forall \vx \in \bbfZ^{|\vx|}.
+   \bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+   \bigwedge\limits_{j \in [J]} f_j (\vx) \equiv f'_j (\vx) \mod n_j
+   \implies
+   h (\vx) \equiv h' (\vx) \mod m
+ \end{equation}
+where $e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx), h (\vx), h' (\vx)
+\in \bbfZ[\vx]$ for $i \in [I], j \in [J]$, and $m \in \bbfN$. 
 
+It is not hard to rewrite modular polynomial equations in antecedents
+in (\ref{eq:polynomial-equation-implicant}) and 
+(\ref{eq:modular-polynomial-equation-implicant}) to polynomial
+equations~\cite{H:07:AENTP}. By definition of modular polynomial equations,
+(\ref{eq:polynomial-equation-implicant}) is equivalent to
+\[
+\forall \vx \in \bbfZ^{|\vx|}.
+\bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+\bigwedge\limits_{j \in [J]} [\exists d_j. f_j (\vx) = f'_j (\vx) + d_j \cdot n_j]
+\implies
+g (\vx) = g' (\vx),
+\]
+which in turn is equivalent to
+\[
+\forall \vx \in \bbfZ^{|\vx|} \vd \in \bbfZ^{J}.
+\bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+\bigwedge\limits_{j \in [J]} f_j (\vx) = f'_j (\vx) + d_j \cdot n_j
+\implies
+g (\vx) = g' (\vx).
+\]
+
+\hide{
 Consider the following system of $r + s$ (modulo) equations:
 \begin{equation}
   \label{equation:modulo-polynomials}
@@ -84,16 +102,28 @@ satisfying
 \end{equation}
 with some $d_1, \ldots, d_s$, then $g (\vx) = g' (\vx)$ or $h
 (\vx) \equiv h' (\vx) \mod m$. 
+}
 
-Consider the 
-\emph{polynomial equation entailment} problem which decides whether
-\[
-\forall \vx. \bigwedge\limits^m_{i=1} e_i(\vx) = 0
-             \implies \exists y_1, y_2, \ldots, y_n.
-             p_1(\vx) y_1 + p_2(\vx) y_2 + \cdots + p_n(\vx) y_n = a(\vx)
-\]
-where $e_i(\vx), p_j(\vx), a(\vx) \in \bbfZ[\vx]$ are given for $i =
-1, \ldots, m$ and $j = 1, \ldots, n$~\cite{H:07:AENTP}.
+In other words, it suffices to consider the following
+\emph{polynomial equation entailment} problems~\cite{H:07:AENTP}:
+\begin{equation}
+  \label{eq:polynomial-equation-implicant}
+  \forall \vx \in \bbfZ^{|\vx|}.
+  \bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+  \implies
+  g (\vx) = g' (\vx)
+\end{equation}
+where $e_i (\vx), e'_i (\vx), g (\vx), g' (\vx) \in \bbfZ[\vx]$ for $i
+\in [I]$; or,
+ \begin{equation}
+   \label{eq:modular-polynomial-equation-implicant}
+   \forall \vx \in \bbfZ^{|\vx|}.
+   \bigwedge\limits_{i \in [I]} e_i (\vx) = e'_i (\vx) \wedge
+   \implies
+   h (\vx) \equiv h' (\vx) \mod m
+ \end{equation}
+where $e_i (\vx), e'_i (\vx), h (\vx), h' (\vx) \in \bbfZ[\vx]$ for $i
+\in [I]$ and $m \in \bbfN$.
 
 There are two \coq tactics to
 construct formal proofs. The tactic \dslcode{nsatz} is able to prove

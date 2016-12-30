@@ -30,9 +30,6 @@ left hand side (Algorithm~\ref{algorithm:polynomial-statements}).
   \label{algorithm:polynomial-statements}
 \end{algorithm}
 
-\todo{Explain polynomial equation is an abstraction. It admits all
-  program behaviors and definitely more.}
-
 A program is transformed to the conjunction of polynomial
 equations corresponding to its statements
 (Algorithm~\ref{algorithm:polynomial-programs}). Both algorithms are
@@ -53,6 +50,14 @@ specified straightforwardly in \coq.
   \caption{Polynomial Equation Transformation for Programs}
   \label{algorithm:polynomial-programs}
 \end{algorithm}
+
+\begin{theorem}
+  Let $p \in P$ be a well-formed program in static single assignment
+  form. 
+\todo{Explain polynomial equation is an abstraction. It admits all
+  program behaviors and definitely more.}
+\end{theorem}
+
 
 Note that $\textsc{ProgramToPolyEQ}(p) \in Q$ for every $p \in P$.
 Definition~\ref{definition:program-entailment} gives the modular
@@ -79,8 +84,8 @@ soundnesss of our last transformation. Its proof is also certified in
 \coq. 
 \begin{theorem}
   \label{theorem:program-to-q-soundness}
-  Let $q, q' \in Q$, and $p \in P$ in single static assignment form
-  and well-formed. 
+  Let $q, q' \in Q$ be predicates, and $p \in P$ a program in single
+  static assignment form and well-formed. 
   If $\Pi(\hoaretriple{q}{p}{q'})$ holds, then
   $\models$ $\hoaretriple{q}{p}{q'}$.
 \end{theorem}
