@@ -1,4 +1,11 @@
 
+We write $\mathbb{B} = \{ \mathit{ff}, \mathit{tt} \}$ for the Boolean
+domain. Let $\bbfN$ and $\bbfZ$ denote positive and all integers
+respectively. We use $[n]$ to denote the set $\{ 1, 2, \ldots, n \}$
+for $n \in \bbfN$. For any prime number $\varrho$, $\bbfGF(\varrho)$
+is the Galois field of order $\varrho$. We focus on Galois fields of
+very large orders, say, $\myprime = 2^{255} - 19$. 
+
 A {\em ring} $\mathcal{R} = (R, 0, 1, +, \times)$ consists of a set
 $R$, $0$, $1 \in R$ with $0 \neq 1$, and $+$, $\times$ binary
 functions over $R$ that
@@ -15,13 +22,17 @@ functions over $R$ that
 If $\times$ is commutative, the ring $\mathcal{R}$ is
 \emph{commutative}. $a \in R$ is a \emph{zero divisor} if there is an
 $x \in R$ such that $a \times x = 0$. An \emph{integral domain} is a
-commutative ring without zero divisors.
-
-We write $\mathbb{B} = \{ \mathit{ff}, \mathit{tt} \}$ for the Boolean
-domain. Let $\bbfN$ and $\bbfZ$ denote positive and all integers
-respectively. For any prime number $\varrho$, $\bbfGF(\varrho)$ is the
-Galois field of order $\varrho$. We focus on Galois fields of very
-large orders, say, $\myprime = 2^{255} - 19$. 
+commutative ring without zero divisors. $\bbfN$ is not a ring.
+$\bbfZ$ is an integral domain.
 
 Fix a set of variables $\vx$. $\bbfF[\vx]$ is the set of multivariant
-polynomials over $\vx$ with coefficients in $\bbfF$. 
+polynomials over $\vx$ with coefficients in $\bbfF$. A set 
+$I \subseteq \bbfF[\vx]$ is an \emph{ideal} if
+\begin{itemize}
+\item $f +_\bbfF g \in I$ for every $f, g \in I$; and
+\item $h \cdot_\bbfF f \in I$ for every $h \in \bbfF[\vx]$ and $f \in I$.
+\end{itemize}
+We write $\langle G \rangle$ for the minimal ideal containing $G
+\subseteq \bbfF[\vx]$. Given an ideal $I$ and a polynomial $f \in
+\bbfF[\vx]$, the \emph{ideal membership} problem is to decide whether
+$f \in I$.
