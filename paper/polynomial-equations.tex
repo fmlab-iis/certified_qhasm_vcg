@@ -1,29 +1,18 @@
 
 The last step transforms any program specification to the 
-\emph{modular polynomial equation entailment} problem which decides
-whether for every $\vx \in \bbfZ^{|\vx|}$,
-\[
-  \bigwedge\limits_i e_i (\vx) = e'_i (\vx) \wedge
-  \bigwedge\limits_j f_j (\vx) \equiv f'_j (\vx) \mod n_j
-  \implies
-  \bigwedge\limits_k g_k (\vx) = g'_k (\vx) \wedge
-  \bigwedge\limits_l   h_l (\vx) \equiv h'_l (\vx) \mod m_l
-\]
-with 
-$e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx),
- g_k (\vx), g'_k (\vx), h_l (\vx), h'_l (\vx) \in \bbfZ[\vx]$
-for every $i, j, k, l$.
+modular polynomial equation entailment problem defined as follows. For
+$q \in Q$, we write $q(\vx)$ to signify the free variables $\vx$
+occurred in $q$. Given $q(\vx), q'(\vx) \in Q$, the \emph{modular
+  polynomial equation entailment} problem decides whether $\forall
+\vx. q(\vx) \implies q'(\vx)$ holds for all $\vx \in \bbfZ^{|\vx|}$.
 
-Observe that predicates are but conjunctions of modular polynomial
-equations. They need not be transformed. It remains to transform
-programs to conjunctions of modular polynomial equations. For each
-statement, it is not hard to find its corresponding polynomial
-equation if the program is in single static assignment form. For an
-assignment statement, it is translated to an equation with a single
-variable on the left hand side. For a $\dslcode{Split}$ statement, it
-is transformed to an equation with a linear expression of the 
-assigned variables on the left hand side
-(Algorithm~\ref{algorithm:polynomial-statements}). 
+Programs in single static assignment form can easily be transformed to
+conjunctions of polynomial equations. We first show how to transform
+statements into polynomial equations. An assignment statement is
+translated to a polynomial equation with a single variable on the left
+hand side. For a $\dslcode{Split}$ statement, it is transformed to an
+equation with a linear expression of the assigned variables on the
+left hand side (Algorithm~\ref{algorithm:polynomial-statements}). 
 \begin{algorithm}
   \begin{algorithmic}[1]
     \Function{StatementToPolyEQ}{$s$}
@@ -41,9 +30,9 @@ assigned variables on the left hand side
   \label{algorithm:polynomial-statements}
 \end{algorithm}
 
-A program is simply transformed to the conjunction of polynomial
+A program is transformed to the conjunction of polynomial
 equations corresponding to its statements
-(Algorithm~\ref{algorithm:polynomial-programs}). Both algorithm are
+(Algorithm~\ref{algorithm:polynomial-programs}). Both algorithms are
 specified straightforwardly in \coq.
 
 \begin{algorithm}
@@ -62,51 +51,39 @@ specified straightforwardly in \coq.
   \label{algorithm:polynomial-programs}
 \end{algorithm}
 
+Note that $\textsc{ProgramToPolyEQ}(p) \in Q$ for every $p \in P$.
+Definition~\ref{definition:program-entailment} gives the modular
+polynomial equation entailment problem corresponding to a program
+specification.
 \begin{definition}
-  A program is \emph{well-formed} if
-  \begin{itemize}
-  \item for every $v_h, v_l \leftarrow \dslcode{Split}(e, n)$, $v_h
-    \neq v_l$; and
-  \item every variable must be assigned to a value before being used.
-  \end{itemize}
+  For any $q, q' \in Q$ and $p \in P$ in single static assignment
+  form, define
+  \begin{eqnarray*}
+    \Pi(\hoaretriple{q}{p}{q'}) & \defn &
+    \forall \vx \in \bbfZ^{|\vx|}. q(\vx) \wedge \varphi(\vx) \implies q'(\vx)
+  \end{eqnarray*}
+  where $\varphi(\vx) =
+  \textsc{ProgramToPolyEQ}(p)$. 
+  %$\Pi(\hoaretriple{q}{p}{q'})$ is called the modular polynomial
+  %equation entailment problem for $\hoaretriple{q}{p}{q'}$. 
+  \label{definition:program-entailment}
 \end{definition}
 
+Algorithm~\ref{algorithm:polynomial-programs} is only sound for
+well-formed programs. A program is \emph{well-formed} if
+\begin{itemize}
+\item for every $\concat{v_h}{v_l} \leftarrow \dslcode{Split}(e, n)$, $v_h
+  \neq v_l$; and
+\item every variable must be assigned to a value before being used.
+\end{itemize}
+Theorem~\ref{theorem:program-to-q-soundness} establishes the
+soundnesss of our last transformation. Its proof is also certified in
+\coq. 
 \begin{theorem}
   \label{theorem:program-to-q-soundness}
-  Let $q, q' \in Q$ and $p \in P$.
-  Suppose $\valueof{q \wedge \textmd{\textit{ProgramToQ}}(p)}_\nu$
-  implies $\valueof{q'}_\nu$ for every valuation $\nu$. 
-  Then $\cond{q}$ $p$ $\cond{q'}$.
+  Let $q, q' \in Q$ and $p \in P$ in single static assignment form.
+  If $\Pi(\hoaretriple{q}{p}{q'})$ holds then
+  $\models$ $\hoaretriple{q}{p}{q'}$.
+  \todo{completeness?}
 \end{theorem}
 
-Recall the definition of $Q$. By
-Theorem~\ref{theorem:program-to-q-soundness}, it remains to establish
-that for every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
-\[
-  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
-  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
-  \implies
-  \bigwedge\limits_k g_k (\vec{x}) = g'_k (\vec{x}) \wedge
-  \bigwedge\limits_l   h_l (\vec{x}) \equiv h'_l (\vec{x}) \mod m_l
-\]
-where
-$e_i (\vec{x}), e'_i (\vec{x}), f_j (\vec{x}), f'_j (\vec{x}),
- g_k (\vec{x}), g'_k (\vec{x}), h_l (\vec{x}), h'_l (\vec{x})$
-are multivariant polynomials over $\vec{x}$, and
-$n_j, m_l \in \bbfN $. Since the conclusion is a conjunction of
-(modulo) equations, we will prove one conjunct at a time. That is, for
-every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
-\[
-  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
-  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
-  \implies
-  g (\vec{x}) = g' (\vec{x})
-\] where $g (\vec{x})$ and $g' (\vec{x})$ are multivariant polynomials
-over $\vec{x}$. Or,
-\[
-  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
-  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
-  \implies
-  h (\vec{x}) \equiv h' (\vec{x}) \mod m
-\] where $h (\vec{x})$ and $h' (\vec{x})$ are multivariant polynomials
-over $\vec{x}$ and $m \in \bbfN$.

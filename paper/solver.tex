@@ -1,4 +1,50 @@
 
+Observe that the modular polynomial equation entailment problem is to
+decide whether for every $\vx \in \bbfZ^{|\vx|}$,
+\[
+  \bigwedge\limits_i e_i (\vx) = e'_i (\vx) \wedge
+  \bigwedge\limits_j f_j (\vx) \equiv f'_j (\vx) \mod n_j
+  \implies
+  \bigwedge\limits_k g_k (\vx) = g'_k (\vx) \wedge
+  \bigwedge\limits_l   h_l (\vx) \equiv h'_l (\vx) \mod m_l
+\]
+with 
+$e_i (\vx), e'_i (\vx), f_j (\vx), f'_j (\vx),
+ g_k (\vx), g'_k (\vx), h_l (\vx), h'_l (\vx) \in \bbfZ[\vx]$
+for every $i, j, k, l$.
+
+By
+Theorem~\ref{theorem:program-to-q-soundness}, it remains to establish
+that for every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
+\[
+  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
+  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+  \implies
+  \bigwedge\limits_k g_k (\vec{x}) = g'_k (\vec{x}) \wedge
+  \bigwedge\limits_l   h_l (\vec{x}) \equiv h'_l (\vec{x}) \mod m_l
+\]
+where
+$e_i (\vec{x}), e'_i (\vec{x}), f_j (\vec{x}), f'_j (\vec{x}),
+ g_k (\vec{x}), g'_k (\vec{x}), h_l (\vec{x}), h'_l (\vec{x})$
+are multivariant polynomials over $\vec{x}$, and
+$n_j, m_l \in \bbfN $. Since the conclusion is a conjunction of
+(modulo) equations, we will prove one conjunct at a time. That is, for
+every $\vec{x} \in \bbfZ^{|\vec{x}|}$, 
+\[
+  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
+  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+  \implies
+  g (\vec{x}) = g' (\vec{x})
+\] where $g (\vec{x})$ and $g' (\vec{x})$ are multivariant polynomials
+over $\vec{x}$. Or,
+\[
+  \bigwedge\limits_i e_i (\vec{x}) = e'_i (\vec{x}) \wedge
+  \bigwedge\limits_j f_j (\vec{x}) \equiv f'_j (\vec{x}) \mod n_j
+  \implies
+  h (\vec{x}) \equiv h' (\vec{x}) \mod m
+\] where $h (\vec{x})$ and $h' (\vec{x})$ are multivariant polynomials
+over $\vec{x}$ and $m \in \bbfN$.
+
 Consider the following system of $r + s$ (modulo) equations:
 \begin{equation}
   \label{equation:modulo-polynomials}
