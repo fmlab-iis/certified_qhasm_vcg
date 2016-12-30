@@ -30,6 +30,9 @@ left hand side (Algorithm~\ref{algorithm:polynomial-statements}).
   \label{algorithm:polynomial-statements}
 \end{algorithm}
 
+\todo{Explain polynomial equation is an abstraction. It admits all
+  program behaviors and definitely more.}
+
 A program is transformed to the conjunction of polynomial
 equations corresponding to its statements
 (Algorithm~\ref{algorithm:polynomial-programs}). Both algorithms are
@@ -70,20 +73,15 @@ specification.
 \end{definition}
 
 Algorithm~\ref{algorithm:polynomial-programs} is only sound for
-well-formed programs. A program is \emph{well-formed} if
-\begin{itemize}
-\item for every $\concat{v_h}{v_l} \leftarrow \dslcode{Split}(e, n)$, $v_h
-  \neq v_l$; and
-\item every variable must be assigned to a value before being used.
-\end{itemize}
+well-formed programs. 
 Theorem~\ref{theorem:program-to-q-soundness} establishes the
 soundnesss of our last transformation. Its proof is also certified in
 \coq. 
 \begin{theorem}
   \label{theorem:program-to-q-soundness}
-  Let $q, q' \in Q$ and $p \in P$ in single static assignment form.
-  If $\Pi(\hoaretriple{q}{p}{q'})$ holds then
+  Let $q, q' \in Q$, and $p \in P$ in single static assignment form
+  and well-formed. 
+  If $\Pi(\hoaretriple{q}{p}{q'})$ holds, then
   $\models$ $\hoaretriple{q}{p}{q'}$.
-  \todo{completeness?}
 \end{theorem}
 
