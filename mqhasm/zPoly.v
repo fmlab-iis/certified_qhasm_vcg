@@ -52,6 +52,16 @@ Section SSAPoly.
       reflexivity.
   Qed.
 
+  Lemma bexp_instr_ssa_vars_unchanged i p :
+    ssa_vars_unchanged_program (vars_instr i) p ->
+    ssa_vars_unchanged_program (vars_bexp (bexp_instr i)) p.
+  Proof.
+    move => H.
+    apply: (ssa_unchanged_program_replace _ H) => {H}.
+    rewrite bexp_instr_vars.
+    reflexivity.
+  Qed.
+
   Lemma bexp_instr_eval vs i s1 s2 :
     well_formed_instr vs i ->
     ssa_vars_unchanged_instr vs i ->
@@ -91,6 +101,26 @@ Section SSAPoly.
     | hd::tl => eval_bexp hd s /\ eval_bexps_conj tl s
     end.
 
+  Lemma bexp_program_eval vs p s1 s2 :
+    well_formed_ssa_program vs p ->
+    eval_program s1 p = s2 ->
+    eval_bexps_conj (bexp_program p) s2.
+  Proof.
+    elim: p vs s1 s2 => /=.
+    - done.
+    - move=> hd tl IH vs s1 s2 Hwfssa Hep.
+      move: (Hwfssa) => /andP [/andP [Hwf Huc] Hssa].
+      split.
+      + apply: (ssa_unchanged_program_eval_bexp1 _ Hep).
+        * exact: (bexp_instr_ssa_vars_unchanged
+                    (well_formed_ssa_vars_unchanged_hd Hwfssa)).
+        * apply: (bexp_instr_eval
+                    (well_formed_program_cons1 Hwf)
+                    (ssa_unchanged_program_hd Huc)).
+          reflexivity.
+      + exact: (IH _ _ _ (well_formed_ssa_tl Hwfssa) Hep).
+  Qed.
+
   Definition valid_bexp_spec_conj (s : bexp_spec) : Prop :=
     forall st : State.t,
       eval_bexp (bpre s) st ->
@@ -102,36 +132,15 @@ Section SSAPoly.
     valid_bexp_spec_conj (bexp_of_spec s) -> valid_spec s.
   Proof.
     destruct s as [f p g].
-    move=> /andP /= [/andP [/andP [/andP [/= Hpre Hwell] Hpost] Hvs] Hssa] Hb s1 s2 /= Hf Hp.
-    move: (Hb s2) => {Hb} /= Hb.
-    have: ssa_vars_unchanged_program (zSSA.vars_bexp f) p by
-      exact: (ssa_unchanged_program_subset Hvs Hpre).
-    move=> Hunf.
-    move: (ssa_unchanged_program_eval_bexp1 Hunf Hp Hf) => {Hf} Hf.
-    move: (Hb Hf) => {Hf Hb Hpre Hunf f} Hb.
-
-    elim: p vs g s1 s2 Hwell Hpost Hvs Hssa Hp Hb => /=.
-    - move=> vs g s1 s2 _ Hpost Hvs _ Hp Hb.
-      by apply: Hb.
-    - move=> hd tl IH vs g s1 s2 /andP [Hhd Htl] Hpost Hvs /andP [Hssa1 Hssa2] Hp Hb.
-      move: (eval_program_cons Hp) => {Hp} [s3 [Hehd Hetl]].
-      apply: (IH _ _ _ _ Htl _ _ Hssa2 Hetl).
-      + rewrite -(zSSA.well_formed_instr_vars Hhd).
-        rewrite VSLemmas.OP.P.union_assoc.
-        exact: Hpost.
-      + exact: (ssa_unchanged_program_union2 (ssa_unchanged_program_tl Hvs) Hssa1).
-      + move=> Htls2.
-        apply: Hb.
-        split; last by assumption.
-        apply: (ssa_unchanged_program_eval_bexp1 _ Hetl).
-        * move: (ssa_unchanged_program_tl Hvs) => Huntl.
-          move: (ssa_unchanged_program_union2 Huntl Hssa1) => H.
-          apply: (ssa_unchanged_program_subset H).
-          rewrite bexp_instr_vars.
-          rewrite -(well_formed_instr_vars Hhd).
-          exact: VSLemmas.union_subset_2.
-        * rewrite /well_formed_instr in Hhd.
-          exact: (bexp_instr_eval Hhd (ssa_unchanged_program_hd Hvs) Hehd).
+    rewrite /bexp_of_spec /valid_bexp_spec_conj /=.
+    move=> Hwfssa Hvalid s1 s2 /= Hf Hp.
+    apply: Hvalid.
+    - move: Hwfssa => /andP /= [/andP [Hwf Huc] Hssa].
+      apply: (ssa_unchanged_program_eval_bexp1 _ Hp Hf).
+      apply: (ssa_unchanged_program_subset Huc).
+      move/andP: Hwf => /= [/andP [H _] _].
+      exact: H.
+    - exact: (bexp_program_eval (well_formed_ssa_spec_program Hwfssa) Hp).
   Qed.
 
 

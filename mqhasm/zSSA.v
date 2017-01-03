@@ -1494,6 +1494,60 @@ Proof.
     exact: (ssa_unchanged_program_mem H2 Hmem).
 Qed.
 
+Lemma ssa_unchanged_program_empty vs :
+  ssa_vars_unchanged_program vs [::].
+Proof.
+  apply: ssa_unchanged_program_global => v Hv.
+  done.
+Qed.
+
+Lemma ssa_unchanged_program_replace vs1 vs2 p :
+  zSSA.VS.Equal vs1 vs2 ->
+  ssa_vars_unchanged_program vs1 p ->
+  ssa_vars_unchanged_program vs2 p.
+Proof.
+  move=> Heq H.
+  move: (ssa_unchanged_program_local H) => {H} H.
+  apply: ssa_unchanged_program_global => v Hv.
+  apply: H.
+  rewrite Heq.
+  assumption.
+Qed.
+
+Lemma well_formed_ssa_vars_unchanged_hd vs hd tl :
+  well_formed_ssa_program vs (hd::tl) ->
+  ssa_vars_unchanged_program (zSSA.vars_instr hd) tl.
+Proof.
+  move => /andP [/andP [Hwf Huc] Hssa].
+  apply: (@ssa_unchanged_program_replace
+            (zSSA.VS.union (zSSA.lvs_instr hd) (zSSA.rvs_instr hd))).
+  - rewrite -zSSA.vars_instr_split.
+    reflexivity.
+  - apply: ssa_unchanged_program_union2.
+    + move/andP: Hssa => [Hssa1 Hssa2].
+      exact: Hssa1.
+    + apply: (@ssa_unchanged_program_subset _ vs).
+      * exact: (ssa_unchanged_program_tl Huc).
+      * apply: zSSA.well_formed_instr_subset_rvs.
+        exact: (zSSA.well_formed_program_cons1 Hwf).
+Qed.
+
+Lemma well_formed_ssa_tl vs hd tl :
+  well_formed_ssa_program vs (hd::tl) ->
+  well_formed_ssa_program (zSSA.VS.union vs (zSSA.lvs_instr hd)) tl.
+Proof.
+  move=> Hwfssa.
+  move: (Hwfssa) => /andP [/andP [Hwf Huc] Hssa].
+  apply/andP; split; first (apply/andP; split).
+  - exact: (zSSA.well_formed_program_cons2 Hwf).
+  - apply: ssa_unchanged_program_union2.
+    + exact: (ssa_unchanged_program_tl Huc).
+    + move/andP: Hssa => [H _].
+      exact: H.
+  - move/andP: Hssa => [_ H].
+    exact: H.
+Qed.
+
 Lemma ssa_unchanged_instr_eval_exp e s1 s2 i :
   ssa_vars_unchanged_instr (zSSA.vars_exp e) i ->
   zSSA.eval_instr s1 i = s2 ->
