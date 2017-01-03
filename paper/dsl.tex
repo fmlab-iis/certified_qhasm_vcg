@@ -1,7 +1,43 @@
 
-\todo{Bo-Yin, please explain why conditional branches are not used in
-crypto programs for about .5 page. We need more such features to justify 
-our DSL. Please add them as well.}
+One of the big issues with modern cryptography is how the assumptions
+match up with reality. In many situations, unexpected channels
+through which information can leak to the attacker can cause the
+cryptosystem to be broken. Typically this is about timing, or
+electric power used. Implementations which are not defeated through
+such means are called ``side-channel resilient'' implementations.
+Clearly in such implementations the execution time are kept constant
+(as much as possible).
+
+This turns out in some cases to be harder than one would imagine.
+This is chiefly because modern processors have caches and out of order
+execution and multitasking. This makes it possible for one execution
+thread, even when no privilege is conferred ,to affect the running
+time of another -- simply by caching a sufficient amount of its own
+data in correct locations through repeated accesses, and then
+observing the running time of the other thread. The instructions in
+the other thread which uses the ``evicted'' data (to make room for the
+data of the eavesdropping thread) then has to take more time getting
+their data back to the cache. Such attacks are quite practical.
+\todo{insert reference to cache-timing attacks.}
+
+Thus, the innocuous actions of (a) executing the CPU's conditional
+branch instruction dependent on a secret bit, and (b) executing an
+indirect load instruction using a secret value in the register as the
+address, are both potentially dangerous leaks of information.
+
+As such, modern cryptographic implementations often have to resort to
+seemingly contrived sequences of conditional moves and arithmetic
+manipulations to achieve the same result as simply using the CPU
+instructions designed for the purpose. This of course slows the
+computation down and waste resources but is inevitable because
+secret-dependent conditional actions and table lookups are actually
+very useful tasks that sometimes simply must be performed.
+
+There are some side results of the above, one is that we are not often
+faced with secret-dependent branching or table-lookups in the assembly
+instructions, but a language describing cryptographic code might
+include pseudo-instructions to cover instruction sequences, phrases in
+the language if you will, that is used to achieve the same effect.
 
 Consider the following syntactic class for expressions in our domain
 specific language:

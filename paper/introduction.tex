@@ -1,6 +1,44 @@
 
-\todo{Bo-Yin, please motivate why the correctness of Montgomery ladder
-step in Curve25519 is important for slightly over .5 page.}
+X25519, the Curve25519 Elliptic Curve Diffie-Hellman (ECDH) key exchange
+protocol, is a high-performance cryptosystem designed to use the
+secure elliptic curve Curve25519.
+
+Curve25519 is a curve offering 128 bits of security when used with
+ECDH. Aside from allowing high-speed elliptic curve arithmetic, it is
+also easier to implement properly, not covered by any known patents,
+and less susceptible to implementation pitfalls such as weak
+random-number generators. Its parameters were also selected using
+easily described mathematical principles without resorting to any
+random numbers or seeds, making it a good choice for those who
+suspects that backdoors may have been inserted into other curves, such
+as curves standardized by the U.S. National Institute of Standards and
+Technology.
+
+Because of its many superior qualities, currently Curve25519 is the de
+facto alternative to the NIST P-256 curve and is used in a wide
+variety of applications. For example, X25519 is the default key
+exchange in the widely used OpenSSH software since 2014.
+
+Most of the computation in X25519, in trade parlance, is in a
+``variable base point multiplication'', and the centerpiece of most
+such software is the ``Montgomery Ladderstep''. This is usually a
+large constant-time assembly language program performing the
+finite-field arithmetic that implements the mathematics on Curve25519.
+Should the implementation of Montgomery ladderstep be incorrect, so
+would that of X25519. Obviously for all its virtues, X25519 would be
+pointless if the implementation is incorrect. This may be even more
+relevant in cryptography than most of engineering, because crypto is
+one of the few disciplines with the concept of an omnipresent
+adversary, constantly looking for the smallest edge --- and hence
+eager to trigger any normally unlikely event. Revising a cryptosystem
+due to rare failures potentially leading to a cryptanalysis is not
+unheard of \todo{Insert reference for the Proos paper on NTRU here}.
+Thus, it is important for security that we can show the computations
+comprising the Montgomery Ladderstep or (even better) the X25519
+protocol to be correct. However, such verification is not easy due
+the size both of the numbers in play (255 bits and more) and of the
+program itself (10,000 machine instructions upwards).
+
 
 We have the following contributions:
 \begin{itemize}
