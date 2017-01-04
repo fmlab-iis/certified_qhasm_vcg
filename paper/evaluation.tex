@@ -1,5 +1,23 @@
 
-We evaluate our techniques in real low-level cryptographic programs. 
-In elliptic curve cryptography, arithmetic operations over large
-finite fields are required for cryptographic primitives. In
-Curve25519, the finite field $\bbfGF(\varrho)$.
+We evaluate our techniques in real-world low-level cryptographic
+programs. In elliptic curve cryptography, arithmetic computation over
+large finite fields is required for cryptographic primitives. For
+instance, the elliptic curve $y^2 = x^3 + 486662 x^2 + x$ used in 
+Curve25519 is over the Galois field $\bbfF = \bbfGF(\varrho)$ with
+$\varrho = 2^{255} - 19$. The arithmetic operations (addition and
+multiplication) in the curve are in fact over the finite field. To
+make the finite field $\bbfF$ explicit, we may rewrite the elliptic
+curve in the following equation: 
+\begin{equation}
+  \label{eq:curve25519}
+  y \cdot_{\bbfF} y =_{\bbfF} x \cdot_{\bbfF} x \cdot_{\bbfF} x +_{\bbfF}
+  486662 \cdot_{\bbfF} x \cdot_{\bbfF} x +_{\bbfF} x.
+\end{equation}
+
+Since the curve is defined over $\bbfF$, arithmetic computation is
+carried out over the Galois field. Note that every element of 
+$\bbfGF(\varrho)$ can be represented by a 255-bit number. 255 bits
+suffice to store results of any arithmetic computation. Particularly,
+there is always a 255-bit number $c \in \bbfF$ such that $c =_{\bbfF} a
+\cdot_{\bbfF} b$ for every $a, b \in \bbfF$. Points on
+(\ref{eq:curve25519}) are thus represented by a pair of 255-bit numbers.
