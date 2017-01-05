@@ -26,3 +26,62 @@ efficient and secure implementation of 255-bit subtraction for the
 AMD64 architecture. Notice that each limb can be computed in
 parallel. It also has constant execution time. 
 
+Long-integer multiplication is another interesting but much more
+complicated operation. The na\"ive implementation for 255-bit
+multiplication would compute a 510-bit result and then find the
+corresponding 255-bit representation by a modulo operation. The
+modulo operation however requires long-integer division. The na\"ive
+implementation is very inefficient. An efficient implementation for
+255-bit multiplication avoids division by performing modulo operations
+aggressively. Observe that $2^{255} =_{\bbfF} 19$ in $\bbfGF(\varrho)$. 
+Whenever an intermediate result of the form $c \cdot_{\bbfF} 2^{255}$
+is obtained, it is replaced by $c \cdot_{\bbfF} 19$. Recall that
+elements in $\bbfF$ are represented by five limbs of 51-bit unsigned
+integers. Consider multiplying two 255-bit values
+\begin{equation*}
+  \begin{array}{lcccccccccl}
+    x & = & 2^{51 \times 4} x_4 & + & 2^{51 \times 3} x_3 & + &
+            2^{51 \times 2} x_2 & + & 2^{51 \times 1} x_1 & + &
+            2^{51 \times 0} x_0 \textmd{ and}\\
+    y & = & 2^{51 \times 4} y_4 & + & 2^{51 \times 3} y_3 & + &
+            2^{51 \times 2} y_2 & + & 2^{51 \times 1} y_1 & + &
+            2^{51 \times 0} y_0.
+  \end{array}
+\end{equation*}
+The intermediate results $2^{255} x_4 y_1$, $2^{255} x_3 y_2$,
+$2^{255} x_2 y_3$, and $2^{255} x_1 y_4$ can all be replaced by 
+$19 x_4 y_1$, $19 x_3 y_2$, $19 x_2 y_3$, and $19 x_1 y_4$,
+respectively. Division is not needed in such implementations.
+
+We describe but a couple of optimizations in efficient implementations
+of arithmetic operations over $\bbfF$. Real-world implementations
+are necessarily optimized with various algebraic properties in
+$\bbfF$. In our experiments, we took real-world efficient and secure
+low-level implementations of arithmetic operations over
+$\bbfGF(\varrho)$ in~\todo{reference?}, manually translated source
+codes to our domain specific language, and performed certified
+verification with our new technique. 
+Table~\ref{table:arithmetic-operations} summarizes the results.
+
+
+\begin{table}[ht]
+  \caption{Certified Verification of Arithmetic Operations over
+    $\bbfGF(\varrho)$}
+  \centering
+  \begin{tabular}{|c|c|c|c|}
+    \hline
+             & number of lines & time (seconds) & remark\\
+    \hline
+    addition & 10 &                       & $a +_{\bbfF} b$ \\
+    \hline
+    subtraction & 15 &                    & $a -_{\bbfF} b$ \\
+    \hline
+    multiplication & 169 &                & $a \cdot_{\bbfF} b$\\
+    \hline
+    multiplication by 121666 & 31 &       & $121666 \cdot_{\bbfF} a$\\
+    \hline
+    square & 124 &                        & $a \cdot_{\bbfF} a$\\
+    \hline
+  \end{tabular}
+  \label{table:arithmetic-operations}
+\end{table}

@@ -39,6 +39,10 @@ protocol to be correct. However, such verification is not easy due
 the size both of the numbers in play (255 bits and more) and of the
 program itself (10,000 machine instructions upwards).
 
+Low-level implementations in assembly for arithmetic operations
+are in fact available for the most efficient computation over large
+Galois fields. A programming error in such implementations could
+nullify cryptographic guarantees and compromise security. 
 
 We have the following contributions:
 \begin{itemize}
