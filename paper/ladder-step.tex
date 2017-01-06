@@ -8,24 +8,24 @@ properties? }
 \begin{algorithmic}[1]
 \Function{ladderstep}{$x_1, x_2, z_2, x_3, z_3$}
 \begin{multicols}{3}
-\State $t_1 \leftarrow x_2 +_\bbfF z_2$
-\State $t_2 \leftarrow x_2 -_\bbfF z_2$
-\State $t_7 \leftarrow t_2 \cdot_\bbfF t_2$
-\State $t_6 \leftarrow t_1 \cdot_\bbfF t_1$
-\State $t_5 \leftarrow t_6 -_\bbfF t_7$
-\State $t_3 \leftarrow x_3 +_\bbfF z_3$
-\State $t_4 \leftarrow x_3 -_\bbfF z_3$\rule{0ex}{0ex}
-\State $t_9 \leftarrow t_3 \cdot_\bbfF t_2$
-\State $t_8 \leftarrow t_4 \cdot_\bbfF t_1$
-\State $x_3 \leftarrow t_8 +_\bbfF t_9$
-\State $z_3 \leftarrow t_8 -_\bbfF t_9$
-\State $x_3 \leftarrow x_3 \cdot_\bbfF x_3$
-\State $z_3 \leftarrow z_3 \cdot_\bbfF z_3$
-\State $z_3 \leftarrow z_3 \cdot_\bbfF x_1$\rule{0ex}{0ex} 
-\State $x_2 \leftarrow t_6 \cdot_\bbfF t_7$
-\State $z_2 \leftarrow  121666 \cdot_\bbfF t_5$
-\State $z_2 \leftarrow z_2 +_\bbfF t_7$
-\State $z_2 \leftarrow z_2 \cdot_\bbfF t_5$
+\State $t_1 \leftarrow x_2 \Fplus z_2$
+\State $t_2 \leftarrow x_2 \Fminus z_2$
+\State $t_7 \leftarrow t_2 \Ftimes t_2$
+\State $t_6 \leftarrow t_1 \Ftimes t_1$
+\State $t_5 \leftarrow t_6 \Fminus t_7$
+\State $t_3 \leftarrow x_3 \Fplus z_3$
+\State $t_4 \leftarrow x_3 \Fminus z_3$\rule{0ex}{0ex}
+\State $t_9 \leftarrow t_3 \Ftimes t_2$
+\State $t_8 \leftarrow t_4 \Ftimes t_1$
+\State $x_3 \leftarrow t_8 \Fplus t_9$
+\State $z_3 \leftarrow t_8 \Fminus t_9$
+\State $x_3 \leftarrow x_3 \Ftimes x_3$
+\State $z_3 \leftarrow z_3 \Ftimes z_3$
+\State $z_3 \leftarrow z_3 \Ftimes x_1$\rule{0ex}{0ex} 
+\State $x_2 \leftarrow t_6 \Ftimes t_7$
+\State $z_2 \leftarrow  121666 \Ftimes t_5$
+\State $z_2 \leftarrow z_2 \Fplus t_7$
+\State $z_2 \leftarrow z_2 \Ftimes t_5$
 \State \Return $(x_2, z_2, x_3, z_3)$
 \EndFunction
 \end{multicols}

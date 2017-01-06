@@ -27,8 +27,8 @@
 \newif\ifpublic
 %\publictrue
 
-\titlerunning{Certified Verification of Low-Level Cryptographic Codes}
-\title{Certified Verification of Low-Level Cryptographic Codes}
+\title{Fully Certified Verification of Algebraic Properties in
+Low-Level Implementations of Cryptographic Primitives} 
 
 \ifpublic
 \author{
@@ -40,7 +40,6 @@ Bo-Yin Yang
 %
 %\thanks{}
 }
-
 \institute
 {
 Institute of Information Science\\
@@ -49,8 +48,8 @@ Academia Sinica\\
 \email{mhtsai208@gmail.com, bywang@iis.sinica.edu.tw, by@crypto.tw}
 }
 \else
-\author{\vspace*{-1cm} }
-\institute{\vspace*{-1cm}\ }
+\author{\vspace*{0cm}}
+\institute{\vspace*{0cm}\ }
 \fi
 
 \begin{document}
@@ -58,7 +57,18 @@ Academia Sinica\\
 \maketitle
 
 \begin{abstract}
-  blah blah blah
+  Cryptographic primitives are the basic computation components of
+  cryptosystems. Since they are invoked most frequently, cryptographic
+  primitives are written in assembly and often optimized by hands. We
+  propose a fully certified technique to formally verify cryptographic
+  primitives in X25519, the default elliptic curve Diffie-Hellman key exchange
+  protocol used in \openssh. Our technique first translates low-level
+  cryptographic programs into an algebraic problem. The algebraic
+  problem in turn is solved by \coq and \singular. The proof assistant
+  \coq is used to certify the translation and solution to algebraic
+  problems. We report our experiments on the verification of
+  arithmetic computation over $\bbfGF(2^{255} - 19)$ and the
+  Montgomery Ladderstep used in the X25519 key exchange protocol.
 \end{abstract}
 
 \section{Introduction}
@@ -69,7 +79,7 @@ Academia Sinica\\
 \label{section:preliminaries}
 \input{preliminaries}
 
-\section{Domain Specific Language -- \todo{name?}}
+\section{Domain Specific Language -- \mydsl}
 \label{section:domain-specific-language}
 \input{dsl}
 

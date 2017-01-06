@@ -10,8 +10,8 @@ make the finite field $\bbfF$ explicit, we may rewrite the elliptic
 curve as the following equation: 
 \begin{equation}
   \label{eq:curve25519}
-  y \cdot_{\bbfF} y =_{\bbfF} x \cdot_{\bbfF} x \cdot_{\bbfF} x +_{\bbfF}
-  486662 \cdot_{\bbfF} x \cdot_{\bbfF} x +_{\bbfF} x.
+  y \Ftimes y \Feq x \Ftimes x \Ftimes x \Fplus
+  486662 \Ftimes x \Ftimes x \Fplus x.
 \end{equation}
 
 Since arithmetic computation is over the Galois field and every
@@ -19,16 +19,16 @@ element of $\bbfGF(\varrho)$ can be represented by a 255-bit number,
 any pair $(x, y)$ satisfying (\ref{eq:curve25519}) (called a
 \emph{point} on the curve) can be represented by a pair of 255-bit
 numbers. It can be shown that points on Curve25519 with the point at
-infinity form a commutative group $\bbfG = (G, +_{\bbfG}, 0_{\bbfG})$
+infinity form a commutative group $\bbfG = (G, \Gplus, \Gzero)$
 with $G = \{ (x, y) : x, y \textmd{ satisfying } (\ref{eq:curve25519})
 \}$. Let $p_0 = (x_0, y_0), p_1 = (x_1, y_1) \in G$. We have $-p_0 =
-(x_0, -y_0)$ and $p_0 +_{\bbfG} p_1 = (x, y)$ where
+(x_0, -y_0)$ and $p_0 \Gplus p_1 = (x, y)$ where
 \begin{eqnarray*}
-  m & = & (y_1 -_{\bbfF} y_0) /_{\bbfF} (x_1 -_{\bbfF} x_0)\\
-  x & = & m \cdot_{\bbfF} m -_{\bbfF} x_0 -_{\bbfF} x_1\\
-  y & = & m \cdot_{\bbfF} (x_0 -_{\bbfF} x) -_{\bbfF} y_0
-     = m \cdot_{\bbfF} (x_1 -_{\bbfF} x) -_{\bbfF} y_1.
+  m & = & (y_1 \Fminus y_0) \Fdiv (x_1 \Fminus x_0)\\
+  x & = & m \Ftimes m \Fminus x_0 \Fminus x_1\\
+  y & = & m \Ftimes (x_0 \Fminus x) \Fminus y_0
+     = m \Ftimes (x_1 \Fminus x) \Fminus y_1.
 \end{eqnarray*}
 The induced group $\bbfG$ plays an important role in elliptic
 curve cryptography. It is essential to implement the commutative binary
-operation $+_{\bbfG}$ very efficiently in practical cryptography. 
+operation $\Gplus$ very efficiently in practical cryptography. 

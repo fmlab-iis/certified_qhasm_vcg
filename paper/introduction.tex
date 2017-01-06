@@ -1,23 +1,34 @@
 
-X25519, the Curve25519 Elliptic Curve Diffie-Hellman (ECDH) key exchange
-protocol, is a high-performance cryptosystem designed to use the
-secure elliptic curve Curve25519.
+To utilize security offered by cryptography, cryptosystems must be
+realized in computer programs. Such programs implement cryptosystems
+through cryptographic primitives to compute mathematical functions. 
+These cryptographic primitives are frequently invoked and manually
+optimized for efficiency. Crucially, security guarantees of
+cryptosystems depend very much on the correctness of these
+cryptographic primitives. Programming errors in cryptographic
+primitives can be exploited to compromise security of cryptosystems. 
+It is of utmost importance to ensure the correctness of these
+cryptographic primitives. In this paper, we develop a fully certified
+technique to verify cryptographic primitives used in the security
+protocol X25519 automatically.
 
-Curve25519 is a curve offering 128 bits of security when used with
-ECDH. Aside from allowing high-speed elliptic curve arithmetic, it is
-also easier to implement properly, not covered by any known patents,
-and less susceptible to implementation pitfalls such as weak
-random-number generators. Its parameters were also selected using
+X25519 is the Curve25519 Elliptic Curve Diffie-Hellman (ECDH) key
+exchange protocol; it is a high-performance cryptosystem designed to
+use the secure elliptic curve Curve25519. Curve25519 is an elliptic
+curve offering 128 bits of security when used with ECDH. In addition
+to allowing high-speed elliptic curve arithmetic, it is easier to
+implement properly, not covered by any known patents, and moreover
+less susceptible to implementation pitfalls such as weak 
+random-number generators. Its parameters were also selected by
 easily described mathematical principles without resorting to any
-random numbers or seeds, making it a good choice for those who
-suspects that backdoors may have been inserted into other curves, such
-as curves standardized by the U.S. National Institute of Standards and
-Technology.
-
-Because of its many superior qualities, currently Curve25519 is the de
-facto alternative to the NIST P-256 curve and is used in a wide
-variety of applications. For example, X25519 is the default key
-exchange in the widely used OpenSSH software since 2014.
+random numbers or seeds. These characteristics make Curve25519 a
+preferred choice among curves suspicious of intentionally inserted
+backdoors, such as curves standardized by the United States National
+Institute of Standards and Technology (NIST). 
+Indeed, Curve25519 is currently the
+de facto alternative to the NIST P-256 curve. Consequently, X25519 has
+a wide variety of applications including the default key exchange
+protocol in \openssh since 2014.
 
 Most of the computation in X25519, in trade parlance, is in a
 ``variable base point multiplication'', and the centerpiece of most
@@ -39,10 +50,48 @@ protocol to be correct. However, such verification is not easy due
 the size both of the numbers in play (255 bits and more) and of the
 program itself (10,000 machine instructions upwards).
 
-Low-level implementations in assembly for arithmetic operations
-are in fact available for the most efficient computation over large
-Galois fields. A programming error in such implementations could
-nullify cryptographic guarantees and compromise security. 
+There are several obstacles to be overcome in the verification of
+cryptographic primitives in Curve25519. The elliptic curve is defined
+over the Galois field $\bbfGF(2^{255} - 19)$. Arithmetic computation
+over the finite field needs to be correct. Particularly, non-linear
+255-bit multiplication modulo $2^{255} - 19$ must be verified. Worse,
+commodity computing devices do not support 255-bit arithmetic
+computation directly. Arithmetic over the Galois field is implemented
+by sequences of 32- or 64-bit arithmetic instructions of the underlying
+architectures. One has to verify that a sequence of 32- or 64-bit
+arithmetic instructions indeed performs, say, 255-bit multiplication
+over the finite field. And this is but a single arithmetic computation
+used in Curve25519. The Montgomery Ladderstep contains 18 arithmetic
+operations over $\bbfGF(2^{255} - 19)$. It also needs to be verified
+to benefit from security guarantees provided by Curve25519 and hence
+the ECDH key exchange protocol X25519.
+
+In this paper, we focus on algebraic properties of cryptographic
+primitives. Cryptograhic primitives by their nature perform algebraic
+computation. We aim to verify whether they perform intended algebraic
+computation correctly. To this end, we propose the domain specific
+language \mydsl for low-level implementations of cryptographic
+primitives. Algebraic pre- and post-conditions of programs written in
+\mydsl can subsequently be specified as Hoare triples. Such a
+specification is converted to single static assignment form. It is
+then translated into an algebraic problem (called the modular
+polynomial equation entailment problem). We apply \coq tactics or the
+computer algebra system \singular to solve the algebraic problem. To
+reduce the complexity of the algebraic problem and hence improve the
+efficiency of our technique, fragments irrelevant to algebraic
+properties are removed by program slicing. The \coq proof assistant is
+used to certify the correctness of all translations, as well as
+solutions to algebraic problems derived from specifications.
+
+We report case studies of verifying cryptographic primitives in the
+X25519 ECDH key exchange protocol. For each arithmetic operations
+(addition, multiplication, and square) over $\bbfGF(2^{255} - 19)$,
+their low-level \qhasm programs are converted to our domain specific 
+langauge \mydsl manually. Their specifications are then verified
+automatically with our technique. The \qhasm implementation
+of the Montgomery Ladderstep is formally verified similarly. 
+
+
 
 We have the following contributions:
 \begin{itemize}
