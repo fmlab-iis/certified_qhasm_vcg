@@ -27,8 +27,8 @@
 \newif\ifpublic
 %\publictrue
 
-\title{Fully Certified Verification of Algebraic Properties in
-Low-Level Implementations of Cryptographic Primitives} 
+\title{Certified Verification of Algebraic Properties on
+Low-Level Mathematical Constructs in Cryptographic Programs} 
 
 \ifpublic
 \author{
@@ -57,18 +57,22 @@ Academia Sinica\\
 \maketitle
 
 \begin{abstract}
-  Cryptographic primitives are the basic computation components of
-  cryptosystems. Since they are invoked most frequently, cryptographic
-  primitives are written in assembly and often optimized by hands. We
-  propose a fully certified technique to formally verify cryptographic
-  primitives in X25519, the default elliptic curve Diffie-Hellman key exchange
-  protocol used in \openssh. Our technique first translates low-level
-  cryptographic programs into an algebraic problem. The algebraic
-  problem in turn is solved by \coq and \singular. The proof assistant
+  Mathematical constructs are needed to perform algebraic operations
+  on the underlying mathematical structures of cryptosystems. 
+  Since they are invoked most frequently, these mathematical constructs
+  are written in assembly languages and often optimized manually. We
+  propose a fully certified technique to formally verify mathematical
+  constructs in X25519, the default elliptic curve Diffie-Hellman key
+  exchange protocol used in \openssh. Our technique first translates any
+  algebraic specification of mathematical constructs into an algebraic
+  problem. The algebraic 
+  problem in turn is solved by \coq and \singular. The proof assistant 
   \coq is used to certify the translation and solution to algebraic
   problems. We report our experiments on the verification of
-  arithmetic computation over $\bbfGF(2^{255} - 19)$ and the
-  Montgomery Ladderstep used in the X25519 key exchange protocol.
+  arithmetic computation over the Galois field used in X25519, where
+  each element of the field is represented by a 255-bit number. We
+  also verify the Montgomery Ladderstep used in the key exchange
+  protocol.
 \end{abstract}
 
 \section{Introduction}
@@ -83,7 +87,7 @@ Academia Sinica\\
 \label{section:domain-specific-language}
 \input{dsl}
 
-\section{Verification Conditions}
+\section{Translation to Algebraic Problems}
 \label{section:translation}
 \input{translation}
 
@@ -101,6 +105,10 @@ Academia Sinica\\
 \label{subsection:translation:multivariant-polynomial-equations}
 \input{polynomial-equations}
 
+\subsubsection*{Summary of Translation}
+\input{overview}
+
+
 \section{Solving Modular Polynomial Equation Entailment Problem}
 \label{section:solving-algebraic-equations}
 \input{solver}
@@ -113,7 +121,7 @@ Academia Sinica\\
 \label{subection:evaluation:multiplication}
 \input{multiplication}
 
-\subsection{Montgomery Ladder Step}
+\subsection{The Montgomery Ladderstep}
 \label{subsection:evaluation:ladder-step}
 \input{ladder-step}
 

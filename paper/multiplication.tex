@@ -39,11 +39,13 @@ is obtained, it is replaced by $c \Ftimes 19$. Recall that
 elements in $\bbfF$ are represented by five limbs of 51-bit unsigned
 integers. Consider multiplying two 255-bit values
 \begin{equation*}
-  \begin{array}{lcccccccccl}
-    x & = & 2^{51 \times 4} x_4 & + & 2^{51 \times 3} x_3 & + &
+  \begin{array}{lcccccccccccl}
+    x & = & \mathit{radix51} (x_4, x_3, x_2, x_1, x_0) & = &
+            2^{51 \times 4} x_4 & + & 2^{51 \times 3} x_3 & + &
             2^{51 \times 2} x_2 & + & 2^{51 \times 1} x_1 & + &
             2^{51 \times 0} x_0 \textmd{ and}\\
-    y & = & 2^{51 \times 4} y_4 & + & 2^{51 \times 3} y_3 & + &
+    y & = & \mathit{radix51} (y_4, y_3, y_2, y_1, y_0) & = &
+            2^{51 \times 4} y_4 & + & 2^{51 \times 3} y_3 & + &
             2^{51 \times 2} y_2 & + & 2^{51 \times 1} y_1 & + &
             2^{51 \times 0} y_0.
   \end{array}

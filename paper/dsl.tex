@@ -146,10 +146,11 @@ In the figure, a number in $\bbfGF(\varrho)$
 is represented by five 51-bit unsigned integers. The variables
 $\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2, \dslcode{x}_3,
 \dslcode{x}_4$ for instance represent 
-$\mathit{radix51}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
-\dslcode{x}_3, \dslcode{x}_4) \defn
-\dslcode{x}_0 + 2^{51} \dslcode{x}_1 + 2^{102} \dslcode{x}_2 +
-2^{153} \dslcode{x}_3 + 2^{204} \dslcode{x}_4$. The result of
+$\mathit{radix51}(\dslcode{x}_4, \dslcode{x}_3, \dslcode{x}_2,
+\dslcode{x}_1, \dslcode{x}_0) \defn
+2^{51 \times 4} \dslcode{x}_4 + 2^{51 \times 3} \dslcode{x}_3 + 
+2^{51 \times 2} \dslcode{x}_2 + 2^{51 \times 1} \dslcode{x}_1 + 
+2^{51 \times 0} \dslcode{x}_0$. The result of
 subtraction is stored in the variables $\dslcode{r}_0, \dslcode{r}_1,
 \dslcode{r}_2, \dslcode{r}_3, \dslcode{r}_4$. 
 Given $0 \leq \dslcode{x}_0,$ $\dslcode{x}_1,$ $\dslcode{x}_2,$
@@ -162,13 +163,13 @@ the specification of the program is therefore
 \dslcode{sub}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
   \dslcode{x}_3, \dslcode{x}_4, \dslcode{y}_0, \dslcode{y}_1,
   \dslcode{y}_2, \dslcode{y}_3, \dslcode{y}_4)\\
-\cond{\mathit{radix}(\dslcode{x}_0, \dslcode{x}_1, \dslcode{x}_2,
-\dslcode{x}_3, \dslcode{x}_4) -
-\mathit{radix51}(\dslcode{y}_0, \dslcode{y}_1, \dslcode{y}_2,
-\dslcode{y}_3, \dslcode{y}_4)
+\cond{\mathit{radix}(\dslcode{x}_4, \dslcode{x}_3, \dslcode{x}_2,
+\dslcode{x}_1, \dslcode{x}_0) -
+\mathit{radix51}(\dslcode{y}_4, \dslcode{y}_3, \dslcode{y}_2,
+\dslcode{y}_1, \dslcode{y}_0)
 \equiv
-\mathit{radix51}(\dslcode{r}_0, \dslcode{r}_1, \dslcode{r}_2,
-\dslcode{r}_3, \dslcode{r}_4)
+\mathit{radix51}(\dslcode{r}_4, \dslcode{r}_3, \dslcode{r}_2,
+\dslcode{r}_1, \dslcode{r}_0)
 \mod \myprime
 }.
 \end{array}
@@ -179,16 +180,16 @@ after they are initizlied with $\dslcode{x}_i$'s but before
 $\dslcode{y}_i$'s are subtracted from them. It is not hard to see that
 $2\myprime = \mathit{radix51} (4503599627370458,$ $4503599627370494,$
 $4503599627370494,$ $4503599627370494,$ $4503599627370494)$
-after tedious computation. Hence $\mathit{radix51}(\dslcode{r}_0,$
-$\dslcode{r}_1,$ $\dslcode{r}_2,$ $\dslcode{r}_3,$ $\dslcode{r}_4)$ $=$
-$\mathit{radix51}(\dslcode{x}_0,$ $\dslcode{x}_1,$ $\dslcode{x}_2,$
-$\dslcode{x}_3,$ $\dslcode{x}_4)$ $+$ $2 \myprime $ $-$
-$\mathit{radix51}(\dslcode{y}_0,$ $\dslcode{y}_1,$ $\dslcode{y}_2,$
-$\dslcode{y}_3,$ $\dslcode{y}_4)$ $\equiv $
-$\mathit{radix51}(\dslcode{x}_0,$ $\dslcode{x}_1,$ $\dslcode{x}_2,$
-$\dslcode{x}_3,$ $\dslcode{x}_4)$ $-$
-$\mathit{radix51}(\dslcode{y}_0,$ $\dslcode{y}_1,$ $\dslcode{y}_2,$
-$\dslcode{y}_3,$ $\dslcode{y}_4)$ $\mod \myprime $. The program in
+after tedious computation. Hence $\mathit{radix51}(\dslcode{r}_4,$
+$\dslcode{r}_3,$ $\dslcode{r}_2,$ $\dslcode{r}_1,$ $\dslcode{r}_0)$ $=$
+$\mathit{radix51}(\dslcode{x}_4,$ $\dslcode{x}_3,$ $\dslcode{x}_2,$
+$\dslcode{x}_1,$ $\dslcode{x}_0)$ $+$ $2 \myprime $ $-$
+$\mathit{radix51}(\dslcode{y}_4,$ $\dslcode{y}_3,$ $\dslcode{y}_2,$
+$\dslcode{y}_1,$ $\dslcode{y}_0)$ $\equiv $
+$\mathit{radix51}(\dslcode{x}_4,$ $\dslcode{x}_3,$ $\dslcode{x}_2,$
+$\dslcode{x}_1,$ $\dslcode{x}_0)$ $-$
+$\mathit{radix51}(\dslcode{y}_4,$ $\dslcode{y}_3,$ $\dslcode{y}_2,$
+$\dslcode{y}_1,$ $\dslcode{y}_0)$ $\mod \myprime $. The program in
 Figure~\ref{figure:dsl:subtraction} is correct. The reason for
 adding constants is to prevent underflow. If the constants were not
 added, the subtraction in lines~11 to 15 could give negative and hence

@@ -166,12 +166,13 @@ All theorems are formally certified in \coq.
   Let $\theta_0(v) = 0$ for every $v \in V$. For every $q, q' \in Q$
   and $p \in P$,
   \begin{center}
-    $\models$ $\cond{q}$ $p$ $\cond{q'}$ if and only if
-    $\models$ $\cond{\textmd{\textit{SSAQ}}(\theta_0, q)}$
-    $\hat{p}$
-    $\cond{\textmd{\textit{SSAQ}}(\hat{\theta}, q')}$
+    $\models \hoaretriple{q}{p}{q'}$ if and only if
+    $\models \hoaretriple{\textsc{SSAQ}(\theta_0, q)}
+    {\hat{p}}
+    {\textsc{SSAQ}(\hat{\theta}, q')}$
   \end{center}
   where $\langle \hat{\theta}, \hat{p} \rangle =
-  \textmd{\textit{SSAProgram}}(\theta_0, p)$.
+  \textsc{SSAProgram}(\theta_0, p)$.
+  \label{theorem:ssa}
 \end{theorem}
 
