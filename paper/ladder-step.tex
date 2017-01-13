@@ -49,6 +49,30 @@ this experiment.
 \caption{Montgomery Ladderstep}
 \end{algorithm}
 
+Peter Montgomery derived a sequence of computations, now usually known
+as "the Montgomery Ladderstep", to compute both $P+Q$ and $[2]Q$
+simultaneously and efficiently knowing $\pm(P-Q)$.  The ladderstep can
+be achieved only the x coordinates on a set of curves today known as
+Montgomery curves. This is known as a differential addition chain and
+is one of the fundamental ways to avoid timing attacks.  That is,
+starting from points $[n]P$ and $[n+1]P$, one can get either $[2n]P$
+and $[2n+1]P$, or $[2n+1]P$ and $[2n+2]P$ in a time-constant manner,
+with the difference between the two points always remaining $\pm P$
+using the Ladderstep, provided that there is a time-constant way to
+swap the two (which there usually is).   This is equivalent to
+computing either $2n$ or $2n+1$ from $n$ and is sufficient to compute
+any $[n]P$ where n has a constant bitlength.   For curves not
+equivalent to a Montgomery curve, a variant known as the "Co-Z ladder"
+is available to effect the same differential addition chain. 
+
+Montgomery's formulas and his steps are well known since his original
+paper.  (include Montgomery ladderstep diagram and Montgomery's
+original equations).  We show that the program carrys out a
+computation equivalent to his formulas.  In fact, we show that the
+doubling part of the formula has a coefficient of 4 in both the
+numerator and denominator that is not in Peter Montgomery's formula
+(insert cite here). 
+
 Let $p \in G$ be an element of the group $\bbfG$ and hence a point on
 the elliptic curve Curve25519. We write $n \cdot p$ for
 $\overbrace{p \Gplus \cdots \Gplus p}^n \in G$ when $n \in \bbfN$. A

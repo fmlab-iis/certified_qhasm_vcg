@@ -133,6 +133,50 @@ continues to transform the next statement with the updated mapping
   \label{algorithm:ssa-programs}
 \end{algorithm}
 
+\begin{figure}[h]
+  \centering
+  \[
+  \begin{array}{lclcl}
+    \begin{array}{rcl}
+    \textmd{1:} && \dslcode{r}^0_0 \leftarrow \dslcode{x}^0_0; \\
+    \textmd{2:} && \dslcode{r}^0_1 \leftarrow \dslcode{x}^0_1; \\
+    \textmd{3:} && \dslcode{r}^0_2 \leftarrow \dslcode{x}^0_2; \\
+    \textmd{4:} && \dslcode{r}^0_3 \leftarrow \dslcode{x}^0_3; \\
+    \textmd{5:} && \dslcode{r}^0_5 \leftarrow \dslcode{x}^0_4; \\
+    \end{array}
+    &\hspace{.05\textwidth}&
+    \begin{array}{rcl}
+    \textmd{6:} && 
+      \dslcode{r}^1_0 \leftarrow \dslcode{r}^0_0 + \dslcode{4503599627370458}; \\
+    \textmd{7:} &&
+      \dslcode{r}^1_1 \leftarrow \dslcode{r}^0_1 + \dslcode{4503599627370494}; \\
+    \textmd{8:} &&
+      \dslcode{r}^1_2 \leftarrow \dslcode{r}^0_2 + \dslcode{4503599627370494}; \\
+    \textmd{9:} &&
+      \dslcode{r}^1_3 \leftarrow \dslcode{r}^0_3 + \dslcode{4503599627370494}; \\
+    \textmd{10:} && 
+      \dslcode{r}^1_4 \leftarrow \dslcode{r}^0_4 + \dslcode{4503599627370494};\\
+    \end{array}
+    &\hspace{.05\textwidth}&
+    \begin{array}{rcl}
+    \textmd{11:} && \dslcode{r}^2_0 \leftarrow \dslcode{r}^1_0 - \dslcode{y}^0_0; \\
+    \textmd{12:} && \dslcode{r}^2_1 \leftarrow \dslcode{r}^1_1 - \dslcode{y}^0_1; \\
+    \textmd{13:} && \dslcode{r}^2_2 \leftarrow \dslcode{r}^1_2 - \dslcode{y}^0_2; \\
+    \textmd{14:} && \dslcode{r}^2_3 \leftarrow \dslcode{r}^1_3 - \dslcode{y}^0_3; \\
+    \textmd{15:} && \dslcode{r}^2_4 \leftarrow \dslcode{r}^1_4 - \dslcode{y}^0_4;
+    \end{array}
+  \end{array}
+  \]
+  \caption{Subtraction \dslcode{sub}$(\dslcode{x}_0, \dslcode{x}_1, 
+    \dslcode{x}_2, \dslcode{x}_3, \dslcode{x}_4, \dslcode{y}_0,
+    \dslcode{y}_1, \dslcode{y}_2, \dslcode{y}_3, \dslcode{y}_4)$ in Single 
+    Static Assignment Form}
+  \label{figure:dsl:subtraction-ssa}
+\end{figure}
+
+\noindent
+\emph{Example.}
+
 With the \coq specifications, we establish the correctness of our
 algorithms in two steps. We first show that the transformation indeed
 produces a program in single static assignment form.
