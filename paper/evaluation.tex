@@ -23,12 +23,13 @@ infinity form a commutative group $\bbfG = (G, \Gplus, \Gzero)$
 with $G = \{ (x, y) : x, y \textmd{ satisfying } (\ref{eq:curve25519})
 \}$. Let $p_0 = (x_0, y_0), p_1 = (x_1, y_1) \in G$. We have $-p_0 =
 (x_0, -y_0)$ and $p_0 \Gplus p_1 = (x, y)$ where
-\begin{eqnarray*}
+\begin{eqnarray}
   m & = & (y_1 \Fminus y_0) \Fdiv (x_1 \Fminus x_0)\\
   x & = & m \Ftimes m \Fminus x_0 \Fminus x_1\\
   y & = & m \Ftimes (x_0 \Fminus x) \Fminus y_0
      = m \Ftimes (x_1 \Fminus x) \Fminus y_1.
-\end{eqnarray*}
+  \label{eq:curve25519-group}
+\end{eqnarray}
 The induced group $\bbfG$ plays an important role in elliptic
 curve cryptography. It is essential to implement the commutative binary
 operation $\Gplus$ very efficiently in practical cryptography. 

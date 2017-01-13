@@ -19,7 +19,6 @@ construct widely used to implement $\Gplus$ on Curve25519. We
 verify a low-level implementation of the mathematical construct in
 this experiment. 
 
-
 \begin{algorithm}[h]
 \label{evaluation:ladder-step:montgomery}
 \begin{algorithmic}[1]
@@ -49,6 +48,16 @@ this experiment.
 \end{algorithmic}
 \caption{Montgomery Ladderstep}
 \end{algorithm}
+
+Let $p \in G$ be an element of the group $\bbfG$ and hence a point on
+the elliptic curve Curve25519. We write $n \cdot p$ for
+$\overbrace{p \Gplus \cdots \Gplus p}^n \in G$ when $n \in \bbfN$. A
+crucial mathematical construct in X25519 is to compute the
+$x$-coordinate of $n \cdot p$ for $n \in \bbfN$. The na\"ive
+implementation would follow the equation (\ref{eq:curve25519-group})
+and compute both $x$- and $y$-coordinates with, in particular, a
+division operation $\Fdiv$ in $\bbfGF(\varrho)$. In~\cite{M:87:SPEC},
+a more efficient implementation is proposed. 
 
 $np = x_n \Fdiv z_n$.
 $\textsc{ladderstep} (x_1, x_m, z_m, x_n, z_n) = (x_{2m}, z_{2m},
