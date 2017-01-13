@@ -401,6 +401,7 @@ Ltac solve_ispec_with o :=
   end.
 
 Tactic Notation "solve_ispec" := solve_ispec_with default_options.
+Tactic Notation "solve_ispec" "with" constr(opts) := solve_ispec_with (vconfig opts).
 
 Ltac verify_bexp_with o :=
   match goal with
