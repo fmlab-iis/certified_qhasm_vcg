@@ -19,7 +19,9 @@ Open Scope zdsl_scope.
   - opt_split: split postcondition at specification level,
                good for slicing, bad for rewriting a lot of assignments
   - opt_slicing: apply slicing before converting to SSA
-  - opt_to_assign: rewrite equations (e1 = e2) to assignment form (x = e)
+  - opt_to_assign: convert equations (e1 = e2) to assignment form (x = e)
+  - opt_rewrite_assign: rewrite x = e and clear it
+  - opt_rewrite_equality: rewrite e1 = e2
   - opt_lazy: use Lazy to do simplification
   - opt_native: use native_compute to do simplification
   - opt_singular: use Singular to do polynomial operations
@@ -30,6 +32,8 @@ Record verify_options : Set :=
   mkOptions { opt_split : bool;
               opt_slicing : bool;
               opt_to_assign : bool;
+              opt_rewrite_assign : bool;
+              opt_rewrite_equality : bool;
               opt_lazy : bool;
               opt_native : bool;
               opt_singular : bool;
@@ -40,6 +44,8 @@ Definition default_options : verify_options :=
   {| opt_split := true;
      opt_slicing := false;
      opt_to_assign := true;
+     opt_rewrite_assign := true;
+     opt_rewrite_equality := true;
      opt_lazy := false;
      opt_native := true;
      opt_singular := true;
@@ -50,6 +56,8 @@ Inductive bool_flag : Set :=
 | Split
 | Slicing
 | ToAssign
+| RewriteAssign
+| RewriteEquality
 | Lazy
 | Native
 | Singular
@@ -65,6 +73,8 @@ Definition set_bool_flag f b o : verify_options :=
   | Split => {| opt_split := b;
                 opt_slicing := opt_slicing o;
                 opt_to_assign := opt_to_assign o;
+                opt_rewrite_assign := opt_rewrite_assign o;
+                opt_rewrite_equality := opt_rewrite_equality o;
                 opt_lazy := opt_lazy o;
                 opt_native := opt_native o;
                 opt_singular := opt_singular o;
@@ -73,6 +83,8 @@ Definition set_bool_flag f b o : verify_options :=
   | Slicing => {| opt_split := opt_split o;
                   opt_slicing := b;
                   opt_to_assign := opt_to_assign o;
+                  opt_rewrite_assign := opt_rewrite_assign o;
+                  opt_rewrite_equality := opt_rewrite_equality o;
                   opt_lazy := opt_lazy o;
                   opt_native := opt_native o;
                   opt_singular := opt_singular o;
@@ -81,14 +93,38 @@ Definition set_bool_flag f b o : verify_options :=
   | ToAssign => {| opt_split := opt_split o;
                    opt_slicing := opt_slicing o;
                    opt_to_assign := b;
+                   opt_rewrite_assign := opt_rewrite_assign o;
+                   opt_rewrite_equality := opt_rewrite_equality o;
                    opt_lazy := opt_lazy o;
                    opt_native := opt_native o;
                    opt_singular := opt_singular o;
                    opt_magma := opt_magma o;
                    opt_profiling := opt_profiling o |}
+  | RewriteAssign => {| opt_split := opt_split o;
+                        opt_slicing := opt_slicing o;
+                        opt_to_assign := opt_to_assign o;
+                        opt_rewrite_assign := b;
+                        opt_rewrite_equality := opt_rewrite_equality o;
+                        opt_lazy := opt_lazy o;
+                        opt_native := opt_native o;
+                        opt_singular := opt_singular o;
+                        opt_magma := opt_magma o;
+                        opt_profiling := opt_profiling o |}
+  | RewriteEquality => {| opt_split := opt_split o;
+                          opt_slicing := opt_slicing o;
+                          opt_to_assign := opt_to_assign o;
+                          opt_rewrite_assign := opt_rewrite_assign o;
+                          opt_rewrite_equality := b;
+                          opt_lazy := opt_lazy o;
+                          opt_native := opt_native o;
+                          opt_singular := opt_singular o;
+                          opt_magma := opt_magma o;
+                          opt_profiling := opt_profiling o |}
   | Lazy => {| opt_split := opt_split o;
                opt_slicing := opt_slicing o;
                opt_to_assign := opt_to_assign o;
+               opt_rewrite_assign := opt_rewrite_assign o;
+               opt_rewrite_equality := opt_rewrite_equality o;
                opt_lazy := b;
                opt_native := ~~b;
                opt_singular := opt_singular o;
@@ -97,6 +133,8 @@ Definition set_bool_flag f b o : verify_options :=
   | Native => {| opt_split := opt_split o;
                  opt_slicing := opt_slicing o;
                  opt_to_assign := opt_to_assign o;
+                 opt_rewrite_assign := opt_rewrite_assign o;
+                 opt_rewrite_equality := opt_rewrite_equality o;
                  opt_lazy := ~~b;
                  opt_native := b;
                  opt_singular := opt_singular o;
@@ -105,6 +143,8 @@ Definition set_bool_flag f b o : verify_options :=
   | Singular => {| opt_split := opt_split o;
                    opt_slicing := opt_slicing o;
                    opt_to_assign := opt_to_assign o;
+                   opt_rewrite_assign := opt_rewrite_assign o;
+                   opt_rewrite_equality := opt_rewrite_equality o;
                    opt_lazy := opt_lazy o;
                    opt_native := opt_native o;
                    opt_singular := b;
@@ -113,6 +153,8 @@ Definition set_bool_flag f b o : verify_options :=
   | Magma => {| opt_split := opt_split o;
                 opt_slicing := opt_slicing o;
                 opt_to_assign := opt_to_assign o;
+                opt_rewrite_assign := opt_rewrite_assign o;
+                opt_rewrite_equality := opt_rewrite_equality o;
                 opt_lazy := opt_lazy o;
                 opt_native := opt_native o;
                 opt_singular := ~~b;
@@ -121,6 +163,8 @@ Definition set_bool_flag f b o : verify_options :=
   | Profiling => {| opt_split := opt_split o;
                     opt_slicing := opt_slicing o;
                     opt_to_assign := opt_to_assign o;
+                    opt_rewrite_assign := opt_rewrite_assign o;
+                    opt_rewrite_equality := opt_rewrite_equality o;
                     opt_lazy := opt_lazy o;
                     opt_native := opt_native o;
                     opt_singular := opt_singular o;
@@ -330,19 +374,41 @@ Ltac rewrite_assign3 := rewrite_assign1 || rewrite_assign2.
 Ltac rewrite_assign_with o :=
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
-  match b with
-  | true => time "rewrite_assign" (repeat rewrite_assign3)
-  | false => repeat rewrite_assign3
+  let r := constr:(opt_rewrite_assign o) in
+  let r := eval compute in r in
+  match r with
+  | true =>
+    match b with
+    | true => time "rewrite_assign" (repeat rewrite_assign3)
+    | false => repeat rewrite_assign3
+    end
+  | false => idtac
   end.
 
 Tactic Notation "rewrite_assign" := rewrite_assign_with default_options.
 
-Ltac rewrite_equality :=
+Ltac rewrite_equality_rec :=
   match goal with
   | H: _ = _ |- _ =>
-    ( try rewrite -> H in * ); move: H; rewrite_equality
+    ( try rewrite -> H in * ); move: H; rewrite_equality_rec
   | |- _ => intros
   end.
+
+Ltac rewrite_equality_with o :=
+  let b := constr:(opt_profiling o) in
+  let b := eval compute in b in
+  let r := constr:(opt_rewrite_equality o) in
+  let r := eval compute in r in
+  match r with
+  | true =>
+    match b with
+    | true => time "rewrite_equality" rewrite_equality_rec
+    | false => rewrite_equality_rec
+    end
+  | false => idtac
+  end.
+
+Tactic Notation "rewrite_equality" := rewrite_equality_with default_options.
 
 From Coq Require Import Nsatz.
 
@@ -351,7 +417,7 @@ Ltac gbarith_with o :=
   let a := eval compute in a in
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
-  match goal with
+  lazymatch goal with
   | H : _ = _ |- _ =>
     let a :=
         match a with
@@ -423,7 +489,7 @@ Ltac verify_entail_with o :=
     let H := fresh in
     simplZ; move=> s H; repeat (remove_exists_hyp || split_conj);
     clear_true; to_assign_with o;
-    rewrite_assign_with o; rewrite_equality; verify_bexp_with o
+    rewrite_assign_with o; rewrite_equality_with o; verify_bexp_with o
   end.
 
 Tactic Notation "verify_entail" := verify_entail_with default_options.
@@ -431,7 +497,7 @@ Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconf
 
 Ltac verify_ispec_with o :=
   ispec_to_poly_with o; to_assign_with o;
-  rewrite_assign_with o; rewrite_equality; solve_ispec_with o.
+  rewrite_assign_with o; rewrite_equality_with o; solve_ispec_with o.
 
 Tactic Notation "verify_ispec" := verify_ispec_with default_options.
 Tactic Notation "verify_ispec" "with" constr(opts) := verify_ispec_with (vconfig opts).
