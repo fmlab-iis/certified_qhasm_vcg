@@ -578,6 +578,15 @@ Section ZLemmas.
     exact: Zpower_nat_gt0.
   Qed.
 
+  Lemma Zdiv_mul_lt_l x y p :
+    0 <= x < p -> 0 <= y < p -> (x * y) / p < p.
+  Proof.
+    move=> [Hx1 Hx2] [Hy1 Hy2].
+    have: 0 < p by omega.
+    move=> Hp.
+    exact: (Zdiv_lt_upper_bound (x * y) p p Hp (Z.mul_lt_mono_nonneg _ _ _ _ Hx1 Hx2 Hy1 Hy2)) => H.
+  Qed.
+
 End ZLemmas.
 
 

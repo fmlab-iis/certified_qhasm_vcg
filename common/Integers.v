@@ -2,7 +2,7 @@
 From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat ssralg ssrfun choice eqtype.
 From CompCert Require Import Integers.
-From Common Require Import Bits Types.
+From Common Require Import Bits Types ZAriths.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -349,19 +349,23 @@ Module Int64Order <: SsrOrderedType := MakeSsrOrderedType Int64OrderMinimal.
 (** Additional functions added to CompCert modules Byte, Int, and Int64 *)
 
 Module Byte.
+
   Include CompCert.Integers.Byte.
   Definition pow_pos x := Pos.iter (Byte.mul x) Byte.one.
   Definition of_bool b := if b then Byte.one else Byte.zero.
   Definition to_bool n := if n == zero then false else true.
+
   Lemma to_boolK : forall b : bool, to_bool (of_bool b) = b.
   Proof.
     by case.
   Qed.
+
   Lemma of_boolK1 : forall n : byte, n = zero -> of_bool (to_bool n) = zero.
   Proof.
     move=> n H; rewrite H.
     reflexivity.
   Qed.
+
   Lemma of_boolK2 : forall n : byte, n <> zero -> of_bool (to_bool n) = one.
   Proof.
     move=> n H.
@@ -369,22 +373,27 @@ Module Byte.
     move/eqP/negPf: H => H.
     by rewrite H.
   Qed.
+
 End Byte.
 
 Module Int.
+
   Include CompCert.Integers.Int.
   Definition pow_pos x := Pos.iter (Int.mul x) Int.one.
   Definition of_bool b := if b then Int.one else Int.zero.
   Definition to_bool n := if n == zero then false else true.
+
   Lemma to_boolK : forall b : bool, to_bool (of_bool b) = b.
   Proof.
     by case.
   Qed.
+
   Lemma of_boolK1 : forall n : int, n = zero -> of_bool (to_bool n) = zero.
   Proof.
     move=> n H; rewrite H.
     reflexivity.
   Qed.
+
   Lemma of_boolK2 : forall n : int, n <> zero -> of_bool (to_bool n) = one.
   Proof.
     move=> n H.
@@ -392,13 +401,17 @@ Module Int.
     move/eqP/negPf: H => H.
     by rewrite H.
   Qed.
+
 End Int.
 
 Module Int64.
+
   Include CompCert.Integers.Int64.
+  Local Open Scope Z_scope.
   Definition int64_pow_pos x := Pos.iter (Int64.mul x) Int64.one.
   Definition of_bool b := if b then Int64.one else Int64.zero.
   Definition to_bool n := if n == zero then false else true.
+
   Lemma to_boolK : forall b : bool, to_bool (of_bool b) = b.
   Proof.
     by case.
@@ -408,6 +421,7 @@ Module Int64.
     move=> n H; rewrite H.
     reflexivity.
   Qed.
+
   Lemma of_boolK2 : forall n : int64, n <> zero -> of_bool (to_bool n) = one.
   Proof.
     move=> n H.
@@ -415,6 +429,32 @@ Module Int64.
     move/eqP/negPf: H => H.
     by rewrite H.
   Qed.
+
+  Lemma mul_mulhu :
+    forall x y : int64,
+      unsigned (mulhu x y) * modulus + unsigned (mul x y) =
+      unsigned x * unsigned y.
+  Proof.
+    rewrite /mul /mulhu => x y.
+    set (p := unsigned x * unsigned y).
+    rewrite 2!unsigned_repr_eq.
+    rewrite Z.mul_comm.
+    rewrite Z.mod_small.
+    - apply: Logic.eq_sym.
+      apply: Z.div_mod.
+      done.
+    - split.
+      + move: (unsigned_range x) => [Hx _].
+        move: (unsigned_range y) => [Hy _].
+        apply: Z.div_pos.
+        * apply: (Z.le_trans _ _ _ _ (Z.mul_le_mono_nonneg_l 0 (unsigned y) (unsigned x) Hx Hy)).
+          omega.
+        * done.
+      + exact: (Zdiv_mul_lt_l (unsigned_range x) (unsigned_range y)).
+  Qed.
+
+  Local Close Scope Z_scope.
+
 End Int64.
 
 Strategy 0 [Wordsize_32.wordsize].
