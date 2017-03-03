@@ -493,3 +493,6 @@ Section BitsInterval.
   Abort.
 
 End BitsInterval.
+
+(* Don't simplify fullmulB. Otherwise, Coq freezes. *)
+Global Opaque low high fullmulB mulB ltB leB.

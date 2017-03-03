@@ -274,6 +274,39 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: OP.P.subset_empty.
   Qed.
 
+  Lemma subset_singleton1 x s :
+    S.subset (S.singleton x) s ->
+    S.mem x s.
+  Proof.
+    move=> H.
+    apply/memP.
+    move: (S.subset_2 H) => {H} H.
+    apply: (H x).
+    apply: S.singleton_2.
+    reflexivity.
+  Qed.
+
+  Lemma subset_singleton2 x s :
+    S.mem x s ->
+    S.subset (S.singleton x) s.
+  Proof.
+    move/memP=> H.
+    apply: S.subset_1 => y Hy.
+    move: (S.singleton_1 Hy) => {Hy} Hxy.
+    rewrite -Hxy.
+    assumption.
+  Qed.
+
+  Lemma subset_singleton x s :
+    S.subset (S.singleton x) s = S.mem x s.
+  Proof.
+    case Hmem: (S.mem x s).
+    - exact: subset_singleton2.
+    - apply/negP => Hsub.
+      move/negP: Hmem; apply.
+      exact: subset_singleton1.
+  Qed.
+
   Lemma subset_union1 s1 s2 s3 :
     S.subset s1 s2 ->
     S.subset s1 (S.union s2 s3).

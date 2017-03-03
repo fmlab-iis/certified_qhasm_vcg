@@ -39,4 +39,6 @@ mqhasm/zDSL.v
 mqhasm/zSSA.v
 mqhasm/zPoly.v
 mqhasm/zRadix.v
+mqhasm/bvDSL.v
+mqhasm/bvSSA.v
 mqhasm/Verify.v

@@ -1,5 +1,5 @@
 
-From Coq Require Import OrderedType.
+From Coq Require Import Arith OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
 From Common Require Import Types SsrOrdered.
 
@@ -95,6 +95,17 @@ Section NatLemmas.
     move/leP: Hnp => Hnp.
     apply/ltP.
     exact: (Lt.lt_le_trans _ _ _ Hmn Hnp).
+  Qed.
+
+  Lemma ltb_leq n m :
+    (n <? m) = true ->
+    n <= m.
+  Proof.
+    move=> H.
+    apply/leP.
+    move: (Nat.ltb_lt n m) => [H1 _].
+    move: (H1 H) => {H1 H} H.
+    auto with arith.
   Qed.
 
 End NatLemmas.

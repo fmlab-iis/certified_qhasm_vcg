@@ -5,6 +5,22 @@ From mathcomp Require Import ssreflect ssrbool.
 
 Ltac splitP := apply/andP; split.
 
+(* Split goal of the form (_ && _). *)
+Ltac splitb :=
+  match goal with
+  | |- is_true (_ && _) => apply/andP; split
+  end.
+
+(* Split all hypotheses of the form (_ && _). *)
+Ltac hyps_splitb :=
+  match goal with
+  | H: is_true (_ && _) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    move/andP: H => [H1 H2]; hyps_splitb
+  | |- _ => idtac
+  end.
+
 Ltac leftP := apply/orP; left.
 
 Ltac rightP := apply/orP; right.
