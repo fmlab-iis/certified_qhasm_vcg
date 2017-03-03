@@ -53,11 +53,11 @@ Module MakeZDSL (V : SsrOrderedType).
   | zConst : Z -> exp
   | zUnop : unop -> exp -> exp
   | zBinop : binop -> exp -> exp -> exp
-  | zPow : exp -> positive -> exp.
+  | zPow : exp -> nat -> exp.
 
   Inductive instr : Type :=
   | zAssign : var -> exp -> instr
-  | zSplit : var -> var -> exp -> positive -> instr.
+  | zSplit : var -> var -> exp -> nat -> instr.
 
   Global Arguments zConst n%Z.
 
@@ -80,6 +80,11 @@ Module MakeZDSL (V : SsrOrderedType).
     | e::[::] => e
     | hd::tl => zmul hd (zmuls tl)
     end.
+  Definition zzero : exp := zConst 0.
+  Definition zone : exp := zConst 1.
+  Definition ztwo : exp := zConst 2.
+  Definition zmul2p x n := zBinop zMul x (zPow ztwo n).
+  Global Arguments zmul2p x%N n%nat.
 
   Definition program : Type := seq instr.
 
@@ -127,9 +132,6 @@ Module MakeZDSL (V : SsrOrderedType).
     | [::] => VS.empty
     | hd::tl => VS.union (rvs_instr hd) (rvs_program tl)
     end.
-
-  Definition zzero : exp := zConst 0.
-  Definition ztwo : exp := zConst 2.
 
   Lemma vars_instr_split i :
     VS.Equal (vars_instr i) (VS.union (lvs_instr i) (rvs_instr i)).
@@ -454,14 +456,14 @@ Module MakeZDSL (V : SsrOrderedType).
     | zConst n => n
     | zUnop op e => eval_unop op (eval_exp e s)
     | zBinop op e1 e2 => eval_binop op (eval_exp e1 s) (eval_exp e2 s)
-    | zPow e p => (eval_exp e s) ^ (Zpos p)
+    | zPow e p => (eval_exp e s) ^ (Z.of_nat p)
     end.
 
   Definition eval_instr (s : State.t) (i : instr) : State.t :=
     match i with
     | zAssign v e => State.upd v (eval_exp e s) s
     | zSplit vh vl e i =>
-      let (q, r) := Z.div_eucl (eval_exp e s) (2^(Zpos i)) in
+      let (q, r) := Z.div_eucl (eval_exp e s) (2^(Z.of_nat i)) in
       State.upd2 vh q vl r s
     end.
 
@@ -998,11 +1000,11 @@ Module MakeZDSL (V : SsrOrderedType).
       match vs with
       | [::] => zConst 0
       | hd::[::] => if n == 0 then hd
-                    else zmul hd (zpow2 (Pos.of_nat n))
+                    else zmul hd (zpow2 n)
       | hd::tl =>
         let m := (n + w) in
         if n == 0 then zadd hd (limbs_rec tl m)
-        else zadd (zmul hd (zpow2 (Pos.of_nat n))) (limbs_rec tl m)
+        else zadd (zmul hd (zpow2 n)) (limbs_rec tl m)
       end.
 
     Definition limbs (vs : seq exp) : exp :=
@@ -1167,11 +1169,11 @@ Module MakeZDSL (V : SsrOrderedType).
           apply: False_ind; apply: (negP Hxv).
           assumption.
     - move=> vh vl e p Heqm Hsub.
-      set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p) by reflexivity.
+      set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p).
+      have: tmp = Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p) by reflexivity.
       destruct tmp as [q1 r1] => Hqr1.
-      set tmp := Z.div_eucl (eval_exp e s2) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s2) (Z.pow_pos 2 p) by reflexivity.
+      set tmp := Z.div_eucl (eval_exp e s2) (2 ^ Z.of_nat p).
+      have: tmp = Z.div_eucl (eval_exp e s2) (2 ^ Z.of_nat p) by reflexivity.
       destruct tmp as [q2 r2] => Hqr2.
       rewrite (state_eqmod_exp (state_eqmod_subset Heqm Hsub)) in Hqr1.
       rewrite -Hqr2 in Hqr1.
@@ -1596,8 +1598,8 @@ Module MakeZDSL (V : SsrOrderedType).
           assumption.
       + discriminate.
     - move=> vh vl e p vs1 vs2 i2 s1 s2.
-      set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p) by reflexivity.
+      set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p).
+      have: tmp = Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p) by reflexivity.
       destruct tmp as (q1, r1) => Hqr1.
       case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
       + move=> [Hvs Hi2] Heqm.
@@ -1646,8 +1648,8 @@ Module MakeZDSL (V : SsrOrderedType).
           apply: Heqm.
           assumption.
     - move=> vh vl e p vs1 vs2 s1 s2.
-      set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p) by reflexivity.
+      set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p).
+      have: tmp = Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p) by reflexivity.
       destruct tmp as (q1, r1) => Hqr1.
       case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
       + discriminate.

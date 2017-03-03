@@ -65,9 +65,9 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   | bvSubC : var -> var -> atomic -> atomic -> instr
   | bvMul : var -> atomic -> atomic -> instr
   | bvMulf : var -> var -> atomic -> atomic -> instr
-  | bvShl : var -> atomic -> positive -> instr
-  | bvSplit : var -> var -> atomic -> positive -> instr
-  | bvConcatShl : var -> var -> atomic -> atomic -> positive -> instr.
+  | bvShl : var -> atomic -> nat -> instr
+  | bvSplit : var -> var -> atomic -> nat -> instr
+  | bvConcatShl : var -> var -> atomic -> atomic -> nat -> instr.
 
   Global Arguments bvConst n%bits.
 
@@ -540,14 +540,14 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       State.upd2 vh (high A.wordsize (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
                  vl (low A.wordsize (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
                  s
-    | bvShl v e p => State.upd v (shlBn (eval_atomic e s) (nat_of_pos p)) s
+    | bvShl v e p => State.upd v (shlBn (eval_atomic e s) p) s
     | bvSplit vh vl e p =>
-      State.upd2 vh (fst (split_ext (eval_atomic e s) (nat_of_pos p)))
-                 vl (snd (split_ext (eval_atomic e s) (nat_of_pos p)))
+      State.upd2 vh (fst (split_ext (eval_atomic e s) p))
+                 vl (snd (split_ext (eval_atomic e s) p))
                  s
     | bvConcatShl vh vl e1 e2 p =>
-      State.upd2 vh (fst (concat_shl (eval_atomic e1 s) (eval_atomic e2 s) (nat_of_pos p)))
-                 vl (snd (concat_shl (eval_atomic e1 s) (eval_atomic e2 s) (nat_of_pos p)))
+      State.upd2 vh (fst (concat_shl (eval_atomic e1 s) (eval_atomic e2 s) p))
+                 vl (snd (concat_shl (eval_atomic e1 s) (eval_atomic e2 s) p))
                  s
     end.
 

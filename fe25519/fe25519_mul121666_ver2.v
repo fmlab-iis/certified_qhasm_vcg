@@ -9,8 +9,7 @@ Open Scope zdsl_scope.
 
 Definition fe25519_mul121666 : program :=
 
-let          qtwo :=   zConst 2%Z in
-let         wsize :=   64%positive in
+let         wsize :=   64%nat in
 
 let            x0 :=   0 in
 let            x1 :=   1 in

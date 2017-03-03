@@ -78,15 +78,16 @@ Section SSAPoly.
       move: (ssa_unchanged_instr_subset Hun Hsub) => {Hun} Hun.
       rewrite -(ssa_unchanged_instr_eval_exp Hun Hi) -Hi /= => {Hi Hsub Hun}.
       set ev := eval_exp e s1.
-      set x := Z.div_eucl ev (Z.pow_pos 2 p).
-      have: x = Z.div_eucl ev (Z.pow_pos 2 p) by reflexivity.
+      set x := Z.div_eucl ev (2 ^ Z.of_nat p).
+      have: x = Z.div_eucl ev (2 ^ Z.of_nat p) by reflexivity.
       destruct x as [q r].
       move=> Hqr.
       rewrite (State.acc_upd2_eq1 _ _ _ (eqxx vh) Hhl)
               (State.acc_upd2_eq2 _ _ _ _ (eqxx vl)).
-      have: (Z.pow_pos 2 p > 0)%Z by apply: Zpow_pos_gt0.
+      have: (2 ^ Z.of_nat p > 0)%Z by
+          (rewrite -Zpower_nat_Z; apply: Zpower_nat_gt0).
       move=> H2p.
-      move: (Z_div_mod ev (Z.pow_pos 2 p) H2p).
+      move: (Z_div_mod ev (2 ^ Z.of_nat p) H2p).
       rewrite -Hqr.
       move=> [Hev _].
       rewrite Zplus_comm Zmult_comm -Hev.

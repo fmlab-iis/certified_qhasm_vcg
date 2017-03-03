@@ -7,9 +7,7 @@ Open Scope zdsl_scope.
 
 Definition fe25519_mul : program :=
 
-let          qtwo :=   zConst (2%Z) in
-let         wsize :=   64%positive in
-let      pow2 x n := zBinop zMul x (zPow qtwo n) in
+let         wsize :=   64%nat in
 
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
@@ -428,31 +426,31 @@ zAssign mulr31 (zBinop zAdd (zVar mulr31) (zBinop zAdd (zVar mulrdx) (zVar carry
       (*   mulredmask = *[uint64 *] &crypto_sign_ed25519_amd64_51_REDMASK51 *)
       (*   mulr01 = (mulr01.r0) << 13 *)
       (*   r0 &= mulredmask *)
-zSplit tmp r0 (zVar r0) 51%positive;
-zAssign mulr01 (zBinop zAdd (pow2 (zVar mulr01) 13%positive) (zVar tmp));
+zSplit tmp r0 (zVar r0) 51;
+zAssign mulr01 (zBinop zAdd (zmul2p (zVar mulr01) 13) (zVar tmp));
       (*   mulr11 = (mulr11.r1) << 13 *)
       (*   r1 &= mulredmask *)
       (*   r1 += mulr01 *)
-zSplit tmp r1 (zVar r1) 51%positive;
-zAssign mulr11 (zBinop zAdd (pow2 (zVar mulr11) 13%positive) (zVar tmp));
+zSplit tmp r1 (zVar r1) 51;
+zAssign mulr11 (zBinop zAdd (zmul2p (zVar mulr11) 13) (zVar tmp));
 zAssign r1 (zBinop zAdd (zVar r1) (zVar mulr01));
       (*   mulr21 = (mulr21.r2) << 13 *)
       (*   r2 &= mulredmask *)
       (*   r2 += mulr11 *)
-zSplit tmp r2 (zVar r2) 51%positive;
-zAssign mulr21 (zBinop zAdd (pow2 (zVar mulr21) 13%positive) (zVar tmp));
+zSplit tmp r2 (zVar r2) 51;
+zAssign mulr21 (zBinop zAdd (zmul2p (zVar mulr21) 13) (zVar tmp));
 zAssign r2 (zBinop zAdd (zVar r2) (zVar mulr11));
       (*   mulr31 = (mulr31.r3) << 13 *)
       (*   r3 &= mulredmask *)
       (*   r3 += mulr21 *)
-zSplit tmp r3 (zVar r3) 51%positive;
-zAssign mulr31 (zBinop zAdd (pow2 (zVar mulr31) 13%positive) (zVar tmp));
+zSplit tmp r3 (zVar r3) 51;
+zAssign mulr31 (zBinop zAdd (zmul2p (zVar mulr31) 13) (zVar tmp));
 zAssign r3 (zBinop zAdd (zVar r3) (zVar mulr21));
       (*   mulr41 = (mulr41.r4) << 13 *)
       (*   r4 &= mulredmask *)
       (*   r4 += mulr31 *)
-zSplit tmp r4 (zVar r4) 51%positive;
-zAssign mulr41 (zBinop zAdd (pow2 (zVar mulr41) 13%positive) (zVar tmp));
+zSplit tmp r4 (zVar r4) 51;
+zAssign mulr41 (zBinop zAdd (zmul2p (zVar mulr41) 13) (zVar tmp));
 zAssign r4 (zBinop zAdd (zVar r4) (zVar mulr31));
       (*   mulr41 = mulr41 * 19 *)
 zAssign mulr41 (zBinop zMul (zVar mulr41) (zConst 19%Z));
@@ -466,14 +464,14 @@ zAssign r0 (zBinop zAdd (zVar r0) (zVar mulr41));
       (*   (uint64) mult >>= 51 *)
       (*   mult += r1 *)
 zAssign mult (zVar r0);
-zSplit mult tmp (zVar mult) (51%positive);
+zSplit mult tmp (zVar mult) 51;
 zAssign mult (zBinop zAdd (zVar mult) (zVar r1));
       (*   r1 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r0 &= mulredmask *)
       (*   mult += r2 *)
 zAssign r1 (zVar mult);
-zSplit mult tmp2 (zVar mult) (51%positive);
+zSplit mult tmp2 (zVar mult) 51;
 zAssign r0 (zVar tmp);
 zAssign mult (zBinop zAdd (zVar mult) (zVar r2));
       (*   r2 = mult *)
@@ -481,7 +479,7 @@ zAssign mult (zBinop zAdd (zVar mult) (zVar r2));
       (*   r1 &= mulredmask *)
       (*   mult += r3 *)
 zAssign r2 (zVar mult);
-zSplit mult tmp (zVar mult) (51%positive);
+zSplit mult tmp (zVar mult) 51;
 zAssign r1 (zVar tmp2);
 zAssign mult (zBinop zAdd (zVar mult) (zVar r3));
       (*   r3 = mult *)
@@ -489,14 +487,14 @@ zAssign mult (zBinop zAdd (zVar mult) (zVar r3));
       (*   r2 &= mulredmask *)
       (*   mult += r4 *)
 zAssign r3 (zVar mult);
-zSplit mult tmp2 (zVar mult) (51%positive);
+zSplit mult tmp2 (zVar mult) 51;
 zAssign r2 (zVar tmp);
 zAssign mult (zBinop zAdd (zVar mult) (zVar r4));
       (*   r4 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r3 &= mulredmask *)
 zAssign r4 (zVar mult);
-zSplit mult tmp (zVar mult) (51%positive);
+zSplit mult tmp (zVar mult) 51;
 zAssign r3 (zVar tmp2);
       (*   mult *= 19 *)
       (*   r0 += mult *)

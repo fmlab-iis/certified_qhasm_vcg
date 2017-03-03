@@ -901,7 +901,7 @@ Proof.
     move: (ssa_zsplit Hsi) => {Hsi} [Hupd Hsi].
     rewrite Hsi /= in Hesi => {Hsi}.
     rewrite (ssa_eval_exp _ Heq) in Hesi.
-    move: Hei Hesi; set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p);
+    move: Hei Hesi; set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p);
         destruct tmp as [q r] => Hei Hesi.
     move=> x.
     rewrite -Hei -Hesi => {Hei Hesi}.
@@ -1185,7 +1185,7 @@ Proof.
   - move=> vh vl e p Hun Hei.
     move: (ssa_var_unchanged_zsplit Hun) => {Hun} /andP [Hneh Hnel].
     rewrite -Hei /= => {Hei}.
-    set tmp := Z.div_eucl (zSSA.eval_exp e s1) (Z.pow_pos 2 p);
+    set tmp := Z.div_eucl (zSSA.eval_exp e s1) (2 ^ Z.of_nat p);
         destruct tmp as [q r].
     rewrite (zSSA.State.acc_upd_neq _ _ Hnel)
             (zSSA.State.acc_upd_neq _ _ Hneh).
@@ -2085,7 +2085,7 @@ Proof.
 Qed.
 
 Lemma dclosed_zsplit_succ :
-  forall (v v0 : var) (e : exp) (p : positive) (ivs lvs : VS.t)
+  forall (v v0 : var) (e : exp) (p : nat) (ivs lvs : VS.t)
          (svs : zSSA.VS.t) (m1 m2 : vmap) (si : zSSA.instr),
     dclosed m1 ivs lvs svs ->
     (upd_index v0 (upd_index v m1),

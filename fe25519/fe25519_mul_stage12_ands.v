@@ -7,9 +7,7 @@ Open Scope zdsl_scope.
 
 Definition fe25519_mul_stage12 : program :=
 
-let          qtwo :=   zConst (2%Z) in
-let         wsize :=   64%positive in
-let      pow2 x n := zBinop zMul x (zPow qtwo n) in
+let         wsize :=   64%nat in
 
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
@@ -449,7 +447,6 @@ VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4; y0; y1; y2; y3; y4].
 Definition fe25519_mul_stage12_pre : bexp := zTrue.
 
 Definition fe25519_mul_stage12_post : bexp :=
-let      pow2 x n := zBinop zMul x (zPow ztwo n) in
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
 let            x2 :=   2 in (* *[uint64 *](xp + 16) *)
@@ -500,11 +497,11 @@ zEqMod
          (radix51 [:: zVar y0; zVar y1; zVar y2; zVar y3; zVar y4])
   )
   (
-    radix51 [:: zBinop zAdd (zVar r0) (pow2 (zVar mulr01) 64%positive);
-                zBinop zAdd (zVar r1) (pow2 (zVar mulr11) 64%positive);
-                zBinop zAdd (zVar r2) (pow2 (zVar mulr21) 64%positive);
-                zBinop zAdd (zVar r3) (pow2 (zVar mulr31) 64%positive);
-                zBinop zAdd (zVar r4) (pow2 (zVar mulr41) 64%positive) ]
+    radix51 [:: zBinop zAdd (zVar r0) (zmul2p (zVar mulr01) 64);
+                zBinop zAdd (zVar r1) (zmul2p (zVar mulr11) 64);
+                zBinop zAdd (zVar r2) (zmul2p (zVar mulr21) 64);
+                zBinop zAdd (zVar r3) (zmul2p (zVar mulr31) 64);
+                zBinop zAdd (zVar r4) (zmul2p (zVar mulr41) 64) ]
   )
   n25519.
 
@@ -514,7 +511,6 @@ Definition fe25519_mul_stage12_spec :=
      spost := fe25519_mul_stage12_post |}.
 
 Definition fe25519_mul_stage12_ands_post : bexp :=
-let      pow2 x n := zBinop zMul x (zPow ztwo n) in
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
 let            x2 :=   2 in (* *[uint64 *](xp + 16) *)
@@ -561,35 +557,35 @@ let       mulx419 :=  56 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
 zands [::
          zEq
-         (zBinop zAdd (zVar r0) (pow2 (zVar mulr01) 64%positive))
+         (zBinop zAdd (zVar r0) (zmul2p (zVar mulr01) 64))
          (zadds [:: zmul (zVar x0) (zVar y0);
                     zmul (zmul (zVar x4) (zVar y1)) (zConst 19);
                     zmul (zmul (zVar x3) (zVar y2)) (zConst 19);
                     zmul (zmul (zVar x2) (zVar y3)) (zConst 19);
                     zmul (zmul (zVar x1) (zVar y4)) (zConst 19) ]);
         zEq
-          (zBinop zAdd (zVar r1) (pow2 (zVar mulr11) 64%positive))
+          (zBinop zAdd (zVar r1) (zmul2p (zVar mulr11) 64))
           (zadds [:: zmul (zVar x1) (zVar y0);
                      zmul (zVar x0) (zVar y1);
                      zmul (zmul (zVar x4) (zVar y2)) (zConst 19);
                      zmul (zmul (zVar x3) (zVar y3)) (zConst 19);
                      zmul (zmul (zVar x2) (zVar y4)) (zConst 19) ]);
         zEq
-          (zBinop zAdd (zVar r2) (pow2 (zVar mulr21) 64%positive))
+          (zBinop zAdd (zVar r2) (zmul2p (zVar mulr21) 64))
           (zadds [:: zmul (zVar x2) (zVar y0);
                      zmul (zVar x1) (zVar y1);
                      zmul (zVar x0) (zVar y2);
                      zmul (zmul (zVar x4) (zVar y3)) (zConst 19);
                      zmul (zmul (zVar x3) (zVar y4)) (zConst 19) ]);
         zEq
-          (zBinop zAdd (zVar r3) (pow2 (zVar mulr31) 64%positive))
+          (zBinop zAdd (zVar r3) (zmul2p (zVar mulr31) 64))
           (zadds [:: zmul (zVar x3) (zVar y0);
                      zmul (zVar x2) (zVar y1);
                      zmul (zVar x1) (zVar y2);
                      zmul (zVar x0) (zVar y3);
                      zmul (zmul (zVar x4) (zVar y4)) (zConst 19) ]);
         zEq
-          (zBinop zAdd (zVar r4) (pow2 (zVar mulr41) 64%positive))
+          (zBinop zAdd (zVar r4) (zmul2p (zVar mulr41) 64))
           (zadds [:: zmul (zVar x4) (zVar y0);
                      zmul (zVar x3) (zVar y1);
                      zmul (zVar x2) (zVar y2);

@@ -7,17 +7,12 @@ Open Scope zdsl_scope.
 
 Definition fe25519_mul_stage3_2 : program :=
 
-let          qtwo :=   zConst (2%Z) in
-let         wsize :=   64%positive in
-let      pow2 x n := zBinop zMul x (zPow qtwo n) in
-let concat_shift hi lo w :=       (* (hi.lo) << w *)
-      zBinop zMul (zBinop zAdd (zBinop zMul hi (zPow qtwo wsize)) lo)
-                  (zPow qtwo w) in
+let         wsize :=   64%nat in
 
 let crypto_sign_ed25519_amd64_51_REDMASK51 :=
                        2251799813685247%Z in (* 0x7FFFFFFFFFFFF from consts *)
 let crypto_sign_ed25519_amd64_51_REDMASK51_width :=
-                       51%positive in        (* 51 bits *)
+                       51 in        (* 51 bits *)
 
 let            x0 :=   0 in (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in (* *[uint64 *](xp +  8) *)
@@ -74,14 +69,14 @@ zAssign z4 (zVar r4);
       (*   (uint64) mult >>= 51 *)
       (*   mult += r1 *)
 zAssign mult (zVar r0);
-zSplit mult tmp (zVar mult) (51%positive);
+zSplit mult tmp (zVar mult) 51;
 zAssign mult (zBinop zAdd (zVar mult) (zVar r1));
       (*   r1 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r0 &= mulredmask *)
       (*   mult += r2 *)
 zAssign r1 (zVar mult);
-zSplit mult tmp2 (zVar mult) (51%positive);
+zSplit mult tmp2 (zVar mult) 51;
 zAssign r0 (zVar tmp);
 zAssign mult (zBinop zAdd (zVar mult) (zVar r2));
       (*   r2 = mult *)
@@ -89,7 +84,7 @@ zAssign mult (zBinop zAdd (zVar mult) (zVar r2));
       (*   r1 &= mulredmask *)
       (*   mult += r3 *)
 zAssign r2 (zVar mult);
-zSplit mult tmp (zVar mult) (51%positive);
+zSplit mult tmp (zVar mult) 51;
 zAssign r1 (zVar tmp2);
 zAssign mult (zBinop zAdd (zVar mult) (zVar r3));
       (*   r3 = mult *)
@@ -97,14 +92,14 @@ zAssign mult (zBinop zAdd (zVar mult) (zVar r3));
       (*   r2 &= mulredmask *)
       (*   mult += r4 *)
 zAssign r3 (zVar mult);
-zSplit mult tmp2 (zVar mult) (51%positive);
+zSplit mult tmp2 (zVar mult) 51;
 zAssign r2 (zVar tmp);
 zAssign mult (zBinop zAdd (zVar mult) (zVar r4));
       (*   r4 = mult *)
       (*   (uint64) mult >>= 51 *)
       (*   r3 &= mulredmask *)
 zAssign r4 (zVar mult);
-zSplit mult tmp (zVar mult) (51%positive);
+zSplit mult tmp (zVar mult) 51;
 zAssign r3 (zVar tmp2);
       (*   mult *= 19 *)
       (*   r0 += mult *)

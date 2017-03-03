@@ -7,17 +7,12 @@ Open Scope zdsl_scope.
 
 Definition fe25519_mul121666 : program :=
 
-let          qtwo :=   zConst 2%Z in
-let         wsize :=   64%positive in
-
-let concat_shift hi lo w :=       (* (hi.lo) << w *)
-      zBinop zMul (zBinop zAdd (zBinop zMul hi (zPow qtwo wsize)) lo)
-                  (zPow qtwo w) in
+let         wsize :=   64%nat in
 
 let crypto_sign_ed25519_amd64_51_121666_213 :=
                        996687872%Z in (* from consts *)
 let crypto_sign_ed25519_amd64_51_REDMASK51_width :=
-                       51%positive in        (* 51 bits *)
+                       51 in        (* 51 bits *)
 
 let            x0 :=   0 in     (* *[uint64 *](xp +  0) *)
 let            x1 :=   1 in     (* *[uint64 *](xp +  8) *)
@@ -122,7 +117,7 @@ zAssign rax (zVar x0);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
 zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-zSplit rax tmp (zVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13;
       (*   r0 = rax *)
 zAssign r0 (zVar rax);
       (*   r1 = rdx *)
@@ -133,7 +128,7 @@ zAssign rax (zVar x1);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
 zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-zSplit rax tmp (zVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13;
       (*   r1 += rax *)
 zAssign r1 (zBinop zAdd (zVar r1) (zVar rax));
       (*   r2 = rdx *)
@@ -144,7 +139,7 @@ zAssign rax (zVar x2);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
 zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-zSplit rax tmp (zVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13;
       (*   r2 += rax *)
 zAssign r2 (zBinop zAdd (zVar r2) (zVar rax));
       (*   r3 = rdx *)
@@ -155,7 +150,7 @@ zAssign rax (zVar x3);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
 zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-zSplit rax tmp (zVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13;
       (*   r3 += rax *)
 zAssign r3 (zBinop zAdd (zVar r3) (zVar rax));
       (*   r4 = rdx *)
@@ -166,7 +161,7 @@ zAssign rax (zVar x4);
       (*   (uint128) rdx rax = rax * *[uint64 *] &crypto_sign_ed25519_amd64_51_121666_213 *)
 zSplit rdx rax (zBinop zMul (zVar rax) (zConst crypto_sign_ed25519_amd64_51_121666_213)) wsize;
       (*   (uint64) rax >>= 13 *)
-zSplit rax tmp (zVar rax) 13%positive;
+zSplit rax tmp (zVar rax) 13;
       (*   r4 += rax *)
 zAssign r4 (zBinop zAdd (zVar r4) (zVar rax));
       (*   rdx *= 19 *)
