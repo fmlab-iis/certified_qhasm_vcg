@@ -1,0 +1,65 @@
+# radix = 2^64
+# check RES * R = A * B (M) if A, B < M
+
+# Definition radix64 = limbs 64 .
+# let M := 21888242871839275222246405745257275088548364400416034343698204186575808495617 in
+# let R := 18446744073709551616 in
+# zEqMod (
+#          (radix64 [::zVar A_0; zVar A_8; zVar A_16; zVar A_24])
+#          @*
+#          (radix64 [::zVar B_0; zVar B_8; zVar B_16; zVar B_24])
+#        )
+#        (
+#          (radix64 [::zVar res_0; zVar res_8; zVar res_16; zVar res_24])
+#          @*
+#          (zConst R)
+#        )
+#        (zConst M)
+0(%[A]) = %%A_0
+8(%[A]) = %%A_8
+16(%[A]) = %%A_16
+24(%[A]) = %%A_24
+0(%[B]) = %%B_0
+8(%[B]) = %%B_8
+16(%[B]) = %%B_16
+24(%[B]) = %%B_24
+%[T0] = %%T0
+%[T1] = %%T1
+%[c0] = %%c0
+%[c1] = %%c1
+%[c2] = %%c2
+%[cy] = %%cy
+%[inv] = %%inv
+%[u] = %%u
+%[tmp1] = %%tmp1
+%[tmp2] = %%tmp2
+%[tmp3] = %%tmp3
+%[k] = %%k
+0(%[tmp]) = %%tmp_0
+8(%[tmp]) = %%tmp_8
+16(%[tmp]) = %%tmp_16
+24(%[tmp]) = %%tmp_24
+32(%[tmp]) = %%tmp_32
+40(%[tmp]) = %%tmp_40
+48(%[tmp]) = %%tmp_48
+0(%[res]) = %%res_0
+8(%[res]) = %%res_8
+16(%[res]) = %%res_16
+24(%[res]) = %%res_24
+32(%[res]) = %%res_32
+40(%[res]) = %%res_40
+0(%[M]) = $4891460686036598785
+8(%[M]) = $2896914383306846353
+16(%[M]) = $13281191951274694749
+24(%[M]) = $3486998266802970665
+%[inv] = $14042775128853446655
+
+addq $1v, $2v -> carry? $2v += $1v
+addq $1c, $2v -> carry? $2v += $1c
+adcq $1v, $2v -> carry? $2v += $1v + carry
+adcq $1c, $2v -> carry? $2v += $1c + carry
+mulq $1v -> (uint128) rdx rax = rax * $1v
+mulq $1c -> (uint128) rdx rax = rax * $1c
+movq $1v, $2v -> $2v = $1v
+movq $1c, $2v -> $2v = $1c
+xorq $1v, $1v -> $1v = 0
