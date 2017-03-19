@@ -58,11 +58,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
    *)
   Inductive instr : Type :=
   | bvAssign : var -> atomic -> instr
-  | bvNeg : var -> atomic -> instr
+(*  | bvNeg : var -> atomic -> instr *)
   | bvAdd : var -> atomic -> atomic -> instr
   | bvAddC : var -> var -> atomic -> atomic -> instr
   | bvSub : var -> atomic -> atomic -> instr
-  | bvSubC : var -> var -> atomic -> atomic -> instr
+(*  | bvSubC : var -> var -> atomic -> atomic -> instr *)
   | bvMul : var -> atomic -> atomic -> instr
   | bvMulf : var -> var -> atomic -> atomic -> instr
   | bvShl : var -> atomic -> nat -> instr
@@ -82,13 +82,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Definition vars_instr (i : instr) : VS.t :=
     match i with
     | bvAssign v e
-    | bvNeg v e
+(*    | bvNeg v e *)
     | bvShl v e _ => VS.add v (vars_atomic e)
     | bvAdd v e1 e2
     | bvSub v e1 e2
     | bvMul v e1 e2 => VS.add v (VS.union (vars_atomic e1) (vars_atomic e2))
     | bvAddC c v e1 e2
-    | bvSubC c v e1 e2 => VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2)))
+    (*| bvSubC c v e1 e2*) => VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2)))
     | bvSplit vh vl e _ => VS.add vh (VS.add vl (vars_atomic e))
     | bvMulf vh vl e1 e2
     | bvConcatShl vh vl e1 e2 _ =>
@@ -98,13 +98,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Definition lvs_instr (i : instr) : VS.t :=
     match i with
     | bvAssign v _
-    | bvNeg v _
+(*    | bvNeg v _ *)
     | bvAdd v _ _
     | bvSub v _ _
     | bvMul v _ _
     | bvShl v _ _ => VS.singleton v
     | bvAddC c v _ _
-    | bvSubC c v _ _ => VS.add c (VS.singleton v)
+    (*| bvSubC c v _ _*) => VS.add c (VS.singleton v)
     | bvMulf vh vl _ _
     | bvSplit vh vl _ _
     | bvConcatShl vh vl _ _ _ => VS.add vh (VS.singleton vl)
@@ -113,13 +113,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Definition rvs_instr (i : instr) : VS.t :=
     match i with
     | bvAssign _ e
-    | bvNeg _ e
+(*    | bvNeg _ e *)
     | bvShl _ e _
     | bvSplit _ _ e _ => vars_atomic e
     | bvAdd _ e1 e2
     | bvAddC _ _ e1 e2
     | bvSub _ e1 e2
-    | bvSubC _ _ e1 e2
+(*    | bvSubC _ _ e1 e2 *)
     | bvMul _ e1 e2 => VS.union (vars_atomic e1) (vars_atomic e2)
     | bvMulf _ _ e1 e2
     | bvConcatShl _ _ e1 e2 _ => VS.union (vars_atomic e1) (vars_atomic e2)
@@ -522,7 +522,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Definition eval_instr (s : State.t) (i : instr) : State.t :=
     match i with
     | bvAssign v e => State.upd v (eval_atomic e s) s
-    | bvNeg v e => State.upd v (negB (eval_atomic e s)) s
+(*    | bvNeg v e => State.upd v (negB (eval_atomic e s)) s *)
     | bvAdd v e1 e2 => State.upd v (addB (eval_atomic e1 s) (eval_atomic e2 s)) s
     | bvAddC c v e1 e2 =>
       State.upd2 c
@@ -530,11 +530,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
                  v (addB (eval_atomic e1 s) (eval_atomic e2 s))
                  s
     | bvSub v e1 e2 => State.upd v (subB (eval_atomic e1 s) (eval_atomic e2 s)) s
-    | bvSubC c v e1 e2 =>
+(*    | bvSubC c v e1 e2 =>
       State.upd2 c
                  (if carry_subB (eval_atomic e1 s) (eval_atomic e2 s) then bvone else bvzero)
                  v (subB (eval_atomic e1 s) (eval_atomic e2 s))
-                 s
+                 s *)
     | bvMul v e1 e2 => State.upd v (mulB (eval_atomic e1 s) (eval_atomic e2 s)) s
     | bvMulf vh vl e1 e2 =>
       State.upd2 vh (high A.wordsize (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
@@ -592,6 +592,18 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       rewrite He1; assumption.
   Qed.
 
+  Lemma eval_program_concat_step :
+    forall (p1 p2 : program) (s : State.t),
+      eval_program s (p1 ++ p2) =
+      eval_program (eval_program s p1) p2.
+  Proof.
+    elim => /=.
+    - reflexivity.
+    - move=> hd tl IH p2 s.
+      rewrite IH.
+      reflexivity.
+  Qed.
+
   Lemma eval_program_split :
     forall (p1 p2 : program) (s1 s2 : State.t),
       eval_program s1 (p1 ++ p2) = s2 ->
@@ -632,7 +644,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
   Inductive exp : nat -> Type :=
   | bvAtomic : atomic -> exp A.wordsize
-  | bvUnop : forall n : nat, unop -> exp n -> exp n
+(*  | bvUnop : forall n : nat, unop -> exp n -> exp n *)
   | bvBinop : forall n : nat, binop -> exp n -> exp n -> exp n
   | bvExt : forall n : nat, exp n -> forall m : nat, exp (n + m).
 
@@ -653,7 +665,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Fixpoint vars_exp (n : nat) (e : exp n) : VS.t :=
     match e with
     | bvAtomic a => vars_atomic a
-    | bvUnop _ _ e => vars_exp e
+(*    | bvUnop _ _ e => vars_exp e *)
     | bvBinop _ _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
     | bvExt _ e _ => vars_exp e
     end.
@@ -690,7 +702,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Fixpoint eval_exp (n : nat) (e : exp n) (s : State.t) : BITS n :=
     match e with
     | bvAtomic a => eval_atomic a s
-    | bvUnop _ op e => eval_unop op (eval_exp e s)
+(*    | bvUnop _ op e => eval_unop op (eval_exp e s) *)
     | bvBinop _ op e1 e2 => eval_binop op (eval_exp e1 s) (eval_exp e2 s)
     | bvExt _ e m => zeroExtend m (eval_exp e s)
     end.
@@ -803,13 +815,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Definition well_formed_instr (vs : VS.t) (i : instr) : bool :=
     match i with
     | bvAssign v e
-    | bvNeg v e => VS.subset (vars_atomic e) vs
+    (*| bvNeg v e*) => VS.subset (vars_atomic e) vs
     | bvAdd v e1 e2
     | bvSub v e1 e2
     | bvMul v e1 e2 => VS.subset (vars_atomic e1) vs
                                  && VS.subset (vars_atomic e2) vs
     | bvAddC c v e1 e2
-    | bvSubC c v e1 e2 => (c != v)
+    (*| bvSubC c v e1 e2*) => (c != v)
                             && VS.subset (vars_atomic e1) vs
                             && VS.subset (vars_atomic e2) vs
     | bvShl v e p => VS.subset (vars_atomic e) vs
@@ -1126,13 +1138,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Definition instr_lvne i : bool :=
     match i with
     | bvAssign _ _
-    | bvNeg _ _
+(*    | bvNeg _ _ *)
     | bvAdd _ _ _
     | bvSub _ _ _
     | bvMul _ _ _
     | bvShl _ _ _ => true
     | bvAddC c v _ _
-    | bvSubC c v _ _ => c != v
+    (*| bvSubC c v _ _*) => c != v
     | bvMulf vh vl _ _
     | bvSplit vh vl _ _
     | bvConcatShl vh vl _ _ _ => vh != vl
@@ -2438,7 +2450,7 @@ Module bv64DSL := MakeBVDSL AMD64 VarOrder.
 Export bv64DSL.
 Arguments bv64DSL.bvVar v%N.
 
-Notation "@- x" := (bvNeg x) (at level 35, right associativity) : bvdsl_scope.
+(*Notation "@- x" := (bvNeg x) (at level 35, right associativity) : bvdsl_scope.*)
 Notation "x @+ y" := (bvBinop bvAddOp x y) (at level 50, left associativity) : bvdsl_scope.
 Notation "x @- y" := (bvBinop bvSubOp x y)  (at level 50, left associativity) : bvdsl_scope.
 Notation "x @* y" := (bvBinop bvMulOp x y)  (at level 40, left associativity) : bvdsl_scope.

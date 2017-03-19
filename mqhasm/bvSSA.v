@@ -24,7 +24,7 @@ Module bv64SSA := MakeBVSSA AMD64 VarOrder NOrder.
 
 Arguments bv64SSA.bvVar v%N.
 
-Notation "@- x" := (bv64SSA.bvNeg x) (at level 35, right associativity) : bvssa_scope.
+(*Notation "@- x" := (bv64SSA.bvNeg x) (at level 35, right associativity) : bvssa_scope.*)
 Notation "x @+ y" := (bv64SSA.bvBinop bv64SSA.bvAddOp x y) (at level 50, left associativity) : bvssa_scope.
 Notation "x @- y" := (bv64SSA.bvBinop bv64SSA.bvSubOp x y)  (at level 50, left associativity) : bvssa_scope.
 Notation "x @* y" := (bv64SSA.bvBinop bv64SSA.bvMulOp x y)  (at level 40, left associativity) : bvssa_scope.
@@ -129,10 +129,10 @@ Definition ssa_instr (m : vmap) (i : instr) : vmap * bv64SSA.instr :=
     let e := ssa_atomic m e in
     let m := upd_index v m in
     (m, bv64SSA.bvAssign (ssa_var m v) e)
-  | bvNeg v e =>
+(*  | bvNeg v e =>
     let e := ssa_atomic m e in
     let m := upd_index v m in
-    (m, bv64SSA.bvNeg (ssa_var m v) e)
+    (m, bv64SSA.bvNeg (ssa_var m v) e) *)
   | bvAdd v e1 e2 =>
     let e1 := ssa_atomic m e1 in
     let e2 := ssa_atomic m e2 in
@@ -149,12 +149,12 @@ Definition ssa_instr (m : vmap) (i : instr) : vmap * bv64SSA.instr :=
     let e2 := ssa_atomic m e2 in
     let m := upd_index v m in
     (m, bv64SSA.bvSub (ssa_var m v) e1 e2)
-  | bvSubC c v e1 e2 =>
+(*  | bvSubC c v e1 e2 =>
     let e1 := ssa_atomic m e1 in
     let e2 := ssa_atomic m e2 in
     let mc := upd_index c m in
     let mv := upd_index v mc in
-    (mv, bv64SSA.bvSubC (ssa_var mc c) (ssa_var mv v) e1 e2)
+    (mv, bv64SSA.bvSubC (ssa_var mc c) (ssa_var mv v) e1 e2) *)
   | bvMul v e1 e2 =>
     let e1 := ssa_atomic m e1 in
     let e2 := ssa_atomic m e2 in
@@ -195,7 +195,7 @@ Fixpoint ssa_program (m : vmap) (p : program) : (vmap * bv64SSA.program) :=
 Fixpoint ssa_exp (n : nat) (m : vmap) (e : exp n) : bv64SSA.exp n :=
   match e with
   | bvAtomic a => bv64SSA.bvAtomic (ssa_atomic m a)
-  | bvUnop _ op e => bv64SSA.bvUnop (ssa_unop op) (ssa_exp m e)
+(*  | bvUnop _ op e => bv64SSA.bvUnop (ssa_unop op) (ssa_exp m e) *)
   | bvBinop _ op e1 e2 => bv64SSA.bvBinop (ssa_binop op) (ssa_exp m e1) (ssa_exp m e2)
   | bvExt _ e i => bv64SSA.bvExt (ssa_exp m e) i
   end.
@@ -223,7 +223,7 @@ Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
 Qed.
-
+(*
 Lemma ssa_bvneg m1 m2 v e si :
   ssa_instr m1 (bvNeg v e) = (m2, si) ->
   m2 = upd_index v m1 /\ si = bv64SSA.bvNeg (ssa_var m2 v) (ssa_atomic m1 e).
@@ -231,7 +231,7 @@ Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
 Qed.
-
+*)
 Lemma ssa_bvadd m1 m2 v e1 e2 si :
   ssa_instr m1 (bvAdd v e1 e2) = (m2, si) ->
   m2 = upd_index v m1 /\
@@ -258,7 +258,7 @@ Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
 Qed.
-
+(*
 Lemma ssa_bvsubc m1 m2 c v e1 e2 si :
   ssa_instr m1 (bvSubC c v e1 e2) = (m2, si) ->
   m2 = upd_index v (upd_index c m1) /\
@@ -267,7 +267,7 @@ Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
 Qed.
-
+*)
 Lemma ssa_bvmul m1 m2 v e1 e2 si :
   ssa_instr m1 (bvMul v e1 e2) = (m2, si) ->
   m2 = upd_index v m1 /\
@@ -678,8 +678,8 @@ Lemma ssa_vars_exp_comm w m (e : exp w) :
 Proof.
   elim: e => {w} /=.
   - exact: ssa_vars_atomic_comm.
-  - move=> w op e IH.
-    assumption.
+(*  - move=> w op e IH.
+    assumption. *)
   - move=> w op e1 IH1 e2 IH2.
     rewrite -IH1 -IH2 ssa_vars_union.
     reflexivity.
@@ -1254,9 +1254,9 @@ Proof.
   move=> Heq; elim: e => {w} /=.
   - move=> v.
     exact: ssa_eval_atomic.
-  - move=> w op e IH.
+(*  - move=> w op e IH.
     rewrite ssa_eval_unop IH.
-    reflexivity.
+    reflexivity. *)
   - move=> w op e1 IH1 e2 IH2.
     rewrite ssa_eval_binop IH1 IH2.
     reflexivity.
@@ -2016,8 +2016,8 @@ Proof.
   elim: e => {w} /=.
   - move=> a.
     exact: ssa_unchanged_instr_eval_atomic.
-  - move=> w op e IH Hun Hei.
-    rewrite (IH Hun Hei); reflexivity.
+(*  - move=> w op e IH Hun Hei.
+    rewrite (IH Hun Hei); reflexivity. *)
   - move=> w op e1 IH1 e2 IH2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (IH1 Hun1 Hei) (IH2 Hun2 Hei); reflexivity.
@@ -2045,8 +2045,8 @@ Proof.
   elim: e => {w} /=.
   - move=> a Hun Hep.
     exact: (ssa_unchanged_program_eval_atomic Hun Hep).
-  - move=> w op e IH Hun Hep.
-    rewrite (IH Hun Hep); reflexivity.
+(*  - move=> w op e IH Hun Hep.
+    rewrite (IH Hun Hep); reflexivity. *)
   - move=> w op e1 IH1 e2 IH2 Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (IH1 Hun1 Hep) (IH2 Hun2 Hep); reflexivity.
@@ -2868,8 +2868,8 @@ Proof.
   elim: e m v i => {w} /=.
   - move=> a m x i Hmem.
     exact: (ssa_atomic_var_index Hmem).
-  - move=> w op e IH m v i Hmem.
-    exact: IH.
+(*  - move=> w op e IH m v i Hmem.
+    exact: IH. *)
   - move=> w op e1 IH1 e2 IH2 m v i Hmem.
     case: (bv64SSA.VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
     + exact: IH1.

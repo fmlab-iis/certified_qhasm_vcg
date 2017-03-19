@@ -508,6 +508,18 @@ Module MakeZDSL (V : SsrOrderedType).
       rewrite He1; assumption.
   Qed.
 
+  Lemma eval_program_concat_step :
+    forall (p1 p2 : program) (s : State.t),
+      eval_program s (p1 ++ p2) =
+      eval_program (eval_program s p1) p2.
+  Proof.
+    elim => /=.
+    - reflexivity.
+    - move=> hd tl IH p2 s.
+      rewrite IH.
+      reflexivity.
+  Qed.
+
   Lemma eval_program_split :
     forall (p1 p2 : program) (s1 s2 : State.t),
       eval_program s1 (p1 ++ p2) = s2 ->
