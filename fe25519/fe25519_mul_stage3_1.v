@@ -179,7 +179,7 @@ let    mulredmask :=  53 in
 let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
-let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
+let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 zEqMod
   (radix51 [::zVar z0; zVar z1; zVar z2; zVar z3; zVar z4])
   (radix51 [::zVar r0; zVar r1; zVar r2; zVar r3; zVar r4])

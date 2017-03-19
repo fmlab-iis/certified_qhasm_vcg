@@ -490,7 +490,7 @@ let    mulredmask :=  53 in
 let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
-let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
+let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 zEqMod
   (
     zmul (radix51 [:: zVar x0; zVar x1; zVar x2; zVar x3; zVar x4])
@@ -554,7 +554,7 @@ let    mulredmask :=  53 in
 let       mulx219 :=  54 in
 let       mulx319 :=  55 in
 let       mulx419 :=  56 in
-let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%positive in
+let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 zands [::
          zEq
          (zBinop zAdd (zVar r0) (zmul2p (zVar mulr01) 64))

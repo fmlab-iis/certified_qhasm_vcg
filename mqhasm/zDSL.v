@@ -547,7 +547,7 @@ Module MakeZDSL (V : SsrOrderedType).
   Inductive bexp : Type :=
   | zTrue : bexp
   | zEq : exp -> exp -> bexp
-  | zEqMod : exp -> exp -> positive -> bexp
+  | zEqMod : exp -> exp -> Z -> bexp
   | zAnd : bexp -> bexp -> bexp.
 
   Fixpoint zands es : bexp :=
@@ -569,7 +569,7 @@ Module MakeZDSL (V : SsrOrderedType).
     match e with
     | zTrue => True
     | zEq e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | zEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) (Zpos p)
+    | zEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) p
     | zAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
     end.
 
