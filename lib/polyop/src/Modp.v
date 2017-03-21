@@ -164,7 +164,7 @@ Ltac modp_find_witness_with eng :=
     pdiv_with eng ap ac ltac:(fun w =>
       let w := constr:(interpret w l) in
       idtac "Witness:" w;
-      exists w; simplZ; ring
+      time "validate witness" (exists w; simplZ; ring)
     )
   end.
 
