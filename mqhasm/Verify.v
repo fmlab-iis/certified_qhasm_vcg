@@ -197,7 +197,7 @@ Definition valid_ispec (s : ispec) : Prop :=
 
 (** Tactics *)
 
-From GBArith Require Import GBZ GBZArith.
+From GBArith Require Import GBZArith.
 
 Ltac split_conj :=
   match goal with
