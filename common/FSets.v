@@ -357,6 +357,18 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: subset_union4.
   Qed.
 
+  Lemma subset_union6 s1 s2 s3 :
+    S.subset (S.union s1 s2) s3 = S.subset s1 s3 && S.subset s2 s3.
+  Proof.
+    case H: (S.subset s1 s3 && S.subset s2 s3).
+    - move/andP: H => [H13 H23].
+      apply: subset_union3; assumption.
+    - apply/negP => H123.
+      move/negP: H; apply.
+      move: (subset_union4 H123) (subset_union5 H123) => {H123} H13 H23.
+      by rewrite H13 H23.
+  Qed.
+
   Lemma mem_in_elements :
     forall x s,
       S.mem x s ->
@@ -959,6 +971,25 @@ Module Map2 (S1 S2 : FSetInterface.S).
     Proof.
       rewrite map2_union => Hmem.
       apply: Lemmas2.mem_union3; assumption.
+    Qed.
+
+    Lemma map2_subset s1 s2 :
+      S2.subset (map2 s1) (map2 s2) = S1.subset s1 s2.
+    Proof.
+      case H: (S1.subset s1 s2).
+      - apply: S2.subset_1 => x /Lemmas2.memP Hmem.
+        apply/Lemmas2.memP.
+        move: (map2_mem2 Hmem) => {Hmem} [fx [Heq Hmem]].
+        rewrite Heq map2_mem1.
+        exact: (Lemmas1.mem_subset Hmem H).
+      - apply/negP => Hsubset.
+        move/negP: H; apply.
+        apply: S1.subset_1 => x /Lemmas1.memP Hmem.
+        apply/Lemmas1.memP.
+        rewrite -map2_mem1.
+        apply: (Lemmas2.mem_subset _ Hsubset).
+        rewrite map2_mem1.
+        assumption.
     Qed.
 
   End Map2.
