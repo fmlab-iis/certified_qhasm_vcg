@@ -146,6 +146,8 @@ VFILES:=lib/CompCert/Coqlib.v\
   mqhasm/bvDSL.v\
   mqhasm/bvSSA.v\
   mqhasm/bvDSL2zDSL.v\
+  mqhasm/QF_BV.v\
+  mqhasm/bvSSA2QFBV.v\
   mqhasm/Verify.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)

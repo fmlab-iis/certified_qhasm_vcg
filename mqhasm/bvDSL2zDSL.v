@@ -40,12 +40,12 @@ Definition bv2z_instr (i : instr) : seq zDSL.instr :=
   | bvMul v a1 a2 => [:: zAssign v (zmul (bv2z_atomic a1) (bv2z_atomic a2))]
   | bvMulf vh vl a1 a2 =>
     [:: zSplit vh vl (zmul (bv2z_atomic a1) (bv2z_atomic a2)) wordsize]
-  | bvShl v a n => [:: zAssign v (zmul2p (bv2z_atomic a) n)]
-  | bvSplit vh vl a n => [:: zSplit vh vl (bv2z_atomic a) n]
+  | bvShl v a n => [:: zAssign v (zmul2p (bv2z_atomic a) (toNat n))]
+  | bvSplit vh vl a n => [:: zSplit vh vl (bv2z_atomic a) (toNat n)]
   | bvConcatShl vh vl a1 a2 n =>
     [:: zSplit vh vl
         (zadd (zmul2p (bv2z_atomic a1) wordsize) (bv2z_atomic a2))
-        (wordsize - n)]
+        (wordsize - (toNat n))]
   end.
 
 Fixpoint bv2z_program (p : program) : zDSL.program :=
@@ -79,9 +79,9 @@ Definition bv2z_instr_safe_at (i : instr) (s : bv64DSL.State.t) : bool :=
 (*  | bvSubC _ _ _ _ => true *)
   | bvMul _ a1 a2 => mulB_safe (eval_atomic a1 s) (eval_atomic a2 s)
   | bvMulf _ _ _ _ => true
-  | bvShl _ a n => shlBn_safe (eval_atomic a s) n
+  | bvShl _ a n => shlBn_safe (eval_atomic a s) (toNat n)
   | bvSplit _ _ _ _ => true
-  | bvConcatShl _ _ a1 a2 n => concatshl_safe (eval_atomic a1 s) n
+  | bvConcatShl _ _ a1 a2 n => concatshl_safe (eval_atomic a1 s) (toNat n)
   end.
 
 Fixpoint bv2z_program_safe_at p s : bool :=
@@ -289,8 +289,8 @@ Proof.
     exact: toPosZ_shlBn.
   - move=> vh vl a n _ x.
     rewrite -(bvz_eq_eval_atomic a Heq).
-    set tmp := Z.div_eucl (toPosZ (eval_atomic a sb)) (2 ^ Z.of_nat n).
-    have: tmp = Z.div_eucl (toPosZ (eval_atomic a sb)) (2 ^ Z.of_nat n)
+    set tmp := Z.div_eucl (toPosZ (eval_atomic a sb)) (2 ^ Z.of_nat (toNat n)).
+    have: tmp = Z.div_eucl (toPosZ (eval_atomic a sb)) (2 ^ Z.of_nat (toNat n))
       by reflexivity.
     destruct tmp as [q r] => Hqr.
     apply: (bvz_eq_upd2 _ _ Heq).
@@ -302,12 +302,12 @@ Proof.
       Z.div_eucl
         (toPosZ (eval_atomic a1 sb) *
          2 ^ Z.of_nat wordsize +
-             toPosZ (eval_atomic a2 sb)) (2 ^ Z.of_nat (wordsize - n)).
+             toPosZ (eval_atomic a2 sb)) (2 ^ Z.of_nat (wordsize - (toNat n))).
     have: tmp =
           Z.div_eucl
             (toPosZ (eval_atomic a1 sb) *
              2 ^ Z.of_nat wordsize +
-                 toPosZ (eval_atomic a2 sb)) (2 ^ Z.of_nat (wordsize - n))
+                 toPosZ (eval_atomic a2 sb)) (2 ^ Z.of_nat (wordsize - (toNat n)))
       by reflexivity.
     destruct tmp as [q r] => Hqr.
     apply: (bvz_eq_upd2 _ _ Heq).
