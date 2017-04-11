@@ -181,22 +181,58 @@ Section BitsLemmas.
         apply/orP; by left.
   Qed.
 
-  Lemma toPosZ_nil (x : BITS 0) : toPosZ x = 0%Z.
+  (* toPosZ *)
+
+  Local Open Scope Z_scope.
+
+  Lemma toPosZCons n b (p : BITS n) :
+    toPosZ (consB b p) = Z.b2z b + (toPosZ p) * 2.
+  Proof.
+    rewrite /toPosZ /= -/(toPosZ p).
+    case: b.
+    - rewrite Z.double_spec Z.add_comm Z.mul_comm. reflexivity.
+    - rewrite /= Z.double_spec Z.mul_comm. reflexivity.
+  Qed.
+
+  Lemma toPosZNil (x : BITS 0) : toPosZ x = 0%Z.
   Proof.
     by rewrite (tuple0 x).
   Qed.
 
-  Lemma toPosZ_zero n : toPosZ (zero n) = 0%Z.
+  Lemma toPosZ_toNat n (x : BITS n) :
+    toPosZ x = Z.of_nat (toNat x).
   Proof.
-    rewrite /toPosZ.
-    elim: n => /=.
+    elim: n x.
+    - move=> x. rewrite toPosZNil toNatNil. reflexivity.
+    - move=> n IH; case/tupleP => b x.
+      rewrite toPosZCons toNatCons Nat2Z.inj_add -muln2 Nat2Z.inj_mul IH.
+      case: b; reflexivity.
+  Qed.
+
+  Lemma fromPosZ_fromNat n (m : nat) :
+    @fromPosZ n (Z.of_nat m) = @fromNat n m.
+  Proof.
+    elim: n m.
     - reflexivity.
-    - move=> n Hind.
-      rewrite Hind Z.double_spec.
+    - move=> n IH m /=.
+      rewrite Z.negb_even /fromNat -/fromNat.
+      rewrite -nat_N_Z -N2Z.inj_div2 -Nnat.Nat2N.inj_div2 nat_N_Z IH.
+      rewrite nat_N_Z Nat2Z_inj_odd ssrodd_odd ssrdiv2_div2.
       reflexivity.
   Qed.
 
-  Lemma toPosZ_min n (x : BITS n) : Z.le 0 (toPosZ x).
+  Lemma toPosZK n : cancel (@toPosZ n) (@fromPosZ n).
+  Proof.
+    elim: n.
+    - move=> x /=. exact: trivialBits.
+    - move=> n IH. case/tupleP => b x.
+      rewrite toPosZCons /fromPosZ -/fromPosZ /= Zhalf_bit_double.
+      rewrite IH Z.negb_even Z.mul_comm Z.odd_add_mul_2. by case b.
+  Qed.
+
+  Definition toPosZ_inj n := can_inj (@toPosZK n).
+
+  Lemma toPosZ_min n (x : BITS n) : 0 <= toPosZ x.
   Proof.
     destruct x as [x Hsize].
     rewrite /toPosZ => {Hsize n} /=.
@@ -215,11 +251,11 @@ Section BitsLemmas.
       + exact: (Zle_trans _ _ _ Hind H).
   Qed.
 
-  Lemma toPosZ_max n : forall (x : BITS n), Z.lt (toPosZ x) (two_power_nat n).
+  Lemma toPosZ_max n : forall (x : BITS n), toPosZ x < two_power_nat n.
   Proof.
     elim: n.
     - move=> x.
-      rewrite toPosZ_nil.
+      rewrite toPosZNil.
       exact: zero_lt_two_power_nat.
     - move=> n IHn.
       case/tupleP => [b x].
@@ -231,6 +267,63 @@ Section BitsLemmas.
         apply: (Zmult_gt_0_lt_compat_l _ _ _ _ (IHn x)).
         done.
   Qed.
+
+  Definition toPosZBounded := toPosZ_max.
+
+  Lemma toPosZ_fromPosZBounded n m :
+    (m < 2^n)%N ->
+    toPosZ (fromPosZ (n:=n) (Z.of_nat m)) = (Z.of_nat m).
+  Proof.
+    rewrite toPosZ_toNat fromPosZ_fromNat => H.
+    apply: (proj2 (Nat2Z.inj_iff (toNat (@fromNat n m)) m)).
+    exact: toNat_fromNatBounded.
+  Qed.
+
+  Lemma toPosZ_zero n : toPosZ (zero n) = 0%Z.
+  Proof.
+    rewrite /toPosZ. elim: n => /=.
+    - reflexivity.
+    - move=> n Hind. rewrite Hind Z.double_spec. reflexivity.
+  Qed.
+
+  Lemma fromPosZBounded_eq m1 m2 n :
+    (m1 < 2^n)%N -> (m2 < 2^n)%N ->
+    (m1 == m2) = (@fromPosZ n (Z.of_nat m1) == @fromPosZ n (Z.of_nat m2)).
+  Proof.
+    move=> H1 H2. rewrite !fromPosZ_fromNat. exact: fromNatBounded_eq.
+  Qed.
+
+  Lemma fromPosZHalf n m :
+    cons_tuple (odd m) (@fromPosZ n (Z.of_nat (m./2))) = fromPosZ (Z.of_nat m).
+  Proof.
+    rewrite !fromPosZ_fromNat. exact: fromNatHalf.
+  Qed.
+
+  Lemma fromPosZ_wrap n m :
+    @fromPosZ n (Z.of_nat m) = @fromPosZ n (Z.of_nat (m + 2^n)).
+  Proof.
+    rewrite !fromPosZ_fromNat. exact: fromNat_wrap.
+  Qed.
+
+  Lemma fromPosZ_wrapMany (n c m : nat) :
+    @fromPosZ n (Z.of_nat m) = @fromPosZ n (Z.of_nat (m + c * 2^n)).
+  Proof.
+    rewrite !fromPosZ_fromNat. exact: fromNat_wrapMany.
+  Qed.
+
+  Lemma toPosZ_joinlsb n (p : BITS n) b :
+    toPosZ (joinlsb (p, b)) = (Z.b2z b + (toPosZ p) * 2)%Z.
+  Proof.
+    exact: toPosZCons.
+  Qed.
+
+  Lemma toPosZ_zeroExtend extra n (p: BITS n) :
+    toPosZ (zeroExtend extra p) = toPosZ p.
+  Proof.
+    rewrite !toPosZ_toNat toNat_zeroExtend; reflexivity.
+  Qed.
+
+  Local Close Scope Z_scope.
 
 End BitsLemmas.
 

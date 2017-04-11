@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool seq eqtype.
-From Common Require Import Arch Types SsrOrdered Bits Lists FSets Bools ZAriths Var Store.
+From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From Common Require Import Arch Types SsrOrdered Bits Lists FSets Bools Nats ZAriths Var Store.
 From mQhasm Require Import zDSL bvDSL.
 
 Set Implicit Arguments.
@@ -148,11 +148,22 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma toPosZ_addB1 w (b1 b2 : BITS w) :
-  ~~ carry_addB b1 b2 ->
-  toPosZ (b1 + b2) = (toPosZ b1 + toPosZ b2)%Z.
+Lemma toPosZ_addB1 w (bv1 bv2 : BITS w) :
+  ~~ carry_addB bv1 bv2 ->
+  toPosZ (bv1 + bv2) = (toPosZ bv1 + toPosZ bv2)%Z.
 Proof.
-Admitted.
+  rewrite /adcB adcBmain_nat splitmsb_fromNat /= add0n.
+  move=> H. rewrite toPosZ_toNat toNat_fromNatBounded.
+  - rewrite !toPosZ_toNat Nat2Z.inj_add. reflexivity.
+  - move: (toNatBounded bv1) (toNatBounded bv2).
+    move: H; set n := 2^w.+1;
+             set v1 := toNat bv1;
+             set v2 := toNat bv2;
+             set x := v1 + v2; move => H Hv1 Hv2.
+    case: (ltn_ltn_addn_divn Hv1 Hv2) => Hdivn.
+    + apply: (divn_gt0_eq0 Hdivn). by rewrite expn_gt0.
+    + rewrite Hdivn in H; by inversion H.
+Qed.
 
 Lemma toPosZ_addB2 w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
@@ -224,17 +235,6 @@ Lemma toPosZ_catB2 w q r n (bv1 bv2 : BITS w) :
   (q, r) =
   Z.div_eucl (toPosZ bv1 * 2 ^ Z.of_nat w + toPosZ bv2) (2 ^ Z.of_nat (w - n)) ->
   toPosZ (shrBn (low w (shlBn (bv1 ## bv2) n)) n) = r.
-Proof.
-Admitted.
-
-Lemma toPosZ_zeroExtend w (bv : BITS w) n :
-  toPosZ (zeroExtend n bv) = toPosZ bv.
-Proof.
-Admitted.
-
-Lemma toPosZ_inj w (bv1 bv2 : BITS w) :
-  toPosZ bv1 = toPosZ bv2 ->
-  bv1 = bv2.
 Proof.
 Admitted.
 

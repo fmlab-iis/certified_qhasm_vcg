@@ -587,6 +587,24 @@ Section ZLemmas.
     exact: (Zdiv_lt_upper_bound (x * y) p p Hp (Z.mul_lt_mono_nonneg _ _ _ _ Hx1 Hx2 Hy1 Hy2)) => H.
   Qed.
 
+  Lemma Zhalf_bit_double (n : Z) (b : bool) :
+    Z.div2 (Z.b2z b + n * 2) = n.
+  Proof.
+    rewrite Zdiv2_div Z_div_plus.
+    - by case: b.
+    - done.
+  Qed.
+
+  Lemma Nat2Z_inj_odd (n : nat) :
+    Z.odd (Z.of_nat n) = Nat.odd n.
+  Proof.
+    elim: n.
+    - reflexivity.
+    - move=> n IH. rewrite -Nat.add_1_r Nat2Z.inj_add Z.odd_add Nat.odd_add /=.
+      rewrite IH.
+      reflexivity.
+  Qed.
+
 End ZLemmas.
 
 
