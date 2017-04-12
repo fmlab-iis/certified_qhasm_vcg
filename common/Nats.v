@@ -140,6 +140,14 @@ Section NatLemmas.
       reflexivity.
   Qed.
 
+  Lemma expn_pow n m : n ^ m = Nat.pow n m.
+  Proof.
+    elim: m.
+    - reflexivity.
+    - move=> m IH. rewrite expnS (Nat.pow_succ_r _ _ (Nat.le_0_l m)) IH.
+      reflexivity.
+  Qed.
+
   Lemma ssrodd_odd n :
     odd n = Nat.odd n.
   Proof.

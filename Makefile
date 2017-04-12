@@ -123,6 +123,7 @@ VFILES:=lib/CompCert/Coqlib.v\
   common/Types.v\
   common/SsrOrdered.v\
   common/Lists.v\
+  common/Seqs.v\
   common/FMaps.v\
   common/FSets.v\
   common/Bools.v\

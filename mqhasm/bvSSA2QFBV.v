@@ -138,24 +138,8 @@ Definition bexp_of_spec (s : spec) : bexp_spec :=
 
 (* Properties of the conversion. *)
 
-Lemma addB_zeroExtend_high w (bv1 bv2 : BITS w) :
-  (if carry_addB bv1 bv2 then (fromNat 1) else (fromNat 0)) =
-  zeroExtend (w - 1) (high 1 (addB (zeroExtend 1 bv1) (zeroExtend 1 bv2))).
-Proof.
-Admitted.
-
-Lemma addB_zeroExtend_low w (bv1 bv2 : BITS w) :
-  (addB bv1 bv2) =
-  low w (addB (zeroExtend 1 bv1) (zeroExtend 1 bv2)).
-Proof.
-Admitted.
-
 Lemma fullmulB_zeroExtend w (bv1 bv2 : BITS w) :
   (fullmulB bv1 bv2) = mulB (zeroExtend w bv1) (zeroExtend w bv2).
-Proof.
-Admitted.
-
-Lemma fromNatK w n : n < 2^w -> toNat (@fromNat w n) = n.
 Proof.
 Admitted.
 
@@ -350,17 +334,12 @@ Proof.
     repeat qfbv64_store_acc.
     reflexivity.
   - move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     split.
-    + move: (eval_atomic a1 s1) (eval_atomic a2 s1).
-      exact: addB_zeroExtend_high.
-      (*
-         The following tactic will make Coq freeze.
-         exact: (carry_addB_zeroExtend_high (eval_atomic a1 s1)
-                                            (eval_atomic a2 s2)).
-       *)
-    + exact: addB_zeroExtend_low.
+    + exact: (addB_zeroExtend1_high_ext (eval_atomic a1 s1)
+                                        (eval_atomic a2 s1)).
+    + exact: (ssrfun.esym (addB_zeroExtend1_low (eval_atomic a1 s1)
+                                                (eval_atomic a2 s1))).
   - move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.

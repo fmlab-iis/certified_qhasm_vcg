@@ -1,6 +1,6 @@
 
-From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From Coq Require Import Arith ZArith.
+From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype div.
 From Common Require Import Arch Types SsrOrdered Bits Lists FSets Bools Nats ZAriths Var Store.
 From mQhasm Require Import zDSL bvDSL.
 
@@ -152,27 +152,62 @@ Lemma toPosZ_addB1 w (bv1 bv2 : BITS w) :
   ~~ carry_addB bv1 bv2 ->
   toPosZ (bv1 + bv2) = (toPosZ bv1 + toPosZ bv2)%Z.
 Proof.
-  rewrite /adcB adcBmain_nat splitmsb_fromNat /= add0n.
-  move=> H. rewrite toPosZ_toNat toNat_fromNatBounded.
-  - rewrite !toPosZ_toNat Nat2Z.inj_add. reflexivity.
-  - move: (toNatBounded bv1) (toNatBounded bv2).
-    move: H; set n := 2^w.+1;
-             set v1 := toNat bv1;
-             set v2 := toNat bv2;
-             set x := v1 + v2; move => H Hv1 Hv2.
-    case: (ltn_ltn_addn_divn Hv1 Hv2) => Hdivn.
-    + apply: (divn_gt0_eq0 Hdivn). by rewrite expn_gt0.
-    + rewrite Hdivn in H; by inversion H.
+  move=> Hc.
+  rewrite {1}toPosZ_toNat (toNat_addB_bounded Hc).
+  rewrite Nat2Z.inj_add -!toPosZ_toNat. reflexivity.
 Qed.
 
 Lemma toPosZ_addB2 w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
   toPosZ
     (if carry_addB bv1 bv2
-     then (@fromNat w 1)
-     else (@fromNat w 0)) = q.
+     then (@fromNat (1 + (w - 1)) 1)
+     else (@fromNat (1 + (w - 1)) 0)) = q.
 Proof.
-Admitted.
+  rewrite !toPosZ_toNat addB_zeroExtend1_high_ext toNat_zeroExtend.
+  rewrite addB_zeroExtend1_high /adcB toNat_splitmsb1 toNat_adcBmain add0n.
+  set n1 := toNat bv1; set n2 := toNat bv2.
+  move=> Hediv.
+  have: (2 ^ Z.of_nat w > 0)%Z.
+  { apply: Z.lt_gt. apply: Z.pow_pos_nonneg; first by done.
+    exact: Nat2Z.is_nonneg. }
+  move=> H2wz.
+  move: (Z_div_mod (Z.of_nat n1 + Z.of_nat n2) (2 ^ Z.of_nat w) H2wz).
+  rewrite -Hediv -Nat2Z.inj_add.
+  move=> [Hqr Hr].
+  move: (Zdiv_unique _ _ _ _ Hr Hqr) => Hq.
+
+  have: (0 <= q)%Z.
+  { move: (Zdiv_eucl_q_ge0 (Z.of_nat n1 + Z.of_nat n2) (2 ^ Z.of_nat w)).
+    rewrite -Hediv. apply; last exact: (Z.lt_le_incl _ _ (Z.gt_lt _ _ H2wz)).
+    rewrite -Nat2Z.inj_add. exact: Nat2Z.is_nonneg. }
+  move=> {Hediv H2wz} H0leq.
+
+  have: 0 < 2 ^ w.
+  { by rewrite expn_gt0. }
+  move=> H2wn.
+
+  have: Z.to_nat r < 2 ^ w.
+  { apply/ltP. apply: (proj2 (Nat2Z.inj_lt (Z.to_nat r) (2 ^ w))).
+    rewrite (Z2Nat.id _ (proj1 Hr)) expn_pow Nat2Z_inj_pow.
+    exact: (proj2 Hr). }
+  move=> Hrw.
+
+  have: (2^Z.of_nat w * q + r)%Z = Z.of_nat (2 ^ w * Z.to_nat q + Z.to_nat r).
+  { rewrite Nat2Z.inj_add Nat2Z.inj_mul expn_pow Nat2Z_inj_pow
+            (Z2Nat.id _ H0leq) (Z2Nat.id r (proj1 Hr)) /=.
+    reflexivity. }
+  move=> Heq; rewrite Heq in Hqr => {Heq H0leq Hr}.
+  move: (Nat2Z.inj _ _ Hqr) => {Hqr} Hqr.
+  rewrite addn_add Hqr mulnC (divnMDl _ _ H2wn) (divn_small Hrw) addn0.
+  rewrite Nat2Z.inj_add in Hq.
+  move=> {H2wn Hrw Hqr}.
+
+  case: (ltn_ltn_addn_divn (Zof_nat_toNat_bounded bv1)
+                           (Zof_nat_toNat_bounded bv2)).
+  - rewrite -{1}Hq => ->. reflexivity.
+  - rewrite -{1}Hq => ->. reflexivity.
+Qed.
 
 Lemma toPosZ_addB3 w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
