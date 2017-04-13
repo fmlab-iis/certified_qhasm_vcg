@@ -10,8 +10,6 @@ Import Prenex Implicits.
 
 Import bv64SSA.
 
-Module QFBV64 := MakeQFBV AMD64 bv64SSA.V.
-
 Notation wordsize := AMD64.wordsize.
 
 

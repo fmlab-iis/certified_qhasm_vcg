@@ -233,3 +233,9 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
     end.
 
 End MakeQFBV.
+
+
+
+From mQhasm Require Import bvSSA.
+
+Module QFBV64 := MakeQFBV AMD64 bv64SSA.V.
