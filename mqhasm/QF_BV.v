@@ -46,6 +46,10 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
   | bvUgt : forall w, exp w -> exp w -> bexp
   | bvUge : forall w, exp w -> exp w -> bexp
   | bvEq : forall w, exp w -> exp w -> bexp
+  | bvAddo : forall w, exp w -> exp w -> bexp
+  | bvSubo : forall w, exp w -> exp w -> bexp
+  | bvMulo : forall w, exp w -> exp w -> bexp
+  | bvLneg : bexp -> bexp
   | bvConj : bexp -> bexp -> bexp.
 
   Definition bvEqMod w (e1 e2 p : exp w) : bexp :=
@@ -82,7 +86,11 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
     | bvUle _ e1 e2
     | bvUgt _ e1 e2
     | bvUge _ e1 e2
-    | bvEq _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | bvEq _ e1 e2
+    | bvAddo _ e1 e2
+    | bvSubo _ e1 e2
+    | bvMulo _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | bvLneg e => vars_bexp e
     | bvConj e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
 
@@ -127,6 +135,11 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
     | bvUgt _ e1 e2 => ltB (eval_exp e2 s) (eval_exp e1 s)
     | bvUge _ e1 e2 => leB (eval_exp e2 s) (eval_exp e1 s)
     | bvEq _ e1 e2 => eval_exp e1 s = eval_exp e2 s
+    | bvAddo _ e1 e2 => carry_addB (eval_exp e1 s) (eval_exp e2 s) = true
+    | bvSubo _ e1 e2 => carry_subB (eval_exp e1 s) (eval_exp e2 s) = true
+    | bvMulo w e1 e2 =>
+      high w (fullmulB (eval_exp e1 s) (eval_exp e2 s)) <> #0
+    | bvLneg e => ~ eval_bexp e s
     | bvConj e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
     end.
 
@@ -211,7 +224,11 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
     | bvUle _ e1 e2
     | bvUgt _ e1 e2
     | bvUge _ e1 e2
-    | bvEq _ e1 e2 => (well_formed_exp e1) && (well_formed_exp e1)
+    | bvEq _ e1 e2
+    | bvAddo _ e1 e2
+    | bvSubo _ e1 e2
+    | bvMulo _ e1 e2 => (well_formed_exp e1) && (well_formed_exp e1)
+    | bvLneg e => well_formed_bexp e
     | bvConj e1 e2 => (well_formed_bexp e1) && (well_formed_bexp e1)
     end.
 
