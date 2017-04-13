@@ -1655,7 +1655,7 @@ Proof.
     exact: (IH _ _ Huctl Hetl).
 Qed.
 
-Lemma ssa_var_unchanged_program_cons v hd tl :
+Lemma ssa_var_unchanged_program_cons1 v hd tl :
   ssa_var_unchanged_program v (hd::tl) ->
   ssa_var_unchanged_instr v hd /\ ssa_var_unchanged_program v tl.
 Proof.
@@ -1663,7 +1663,17 @@ Proof.
   exact: H.
 Qed.
 
-Lemma ssa_var_unchanged_program_concat v p1 p2 :
+Lemma ssa_var_unchanged_program_cons2 v hd tl :
+  ssa_var_unchanged_instr v hd ->
+  ssa_var_unchanged_program v tl ->
+  ssa_var_unchanged_program v (hd::tl).
+Proof.
+  move=> Hhd Htl.
+  rewrite /ssa_var_unchanged_program /= -/(ssa_var_unchanged_program v tl).
+  by rewrite Hhd Htl.
+Qed.
+
+Lemma ssa_var_unchanged_program_concat1 v p1 p2 :
   ssa_var_unchanged_program v (p1 ++ p2) ->
   ssa_var_unchanged_program v p1 /\ ssa_var_unchanged_program v p2.
 Proof.
@@ -1673,6 +1683,20 @@ Proof.
   - move=> hd tl IH p2 /andP [Hhd Htlp2].
     move: (IH _ Htlp2) => {IH Htlp2} [Htl Hp2].
     by rewrite /= Hhd Htl Hp2.
+Qed.
+
+Lemma ssa_var_unchanged_program_concat2 v p1 p2 :
+  ssa_var_unchanged_program v p1 ->
+  ssa_var_unchanged_program v p2 ->
+  ssa_var_unchanged_program v (p1 ++ p2).
+Proof.
+  elim: p1 p2.
+  - move=> /= p2 _ Hp2. exact: Hp2.
+  - move=> hd tl IH p2 [Hhdtl Hp2].
+    move: (ssa_var_unchanged_program_cons1 Hhdtl) => {Hhdtl} [Hhd Htl].
+    apply/andP; split.
+    + exact: Hhd.
+    + exact: (IH _ Htl Hp2).
 Qed.
 
 Lemma acc_unchanged_program_cons v hd tl s1 s2 s3 :
@@ -1697,7 +1721,7 @@ Lemma acc_unchanged_program_concat v p1 p2 s1 s2 s3 :
   bv64SSA.State.acc v s3 = bv64SSA.State.acc v s1.
 Proof.
   move=> Hun12 Hep1 Hep2.
-  move: (ssa_var_unchanged_program_concat Hun12) => {Hun12} [Hun1 Hun2].
+  move: (ssa_var_unchanged_program_concat1 Hun12) => {Hun12} [Hun1 Hun2].
   rewrite -(acc_unchanged_program Hun2 Hep2) -(acc_unchanged_program Hun1 Hep1).
   split; reflexivity.
 Qed.
@@ -1775,35 +1799,64 @@ Proof.
   exact: (ssa_unchanged_program_mem H Hmem).
 Qed.
 
-Lemma ssa_unchanged_program_cons vs hd tl :
+Lemma ssa_unchanged_program_cons1 vs hd tl :
   ssa_vars_unchanged_program vs (hd::tl) ->
   ssa_vars_unchanged_instr vs hd /\ ssa_vars_unchanged_program vs tl.
 Proof.
-  move => H.
-  move: (ssa_unchanged_program_local H) => {H} H.
-  split.
+  move=> H. move: (ssa_unchanged_program_local H) => {H} H. split.
   - apply: ssa_unchanged_instr_global => v Hmem.
     move: (H v Hmem) => {H} H.
-    move: (ssa_var_unchanged_program_cons H) => [Hhd _].
-    exact: Hhd.
+    exact: (proj1 (ssa_var_unchanged_program_cons1 H)).
   - apply: ssa_unchanged_program_global => v Hmem.
     move: (H v Hmem) => {H} H.
-    move: (ssa_var_unchanged_program_cons H) => [_ Htl].
-    exact: Htl.
+    exact: (proj2 (ssa_var_unchanged_program_cons1 H)).
+Qed.
+
+Lemma ssa_unchanged_program_cons2 vs hd tl :
+  ssa_vars_unchanged_instr vs hd ->
+  ssa_vars_unchanged_program vs tl ->
+  ssa_vars_unchanged_program vs (hd::tl).
+Proof.
+  move=> [Hhd Htl]. apply: ssa_unchanged_program_global => v Hmem.
+  apply/andP; split.
+  - exact: (ssa_unchanged_instr_local Hhd Hmem).
+  - exact: (ssa_unchanged_program_local Htl Hmem).
+Qed.
+
+Lemma ssa_unchanged_program_concat1 vs p1 p2 :
+  ssa_vars_unchanged_program vs (p1 ++ p2) ->
+  ssa_vars_unchanged_program vs p1 /\ ssa_vars_unchanged_program vs p2.
+Proof.
+  move=> H; split; apply: ssa_unchanged_program_global => v Hmem.
+  - exact: (proj1 (ssa_var_unchanged_program_concat1
+                     (ssa_unchanged_program_local H Hmem))).
+  - exact: (proj2 (ssa_var_unchanged_program_concat1
+                     (ssa_unchanged_program_local H Hmem))).
+Qed.
+
+Lemma ssa_unchanged_program_concat2 vs p1 p2 :
+  ssa_vars_unchanged_program vs p1 ->
+  ssa_vars_unchanged_program vs p2 ->
+  ssa_vars_unchanged_program vs (p1 ++ p2).
+Proof.
+  move=> Hp1 Hp2. apply: ssa_unchanged_program_global => v Hmem.
+  apply: ssa_var_unchanged_program_concat2.
+  - exact: (ssa_unchanged_program_local Hp1 Hmem).
+  - exact: (ssa_unchanged_program_local Hp2 Hmem).
 Qed.
 
 Lemma ssa_unchanged_program_hd vs hd tl :
   ssa_vars_unchanged_program vs (hd::tl) ->
   ssa_vars_unchanged_instr vs hd.
 Proof.
-  move=> Hun; move: (ssa_unchanged_program_cons Hun) => [Hhd Htl]; assumption.
+  move=> Hun; move: (ssa_unchanged_program_cons1 Hun) => [Hhd Htl]; assumption.
 Qed.
 
 Lemma ssa_unchanged_program_tl vs hd tl :
   ssa_vars_unchanged_program vs (hd::tl) ->
   ssa_vars_unchanged_program vs tl.
 Proof.
-  move=> Hun; move: (ssa_unchanged_program_cons Hun) => [Hhd Htl]; assumption.
+  move=> Hun; move: (ssa_unchanged_program_cons1 Hun) => [Hhd Htl]; assumption.
 Qed.
 
 Lemma ssa_unchanged_instr_singleton1 v i :
@@ -1960,6 +2013,55 @@ Proof.
   apply: H.
   rewrite Heq.
   assumption.
+Qed.
+
+Lemma ssa_single_assignment_cons1 i p :
+  ssa_single_assignment (i::p) ->
+  (ssa_vars_unchanged_program (bv64SSA.lvs_instr i) p) /\
+  (ssa_single_assignment p).
+Proof.
+  move=> H; apply/andP; exact: H.
+Qed.
+
+Lemma ssa_single_assignment_cons2 i p :
+  (ssa_vars_unchanged_program (bv64SSA.lvs_instr i) p) ->
+  (ssa_single_assignment p) ->
+  ssa_single_assignment (i::p).
+Proof.
+  move=> Hi Hp; by rewrite /ssa_single_assignment -/ssa_single_assignment Hi Hp.
+Qed.
+
+Lemma ssa_single_assignment_concat1 p1 p2 :
+  ssa_single_assignment (p1 ++ p2) ->
+  ssa_single_assignment p1 /\ ssa_single_assignment p2 /\
+  (ssa_vars_unchanged_program (bv64SSA.lvs_program p1) p2).
+Proof.
+  elim: p1 => /=.
+  - move=> Hp2; repeat split. exact: Hp2.
+  - move=> i p1 IH /andP [Hun12 Hssa12].
+    move: (IH Hssa12) => [Hssa1 [Hssa2 Hun2]] => {Hssa12 IH}. repeat split.
+    + by rewrite (proj1 (ssa_unchanged_program_concat1 Hun12)) Hssa1.
+    + exact: Hssa2.
+    + apply: ssa_unchanged_program_union2.
+      * exact: (proj2 (ssa_unchanged_program_concat1 Hun12)).
+      * exact: Hun2.
+Qed.
+
+Lemma ssa_single_assignment_concat2 p1 p2 :
+  ssa_single_assignment p1 -> ssa_single_assignment p2 ->
+  (ssa_vars_unchanged_program (bv64SSA.lvs_program p1) p2) ->
+  ssa_single_assignment (p1 ++ p2).
+Proof.
+  elim: p1 => /=.
+  - move=> _ Hssa2 _. exact: Hssa2.
+  - move=> i p1 IH /andP [Hun1 Hssa1] Hssa2 Hun12.
+    apply/andP; split.
+    + apply: ssa_unchanged_program_concat2.
+      * exact: Hun1.
+      * apply: (ssa_unchanged_program_subset Hun12).
+        apply: bv64SSA.VSLemmas.subset_union1. exact: bv64SSA.VSLemmas.subset_refl.
+    + apply: (IH Hssa1 Hssa2). apply: (ssa_unchanged_program_subset Hun12).
+      apply: bv64SSA.VSLemmas.subset_union2. exact: bv64SSA.VSLemmas.subset_refl.
 Qed.
 
 Lemma well_formed_ssa_vars_unchanged_hd vs hd tl :
