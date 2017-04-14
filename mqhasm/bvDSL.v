@@ -525,7 +525,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvAdd v e1 e2 => State.upd v (addB (eval_atomic e1 s) (eval_atomic e2 s)) s
     | bvAddC c v e1 e2 =>
       State.upd2 c
-                 (if carry_addB (eval_atomic e1 s) (eval_atomic e2 s) then bvone else bvzero)
+                 (fromNat (carry_addB (eval_atomic e1 s) (eval_atomic e2 s)))
                  v (addB (eval_atomic e1 s) (eval_atomic e2 s))
                  s
     | bvSub v e1 e2 => State.upd v (subB (eval_atomic e1 s) (eval_atomic e2 s)) s

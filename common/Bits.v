@@ -308,7 +308,7 @@ Section BitsLemmas.
   Qed.
 
   Lemma addB_zeroExtend1_high_ext n (p1 p2 : BITS n) :
-    (if carry_addB p1 p2 then (fromNat 1) else (fromNat 0)) =
+    (fromNat (carry_addB p1 p2)) =
     zeroExtend (n - 1) (high 1 (addB (zeroExtend 1 p1) (zeroExtend 1 p2))).
   Proof.
     rewrite addB_zeroExtend1_high.

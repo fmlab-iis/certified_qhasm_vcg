@@ -162,10 +162,7 @@ Qed.
 
 Lemma toPosZ_addB2 w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
-  toPosZ
-    (if carry_addB bv1 bv2
-     then (@fromNat (1 + (w - 1)) 1)
-     else (@fromNat (1 + (w - 1)) 0)) = q.
+  toPosZ (@fromNat (1 + (w - 1)) (carry_addB bv1 bv2)) = q.
 Proof.
   rewrite !toPosZ_toNat addB_zeroExtend1_high_ext toNat_zeroExtend.
   rewrite addB_zeroExtend1_high /adcB toNat_splitmsb1 toNat_adcBmain add0n.
