@@ -1,0 +1,216 @@
+#.text
+
+#.extern	OPENSSL_ia32cap_P
+
+#.globl	bn_mul_mont
+#.type	bn_mul_mont,@function
+#.align	16
+#bn_mul_mont:
+#	mov	$2d,$2d
+#	mov	%rsp,%rax
+#.Lmul_enter:
+#	push	%rbx
+#	push	%rbp
+#	push	%r12
+#	push	%r13
+#	push	%r14
+#	push	%r15
+
+#	neg	$2
+#	mov	%rsp,%r11
+#	lea	-16(%rsp,$2,8),%rsp	# alloca(8*(num+2))
+#	neg	$2			# restore $2
+
+#	mov	%rax,8(%rsp,$2,8)	# tp[num+1]=%rsp
+#.Lmul_body:
+	mov	%rdx,%r12		# reassign %rdx
+	mov	(%r8),%r8		# pull n0[0] value
+	mov	(%r12),%rbx		# m0=bp[0]
+	mov	(%rsi),%rax
+
+#	xor	%r14,%r14			# i=0
+#	xor	%r15,%r15			# j=0
+
+	mov	%r8,%rbp
+	mulq	%rbx			# ap[0]*bp[0]
+	mov	%rax,%r10
+	mov	(%rcx),%rax
+
+	imulq	%r10,%rbp		# "tp[0]"*n0
+	mov	%rdx,%r11
+
+	mulq	%rbp			# np[0]*m1
+	add	%rax,%r10		# discarded
+	mov	8(%rsi),%rax
+	adc	$0,%rdx
+	mov	%rdx,%r13
+
+#	lea	1(%r15),%r15		# j++, j=1
+#	jmp	.L1st_enter
+
+#.align	16
+#.L1st:
+#	add	%rax,%r13
+#	mov	(%rsi,%r15,8),%rax
+#	adc	$0,%rdx
+#	add	%r11,%r13		# np[j]*m1+ap[j]*bp[0]
+#	mov	%r10,%r11
+#	adc	$0,%rdx
+#	mov	%r13,-16(%rsp,%r15,8)	# tp[j-1]
+#	mov	%rdx,%r13
+
+#.L1st_enter:
+	mulq	%rbx			# ap[j]*bp[0]
+	add	%rax,%r11
+	mov	(%rcx,$1,8),%rax
+	adc	$0,%rdx
+#	lea	1(%r15),%r15		# j++, j=2
+	mov	%rdx,%r10
+
+	mulq	%rbp			# np[j]*m1
+#	cmp	$2,%r15
+#	jne	.L1st
+    
+#.align	16
+#.L1st:
+#	add	%rax,%r13
+#	mov	(%rsi,%r15,8),%rax
+#	adc	$0,%rdx
+#	add	%r11,%r13		# np[j]*m1+ap[j]*bp[0]
+#	mov	%r10,%r11
+#	adc	$0,%rdx
+#	mov	%r13,-16(%rsp,%r15,8)	# tp[j-1]
+#	mov	%rdx,%r13
+
+	add	%rax,%r13
+	mov	(%rsi),%rax		# ap[0]
+	adc	$0,%rdx
+	add	%r11,%r13		# np[j]*m1+ap[j]*bp[0]
+	adc	$0,%rdx
+	mov	%r13,-16(%rsp,$2,8)	# tp[j-1]
+	mov	%rdx,%r13
+	mov	%r10,%r11
+
+	xor	%rdx,%rdx
+	add	%r11,%r13
+	adc	$0,%rdx
+	mov	%r13,-8(%rsp,$2,8)
+	mov	%rdx,(%rsp,$2,8)	# store upmost overflow bit
+
+#	lea	1(%r14),%r14		# i++, i=1
+#	jmp	.Louter
+#.align	16
+#.Louter:
+	mov	(%r12,$1,8),%rbx		# m0=bp[i]
+#	xor	%r15,%r15			# j=0
+	mov	%r8,%rbp
+	mov	(%rsp),%r10
+	mulq	%rbx			# ap[0]*bp[i]
+	add	%rax,%r10		# ap[0]*bp[i]+tp[0]
+	mov	(%rcx),%rax
+	adc	$0,%rdx
+
+	imulq	%r10,%rbp		# tp[0]*n0
+	mov	%rdx,%r11
+
+	mulq	%rbp			# np[0]*m1
+	add	%rax,%r10		# discarded
+	mov	8(%rsi),%rax
+	adc	$0,%rdx
+	mov	8(%rsp),%r10		# tp[1]
+	mov	%rdx,%r13
+
+#	lea	1(%r15),%r15		# j++, j=1
+#	jmp	.Linner_enter
+
+#.align	16
+#.Linner:
+#	add	%rax,%r13
+#	mov	(%rsi,%r15,8),%rax
+#	adc	$0,%rdx
+#	add	%r10,%r13		# np[j]*m1+ap[j]*bp[i]+tp[j]
+#	mov	(%rsp,%r15,8),%r10
+#	adc	$0,%rdx
+#	mov	%r13,-16(%rsp,%r15,8)	# tp[j-1]
+#	mov	%rdx,%r13
+
+#.Linner_enter:
+	mulq	%rbx			# ap[j]*bp[i]
+	add	%rax,%r11
+	mov	(%rcx,$1,8),%rax
+	adc	$0,%rdx
+	add	%r11,%r10		# ap[j]*bp[i]+tp[j]
+	mov	%rdx,%r11
+	adc	$0,%r11
+#	lea	1(%r15),%r15		# j++, j=2
+
+	mulq	%rbp			# np[j]*m1
+#	cmp	$2,%r15
+#	jne	.Linner
+
+	add	%rax,%r13
+	mov	(%rsi),%rax		# ap[0]
+	adc	$0,%rdx
+	add	%r10,%r13		# np[j]*m1+ap[j]*bp[i]+tp[j]
+	mov	(%rsp,$2,8),%r10
+	adc	$0,%rdx
+	mov	%r13,-16(%rsp,$2,8)	# tp[j-1]
+	mov	%rdx,%r13
+
+	xor	%rdx,%rdx
+	add	%r11,%r13
+	adc	$0,%rdx
+	add	%r10,%r13		# pull upmost overflow bit
+	adc	$0,%rdx
+	mov	%r13,-8(%rsp,$2,8)
+	mov	%rdx,(%rsp,$2,8)	# store upmost overflow bit
+
+#	lea	1(%r14),%r14		# i++, i=2
+#	cmp	$2,%r14
+#	jb	.Louter
+
+#	xor	%r14,%r14			# i=0 and clear CF!
+#	mov	(%rsp),%rax		# tp[0]
+#	lea	(%rsp),%rsi		# borrow ap for tp
+#	mov	$2,%r15			# j=num=2
+#	jmp	.Lsub
+#.align	16
+#.Lsub:	
+#	sbb	(%rcx,$0,8),%rax
+#	mov	%rax,(%rdi,$0,8)		# rp[i]=tp[i]-np[i]
+#	mov	8(%rsi,$0,8),%rax	# tp[i+1]
+#	lea	1(%r14),%r14		# i++, i=1
+#	dec	%r15			# doesnn't affect CF!, j=1
+#	jnz	.Lsub
+
+#	sbb	$0,%rax		# handle upmost overflow bit
+#	xor	%r14,%r14
+#	and	%rax,%rsi
+#	not	%rax
+#	mov	%rdi,%rcx
+#	and	%rax,%rcx
+#	mov	$2,%r15			# j=num
+#	or	%rcx,%rsi			# ap=borrow?tp:rp
+#.align	16
+#.Lcopy:					# copy or in-place refresh
+#	mov	(%rsi,%r14,8),%rax
+#	mov	%r14,(%rsp,%r14,8)		# zap temporary vector
+#	mov	%rax,(%rdi,%r14,8)		# rp[i]=tp[i]
+#	lea	1(%r14),%r14
+#	sub	$1,%r15
+#	jnz	.Lcopy
+
+#	mov	8(%rsp,$2,8),%rsi	# restore %rsp
+#	mov	$1,%rax
+#	mov	-48(%rsi),%r15
+#	mov	-40(%rsi),%r14
+#	mov	-32(%rsi),%r13
+#	mov	-24(%rsi),%r12
+#	mov	-16(%rsi),%rbp
+#	mov	-8(%rsi),%rbx
+#	lea	(%rsi),%rsp
+#.Lmul_epilogue:
+#	ret
+.size	bn_mul_mont,.-bn_mul_mont
+.asciz	"Montgomery Multiplication for x86_64, CRYPTOGAMS by <appro@openssl.org>"
+.align	16
