@@ -64,13 +64,13 @@ Definition subB_safe w (bv1 bv2 : BITS w) : bool :=
   ~~ carry_subB bv1 bv2.
 
 Definition mulB_safe w (bv1 bv2 : BITS w) : bool :=
-  high w (fullmulB bv1 bv2) == zero w.
+  high w (fullmulB bv1 bv2) == fromNat 0.
 
 Definition shlBn_safe w (bv : BITS w) n : bool :=
   ltB bv (shlBn (@fromNat w 1) (w - n)).
 
-Definition concatshl_safe w (bv : BITS w) n : bool :=
-    ltB bv (shlBn (@fromNat w 1) (w - n)).
+Definition concatshl_safe w (bv1 bv2 : BITS w) n : bool :=
+  shlBn_safe bv1 n.
 
 Definition bv2z_instr_safe_at (i : instr) (s : bv64SSA.State.t) : bool :=
   match i with
@@ -84,7 +84,8 @@ Definition bv2z_instr_safe_at (i : instr) (s : bv64SSA.State.t) : bool :=
   | bvMulf _ _ _ _ => true
   | bvShl _ a n => shlBn_safe (eval_atomic a s) (toNat n)
   | bvSplit _ _ _ _ => true
-  | bvConcatShl _ _ a1 a2 n => concatshl_safe (eval_atomic a1 s) (toNat n)
+  | bvConcatShl _ _ a1 a2 n =>
+    concatshl_safe (eval_atomic a1 s) (eval_atomic a1 s) (toNat n)
   end.
 
 Fixpoint bv2z_program_safe_at p s : bool :=
@@ -222,7 +223,7 @@ Proof.
 Admitted.
 
 Lemma toPosZ_mulB w (bv1 bv2 : BITS w) :
-  high w (fullmulB bv1 bv2) == zero w ->
+  high w (fullmulB bv1 bv2) == fromNat 0 ->
   toPosZ (bv1 * bv2) = (toPosZ bv1 * toPosZ bv2)%Z.
 Proof.
 Admitted.

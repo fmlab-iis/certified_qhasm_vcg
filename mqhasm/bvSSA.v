@@ -2098,6 +2098,22 @@ Proof.
     exact: H.
 Qed.
 
+Lemma well_formed_instr_rvs_unchanged_instr vs i i' :
+  bv64SSA.well_formed_instr vs i -> ssa_vars_unchanged_instr vs i' ->
+  ssa_vars_unchanged_instr (bv64SSA.rvs_instr i) i'.
+Proof.
+  move=> Hwell Hun. apply: (ssa_unchanged_instr_subset Hun).
+  exact: bv64SSA.well_formed_instr_subset_rvs.
+Qed.
+
+Lemma well_formed_instr_rvs_unchanged_program vs i p :
+  bv64SSA.well_formed_instr vs i -> ssa_vars_unchanged_program vs p ->
+  ssa_vars_unchanged_program (bv64SSA.rvs_instr i) p.
+Proof.
+  move=> Hwell Hun. apply: (ssa_unchanged_program_subset Hun).
+  exact: bv64SSA.well_formed_instr_subset_rvs.
+Qed.
+
 Lemma ssa_unchanged_instr_eval_atomic a s1 s2 i :
   ssa_vars_unchanged_instr (bv64SSA.vars_atomic a) i ->
   bv64SSA.eval_instr s1 i = s2 ->

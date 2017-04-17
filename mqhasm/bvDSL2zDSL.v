@@ -61,7 +61,7 @@ Definition subB_safe w (bv1 bv2 : BITS w) : bool :=
   ~~ carry_subB bv1 bv2.
 
 Definition mulB_safe w (bv1 bv2 : BITS w) : bool :=
-  high w (fullmulB bv1 bv2) == zero w.
+  high w (fullmulB bv1 bv2) == fromNat 0.
 
 Definition shlBn_safe w (bv : BITS w) n : bool :=
   ltB bv (shlBn (@fromNat w 1) (w - n)).
@@ -219,7 +219,7 @@ Proof.
 Admitted.
 
 Lemma toPosZ_mulB w (bv1 bv2 : BITS w) :
-  high w (fullmulB bv1 bv2) == zero w ->
+  high w (fullmulB bv1 bv2) == fromNat 0 ->
   toPosZ (bv1 * bv2) = (toPosZ bv1 * toPosZ bv2)%Z.
 Proof.
 Admitted.
