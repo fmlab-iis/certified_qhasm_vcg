@@ -264,7 +264,7 @@ Ltac ispec_to_poly_with o :=
     | |- valid_ispec ?ispec =>
       split; [
         by (simpl_with o; reflexivity)
-           || fail "The specification is not well formed" |
+           || fail 100 "The specification is not well formed" |
         apply_spec_split_post o;
         (apply_zslice_sound o;
         apply: ssa_spec_sound;
