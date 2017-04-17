@@ -123,6 +123,7 @@ VFILES:=lib/CompCert/Coqlib.v\
   common/Types.v\
   common/SsrOrdered.v\
   common/Lists.v\
+  common/Seqs.v\
   common/FMaps.v\
   common/FSets.v\
   common/Bools.v\
@@ -146,6 +147,8 @@ VFILES:=lib/CompCert/Coqlib.v\
   mqhasm/bvDSL.v\
   mqhasm/bvSSA.v\
   mqhasm/bvDSL2zDSL.v\
+  mqhasm/QF_BV.v\
+  mqhasm/bvSSA2QFBV.v\
   mqhasm/Verify.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)

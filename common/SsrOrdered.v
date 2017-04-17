@@ -24,7 +24,7 @@ Module Type SsrOrderedType <: OrderedType.
   Parameter T : eqType.
   Definition t : Type := T.
   Definition eq : t -> t -> Prop := fun x y => x == y.
-  Parameter Inline ltb : t -> t -> bool.
+  Parameter ltb : t -> t -> bool.
   Definition lt : t -> t -> Prop := fun x y => ltb x y.
   Axiom eq_refl : forall x : t, eq x x.
   Axiom eq_sym : forall x y : t, eq x y -> eq y x.

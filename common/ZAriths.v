@@ -1,5 +1,5 @@
 
-From Coq Require Import ZArith OrderedType.
+From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssralg ssrfun choice eqtype.
 From mathcomp Require ssrnat.
 From Common Require Import Types SsrOrdered Nats.
@@ -586,6 +586,113 @@ Section ZLemmas.
     move=> Hp.
     exact: (Zdiv_lt_upper_bound (x * y) p p Hp (Z.mul_lt_mono_nonneg _ _ _ _ Hx1 Hx2 Hy1 Hy2)) => H.
   Qed.
+
+  Lemma Zhalf_bit_double (n : Z) (b : bool) :
+    Z.div2 (Z.b2z b + n * 2) = n.
+  Proof.
+    rewrite Zdiv2_div Z_div_plus.
+    - by case: b.
+    - done.
+  Qed.
+
+  Lemma Zmul2l_add (n : Z) : 2 * n = n + n.
+  Proof.
+    replace 2 with (Z.succ 1) by reflexivity.
+    rewrite Z.mul_succ_l Z.mul_1_l. reflexivity.
+  Qed.
+
+  Lemma Zmul2r_add (n : Z) : n * 2 = n + n.
+  Proof.
+    rewrite Z.mul_comm. exact: Zmul2l_add.
+  Qed.
+
+  Lemma Zmod_mul2_sub1 n : 0 < n -> (n * 2 - 1) mod n = n - 1.
+  Proof.
+    move=> Hn. rewrite Zmul2r_add -Z.add_sub_assoc Z.add_comm.
+    rewrite -{2}(Z.mul_1_l n) Z_mod_plus_full Zmod_small; first by reflexivity.
+    split.
+    - exact: (proj1 (Z.lt_le_pred _ _) Hn).
+    - exact: (Z.lt_pred_l).
+  Qed.
+
+  Lemma divn_muln2_subn1 n : 0 < n -> (n * 2 - 1) / n = 1.
+  Proof.
+    move=> Hn1.
+    move: (not_eq_sym (Z.lt_neq _ _ Hn1)) => Hn2.
+    move: (Z_div_mod_eq (n * 2 - 1) n (Z.lt_gt _ _ Hn1)).
+    rewrite (Zmod_mul2_sub1 Hn1).
+    replace (n * 2 - 1) with (n + (n - 1)) by ring.
+    move=> H. move: (proj1 (Z.add_cancel_r _ _ _) H) => {H} H.
+    exact: (proj1 (Z.mul_id_r _ _ Hn2) (Logic.eq_sym H)).
+  Qed.
+
+  Lemma ltn_ltn_addn_divn x y n :
+    0 <= x < n -> 0 <= y < n -> Zdiv (x + y) n = 0 \/ Zdiv (x + y) n = 1.
+  Proof.
+    move=> [Hx1 Hx2] [Hy1 Hy2].
+    move: (Z.le_lt_trans _ _ _ Hx1 Hx2) => Hn1.
+    move: (Z.lt_gt _ _ Hn1) => Hn2.
+    move: (not_eq_sym (Z.lt_neq _ _ Hn1)) => Hn3.
+    move: (Z.add_le_mono _ _ _ _ Hx1 Hy1) => /= Hxy1.
+    move: (Z.add_lt_mono _ _ _ _ Hx2 Hy2) => Hxy2.
+    move: (proj1 (Z.lt_le_pred (x + y) (n + n)) Hxy2) => {Hxy2} Hxy2.
+    move: (Z.lt_ge_cases (x + y) n); case => Hxy3.
+    - rewrite (Z.div_small _ _ (conj Hxy1 Hxy3)). left; reflexivity.
+    - move: (Z_div_le _ _ _ Hn2 Hxy3).
+      rewrite (Z_div_same_full _ Hn3) => Hdiv1.
+      move: (Z_div_le _ _ _ Hn2 Hxy2).
+      rewrite -Zmul2r_add (divn_muln2_subn1 Hn1) => Hdiv2.
+      right. exact: (Z.le_antisymm _ _ Hdiv2 Hdiv1).
+  Qed.
+
+  Lemma Zdiv_eucl_q (n d q r : Z) :
+    (q, r) = Z.div_eucl n d ->
+    q = n / d.
+  Proof.
+    move=> Hqr. rewrite /Z.div -Hqr. reflexivity.
+  Qed.
+
+  Lemma Zdiv_eucl_r (n d q r : Z) :
+    (q, r) = Z.div_eucl n d ->
+    r = n mod d.
+  Proof.
+    move=> Hqr. rewrite /Z.modulo -Hqr. reflexivity.
+  Qed.
+
+  Lemma Zdiv_eucl_q_ge0 (a b : Z) :
+    let (q, r) := Z.div_eucl a b in
+    0 <= a -> 0 <= b -> 0 <= q.
+  Proof.
+    set tmp := Z.div_eucl a b.
+    have: tmp = Z.div_eucl a b by reflexivity.
+    destruct tmp as [q r]. move=> Heucl Ha Hb.
+    rewrite (Zdiv_eucl_q Heucl).
+    case: (proj1 (Z.lt_eq_cases 0 b) Hb) => {Hb} Hb.
+    - exact: (Z.ge_le _ _ (Z_div_ge0 _ _ (Z.lt_gt _ _ Hb) (Z.le_ge _ _ Ha))).
+    - by rewrite -Hb Zdiv_0_r.
+  Qed.
+
+  Lemma Nat2Z_inj_odd (n : nat) :
+    Z.odd (Z.of_nat n) = Nat.odd n.
+  Proof.
+    elim: n.
+    - reflexivity.
+    - move=> n IH. rewrite -Nat.add_1_r Nat2Z.inj_add Z.odd_add Nat.odd_add /=.
+      rewrite IH.
+      reflexivity.
+  Qed.
+
+  Lemma Nat2Z_inj_pow (n m : nat) :
+    Z.of_nat (Nat.pow n m) = Z.pow (Z.of_nat n) (Z.of_nat m).
+  Proof.
+    elim: m n.
+    - reflexivity.
+    - move=> n IH m.
+      rewrite Nat2Z.inj_mul IH -!Zpower_nat_Z -Zpower_nat_succ_r.
+      reflexivity.
+  Qed.
+
+  Local Close Scope Z_scope.
 
 End ZLemmas.
 

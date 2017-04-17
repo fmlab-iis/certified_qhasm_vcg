@@ -311,7 +311,7 @@ Fixpoint eval_program E (p : program E) (st : State.t E) : State.t E :=
 Definition instr_ovf E (i : instr E) (st: State.t E) : bool :=
   match i with
   | QAssign r s => false
-  | QAdd r s t => addB_ovf (eval_atomic s st) (eval_atomic t st)
+  | QAdd r s t => carry_addB (eval_atomic s st) (eval_atomic t st)
   | QAddC r s t => false (* tbd *)
   | QAdc r s t => false
   | QAdcC r s t => false (* tbd *)
