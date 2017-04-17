@@ -2,6 +2,7 @@
 
 import sys
 import re
+import collections
 
 class Instr:
   def __init__(self, asm, dsl):
@@ -13,32 +14,40 @@ class Instr:
 def flatten(vs):
   return [num for elem in vs for num in elem]
 
+def is_descriptor_comment(line):
+  return re.match(r"^#!.*$", line)
+
 def is_asm_comment(line):
-  return re.match(r"^#.*$", line)
+  return re.match(r"^#.*$", line) and not is_descriptor_comment(line)
 
 def is_empty_line(line):
   return re.match(r"^\s*$", line)
 
+def parse_subst(line):
+  tokens = map(lambda x: x.strip(), line.split("="))
+  return (tokens[0], tokens[1])
+
 def trline(descriptor, line):
   substs, rules = descriptor
   res = line
+  subst_comment = re.search('#!(.*?)$', line)
+  if subst_comment:
+    (local_lhs, local_rhs) = parse_subst(subst_comment.group(1))
+    res = res.replace(local_lhs, local_rhs)
   for lhs, rhs in substs.iteritems():
     res = res.replace(lhs, rhs)
   for pattern, replacement in rules.iteritems():
     if re.match(pattern, res):
-      res = re.sub(pattern, replacement, res).strip()
+      res = re.sub(pattern, replacement, res)
+      res = re.sub("#.*$", "", res).strip()
       break
   return Instr(line, res)
 
 def trfile(descriptor, fn):
   lines = []
   with open(fn) as f:
-    lines = map(lambda line: trline(descriptor, line.strip()), [item for item in f.readlines() if not is_asm_comment(item) and not is_empty_line(item)])
+    lines = map(lambda line: trline(descriptor, line.strip()), [item for item in f.readlines() if not is_asm_comment(item) and not is_empty_line(item) and not is_descriptor_comment(item)])
   return lines
-
-def parse_subst(line):
-  tokens = map(lambda x: x.strip(), line.split("="))
-  return (tokens[0], tokens[1])
 
 def parse_rule(line):
   nums = [1, 2, 3, 4]
@@ -80,7 +89,19 @@ def parse_descriptor(fn):
     lines = map(parse_pattern, [item for item in f.readlines() if not is_asm_comment(item) and not is_empty_line(item)])
     substs = substs + [x[0] for x in lines]
     rules = rules + [x[1] for x in lines]
-  return (dict(flatten(substs)), dict(flatten(rules)))
+  return (collections.OrderedDict(flatten(substs)), dict(flatten(rules)))
+
+def parse_pattern_comment(line):
+  return parse_pattern(re.sub(r"^#!", "", line))
+
+def parse_descriptor_comment(fn):
+  substs = []
+  rules = []
+  with open(fn) as f:
+    lines = map(parse_pattern_comment, [item for item in f.readlines() if is_descriptor_comment(item)])
+    substs = substs + [x[0] for x in lines]
+    rules = rules + [x[1] for x in lines]
+  return (collections.OrderedDict(flatten(substs)), dict(flatten(rules)))
 
 def vars(instrs):
   vars = set()
@@ -96,8 +117,11 @@ def vars(instrs):
   return vars
 
 def main():
-  if len(sys.argv) == 3:
-    res = trfile(parse_descriptor(sys.argv[1]), sys.argv[2])
+  if (len(sys.argv) == 3 or len(sys.argv) == 2):
+    if (len(sys.argv) == 3):
+      res = trfile(parse_descriptor(sys.argv[1]), sys.argv[2])
+    else:
+      res = trfile(parse_descriptor_comment(sys.argv[1]), sys.argv[1])
     print "From Coq Require Import ZArith ."
     print "From mQhasm Require Import zDSL zRadix ."
     print "From mathcomp Require Import seq ."
@@ -115,7 +139,8 @@ def main():
     print "]."
   else:
     print "Wrong number of arguments."
-    print "Usage: python " + sys.argv[0] + " DESCRIPTOR ASSEMBLY"
+    print "Usage: python " + sys.argv[0] + " DESCRIPTOR ASSEMBLY; or"
+    print "       python " + sys.argv[0] + " ASSEMBLY"
 
 if __name__ == "__main__":
   main()
