@@ -204,7 +204,8 @@ Fixpoint ssa_bexp (m : vmap) (e : bexp) : bv64SSA.bexp :=
   match e with
   | bvTrue => bv64SSA.bvTrue
   | bvEq _ e1 e2 => bv64SSA.bvEq (ssa_exp m e1) (ssa_exp m e2)
-  | bvEqMod _ e1 e2 p => bv64SSA.bvEqMod (ssa_exp m e1) (ssa_exp m e2) p
+  | bvEqMod _ e1 e2 p => bv64SSA.bvEqMod (ssa_exp m e1) (ssa_exp m e2)
+                                         (ssa_exp m p)
   | bvCmp _ op e1 e2 => bv64SSA.bvCmp (ssa_cmpop op) (ssa_exp m e1) (ssa_exp m e2)
   | bvAnd e1 e2 => bv64SSA.bvAnd (ssa_bexp m e1) (ssa_bexp m e2)
   end.
@@ -726,6 +727,15 @@ Proof.
           (bv64SSA.VS.union (bv64SSA.vars_exp (ssa_exp ?m ?e1))
                             (bv64SSA.vars_exp (ssa_exp ?m ?e2))) =>
      rewrite ssa_vars_exp_union;
+     reflexivity
+   | |- bv64SSA.VS.Equal
+          (ssa_vars ?m (VS.union (vars_exp ?e1)
+                                 (VS.union (vars_exp ?e2) (vars_exp ?e3))))
+          (bv64SSA.VS.union (bv64SSA.vars_exp (ssa_exp ?m ?e1))
+                            (bv64SSA.VS.union
+                               (bv64SSA.vars_exp (ssa_exp ?m ?e2))
+                               (bv64SSA.vars_exp (ssa_exp ?m ?e3)))) =>
+     rewrite ssa_vars_union ssa_vars_exp_union ssa_vars_exp_comm;
      reflexivity
    | H1: bv64SSA.VS.Equal (ssa_vars ?m (vars_bexp ?e1))
                           (bv64SSA.vars_bexp (ssa_bexp ?m ?e1)),
@@ -1275,7 +1285,7 @@ Proof.
     rewrite 2!(ssa_eval_exp _ Heq).
     done.
   - move=> w e1 e2 p.
-    rewrite 2!(ssa_eval_exp _ Heq).
+    rewrite 3!(ssa_eval_exp _ Heq).
     done.
   - move=> w op e1 e2.
     rewrite 2!(ssa_eval_exp _ Heq) ssa_eval_cmpop.
@@ -2186,8 +2196,10 @@ Proof.
     done.
   - move=> w e1 e2 p Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+    move: (ssa_unchanged_instr_union1 Hun2) => {Hun2} [Hun2 Hunp].
     rewrite (ssa_unchanged_instr_eval_exp Hun1 Hei)
-            (ssa_unchanged_instr_eval_exp Hun2 Hei).
+            (ssa_unchanged_instr_eval_exp Hun2 Hei)
+            (ssa_unchanged_instr_eval_exp Hunp Hei).
     done.
   - move=> w op e1 e2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -2214,8 +2226,10 @@ Proof.
     done.
   - move=> w e1 e2 n Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+    move: (ssa_unchanged_program_union1 Hun2) => {Hun2} [Hun2 Hunp].
     rewrite (ssa_unchanged_program_eval_exp Hun1 Hep)
-            (ssa_unchanged_program_eval_exp Hun2 Hep).
+            (ssa_unchanged_program_eval_exp Hun2 Hep)
+            (ssa_unchanged_program_eval_exp Hunp Hep).
     done.
   - move=> w op e1 e2 Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -3008,9 +3022,9 @@ Proof.
     move/orP: Hmem; case=> Hmem;
     apply: (ssa_exp_var_index Hmem); reflexivity.
   - move=> w e1 e2 p m v i Hmem.
-    rewrite bv64SSA.VSLemmas.union_b in Hmem.
-    move/orP: Hmem; case=> Hmem;
-    apply: (ssa_exp_var_index Hmem); reflexivity.
+    rewrite !bv64SSA.VSLemmas.union_b in Hmem.
+    repeat (move/orP: Hmem; case=> Hmem);
+    exact: (ssa_exp_var_index Hmem).
   - move=> w op e1 e2 m v i Hmem.
     rewrite bv64SSA.VSLemmas.union_b in Hmem.
     move/orP: Hmem; case=> Hmem;

@@ -145,7 +145,7 @@ Fixpoint ssa_bexp (m : vmap) (e : bexp) : zSSA.bexp :=
   match e with
   | zTrue => zSSA.zTrue
   | zEq e1 e2 => zSSA.zEq (ssa_exp m e1) (ssa_exp m e2)
-  | zEqMod e1 e2 p => zSSA.zEqMod (ssa_exp m e1) (ssa_exp m e2) p
+  | zEqMod e1 e2 p => zSSA.zEqMod (ssa_exp m e1) (ssa_exp m e2) (ssa_exp m p)
   | zAnd e1 e2 => zSSA.zAnd (ssa_bexp m e1) (ssa_bexp m e2)
   end.
 
@@ -571,7 +571,8 @@ Proof.
   - move=> e1 e2.
     rewrite ssa_vars_exp_union.
     reflexivity.
-  - move=> e1 e2 _.
+  - move=> e1 e2 p.
+    rewrite ssa_vars_union ssa_vars_exp_comm.
     rewrite ssa_vars_exp_union.
     reflexivity.
   - move=> e1 IH1 e2 IH2.
@@ -849,7 +850,7 @@ Proof.
     rewrite 2!(ssa_eval_exp _ Heq).
     done.
   - move=> e1 e2 p.
-    rewrite 2!(ssa_eval_exp _ Heq).
+    rewrite 3!(ssa_eval_exp _ Heq).
     done.
   - move=> e1 [IH11 IH12] e2 [IH21 IH22].
     tauto.
@@ -1705,8 +1706,10 @@ Proof.
     done.
   - move=> e1 e2 p Hun Hi.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+    move: (ssa_unchanged_instr_union1 Hun2) => {Hun2} [Hun2 Hunp].
     rewrite (ssa_unchanged_instr_eval_exp Hun1 Hi)
-            (ssa_unchanged_instr_eval_exp Hun2 Hi).
+            (ssa_unchanged_instr_eval_exp Hun2 Hi)
+            (ssa_unchanged_instr_eval_exp Hunp Hi).
     done.
   - move=> e1 IH1 e2 IH2 Hun Hi.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -1728,8 +1731,10 @@ Proof.
     done.
   - move=> e1 e2 i Hunch Hp.
     move: (ssa_unchanged_program_union1 Hunch) => {Hunch} [Hunch1 Hunch2].
+    move: (ssa_unchanged_program_union1 Hunch2) => {Hunch2} [Hunch2 Hunchp].
     rewrite (ssa_unchanged_program_eval_exp Hunch1 Hp)
-            (ssa_unchanged_program_eval_exp Hunch2 Hp).
+            (ssa_unchanged_program_eval_exp Hunch2 Hp)
+            (ssa_unchanged_program_eval_exp Hunchp Hp).
     done.
   - move=> e1 IH1 e2 IH2 Hunch Hp.
     move: (ssa_unchanged_program_union1 Hunch) => {Hunch} [Hunch1 Hunch2].
@@ -2379,9 +2384,9 @@ Proof.
     move/orP: Hmem; case=> Hmem;
     apply: (ssa_exp_var_index Hmem); reflexivity.
   - move=> e1 e2 p m v i Hmem.
-    rewrite zSSA.VSLemmas.union_b in Hmem.
-    move/orP: Hmem; case=> Hmem;
-    apply: (ssa_exp_var_index Hmem); reflexivity.
+    rewrite !zSSA.VSLemmas.union_b in Hmem.
+    repeat (move/orP: Hmem; case=> Hmem);
+    exact: (ssa_exp_var_index Hmem).
   - move=> e1 IH1 e2 IH2 m v i Hmem.
     rewrite zSSA.VSLemmas.union_b in Hmem.
     move/orP: Hmem; case=> Hmem.

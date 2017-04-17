@@ -385,7 +385,7 @@ Fixpoint bv2z_exp n (e : exp n) : zSSA.exp :=
 Inductive ebexp :=
   | bvETrue : ebexp
   | bvEEq : forall n : nat, exp n -> exp n -> ebexp
-  | bvEEqMod : forall n : nat, exp n -> exp n -> BITS n -> ebexp
+  | bvEEqMod : forall n : nat, exp n -> exp n -> exp n -> ebexp
   | bvEAnd : ebexp -> ebexp -> ebexp.
 
 Inductive cbexp :=
@@ -409,7 +409,7 @@ Fixpoint bv2z_ebexp e : zSSA.bexp :=
   | bvETrue => zSSA.zTrue
   | bvEEq _ e1 e2 => zSSA.zEq (bv2z_exp e1) (bv2z_exp e2)
   | bvEEqMod _ e1 e2 p =>
-    zSSA.zEqMod (bv2z_exp e1) (bv2z_exp e2) (toPosZ p)
+    zSSA.zEqMod (bv2z_exp e1) (bv2z_exp e2) (bv2z_exp p)
   | bvEAnd e1 e2 => zSSA.zAnd (bv2z_ebexp e1) (bv2z_ebexp e2)
   end.
 
@@ -441,7 +441,9 @@ Fixpoint bv2z_bexp_safe_at (e : bexp) s : bool :=
   match e with
   | bvTrue => true
   | bvEq _ e1 e2 => bv2z_exp_safe_at e1 s && bv2z_exp_safe_at e2 s
-  | bvEqMod _ e1 e2 p => bv2z_exp_safe_at e1 s && bv2z_exp_safe_at e2 s
+  | bvEqMod _ e1 e2 p => bv2z_exp_safe_at e1 s
+                                          && bv2z_exp_safe_at e2 s
+                                          && bv2z_exp_safe_at p s
   | bvCmp _ op e1 e2 => bv2z_exp_safe_at e1 s && bv2z_exp_safe_at e2 s
   | bvAnd e1 e2 => bv2z_bexp_safe_at e1 s && bv2z_bexp_safe_at e2 s
   end.
@@ -503,8 +505,9 @@ Proof.
   - move=> w e1 e2 /andP [Hsafe1 Hsafe2] Heq Heval.
     rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq).
     rewrite Heval; reflexivity.
-  - move=> w e1 e2 p /andP [Hsafe1 Hsafe2] Heq Heval.
-    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq).
+  - move=> w e1 e2 p /andP [/andP [Hsafe1 Hsafe2] Hsafep] Heq Heval.
+    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq)
+            -(bvz_eq_eval_exp Hsafep Heq).
     exact: Heval.
   - done.
   - move=> e1 IH1 e2 IH2 /andP [Hsafe1 Hsafe2] Heq [Heval1 Heval2].
@@ -523,8 +526,9 @@ Proof.
   - move=> w e1 e2 /andP [Hsafe1 Hsafe2] Heq _ Heval.
     rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq) in Heval.
     exact: (toPosZ_inj Heval).
-  - move=> w e1 e2 p /andP [Hsafe1 Hsafe2] Heq _ Heval.
-    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq) in Heval.
+  - move=> w e1 e2 p /andP [/andP [Hsafe1 Hsafe2] Hsafep] Heq _ Heval.
+    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq)
+            -(bvz_eq_eval_exp Hsafep Heq) in Heval.
     exact: Heval.
   - move=> w op e1 e2 /andP [Hsafe1 Hsafe2] Heq Heval _.
     exact: Heval.
@@ -737,8 +741,8 @@ Proof.
        | |- is_true (zSSA.VS.subset zSSA.VS.empty _) =>
          exact: zSSA.VSLemmas.subset_empty
        | |- is_true (zSSA.VS.subset _ (bv2z_vars (VS.union _ _))) =>
-         rewrite bv2z_vars_union;
-         apply: zSSA.VSLemmas.subset_union3;
+         rewrite !bv2z_vars_union;
+         repeat (apply: zSSA.VSLemmas.subset_union3);
          tac
        | |- is_true (zSSA.VS.subset
                        (zSSA.vars_exp (bv2z_exp ?e))
@@ -752,6 +756,10 @@ Proof.
          apply: zSSA.VSLemmas.subset_union2;
          rewrite bv2z_exp_vars;
          exact: zSSA.VSLemmas.subset_refl
+       | |- is_true (zSSA.VS.subset
+                       (zSSA.vars_exp (bv2z_exp ?e))
+                       (zSSA.VS.union _ (zSSA.VS.union _ _))) =>
+         apply: zSSA.VSLemmas.subset_union2; tac
        | H : is_true (zSSA.VS.subset ?vs1 ?vs2) |-
          is_true (zSSA.VS.subset ?vs1 (zSSA.VS.union ?vs2 _)) =>
          apply: zSSA.VSLemmas.subset_union1;
@@ -786,7 +794,7 @@ Proof.
   elim: f => /=.
   - exact: VSLemmas.subset_empty.
   - move=> w e1 e2; exact: VSLemmas.subset_empty.
-  - move=> w e1 e2 _; exact: VSLemmas.subset_empty.
+  - move=> w e1 e2 p; exact: VSLemmas.subset_empty.
   - move=> w _ e1 e2.
     exact: VSLemmas.subset_refl.
   - move=> e1 IH1 e2 IH2.

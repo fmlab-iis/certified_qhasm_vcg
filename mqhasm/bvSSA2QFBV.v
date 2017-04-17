@@ -127,9 +127,7 @@ Fixpoint bexp_bexp (e : bexp) : QFBV64.bexp :=
   match e with
   | bvTrue => QFBV64.bvTrue
   | bvEq _ e1 e2 => QFBV64.bvEq (exp_exp e1) (exp_exp e2)
-  | bvEqMod _ e1 e2 p => QFBV64.bvEqMod (exp_exp e1)
-                                        (exp_exp e2)
-                                        (QFBV64.bvConst p)
+  | bvEqMod _ e1 e2 p => QFBV64.bvEqMod (exp_exp e1) (exp_exp e2) (exp_exp p)
   | bvCmp _ op e1 e2 =>
     match op with
     | bvUltOp => QFBV64.bvUlt (exp_exp e1) (exp_exp e2)
@@ -575,7 +573,9 @@ Fixpoint bexp_bexp_safe (e : bexp) : QFBV64.bexp :=
   match e with
   | bvTrue => QFBV64.bvTrue
   | bvEq _ e1 e2 => QFBV64.bvConj (bexp_exp_safe e1) (bexp_exp_safe e2)
-  | bvEqMod _ e1 e2 p => QFBV64.bvConj (bexp_exp_safe e1) (bexp_exp_safe e2)
+  | bvEqMod _ e1 e2 p => QFBV64.bvConj (bexp_exp_safe e1)
+                                       (QFBV64.bvConj (bexp_exp_safe e2)
+                                                      (bexp_exp_safe p))
   | bvCmp _ op e1 e2 => QFBV64.bvConj (bexp_exp_safe e1) (bexp_exp_safe e2)
   | bvAnd e1 e2 => QFBV64.bvConj (bexp_bexp_safe e1) (bexp_bexp_safe e2)
   end.

@@ -423,7 +423,7 @@ zEqMod
     zPow (radix51 [::zVar x0; zVar x1; zVar x2; zVar x3; zVar x4]) 2
   )
   (radix51 [::zVar z0; zVar z1; zVar z2; zVar z3; zVar z4])
-  (n25519).
+  (zConst n25519).
 
 Definition fe25519_sq_spec :=
   {| spre := fe25519_sq_pre;

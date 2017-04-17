@@ -117,7 +117,7 @@ zEqMod
     (radix51 [::zVar y0; zVar y1; zVar y2; zVar y3; zVar y4])
   )
   (radix51 [::zVar r0; zVar r1; zVar r2; zVar r3; zVar r4])
-  (n25519).
+  (zConst n25519).
 
 Definition fe25519_add_spec :=
   {| spre := fe25519_add_pre;

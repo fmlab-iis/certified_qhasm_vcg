@@ -652,7 +652,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Inductive bexp : Type :=
   | bvTrue : bexp
   | bvEq : forall n : nat, exp n -> exp n -> bexp
-  | bvEqMod : forall n : nat, exp n -> exp n -> BITS n -> bexp
+  | bvEqMod : forall n : nat, exp n -> exp n -> exp n -> bexp
   | bvCmp : forall n : nat, cmpop -> exp n -> exp n -> bexp
   | bvAnd : bexp -> bexp -> bexp.
 
@@ -674,8 +674,9 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Fixpoint vars_bexp (e : bexp) : VS.t :=
     match e with
     | bvTrue => VS.empty
-    | bvEq _ e1 e2
-    | bvEqMod _ e1 e2 _
+    | bvEq _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | bvEqMod _ e1 e2 p => VS.union (vars_exp e1)
+                                    (VS.union (vars_exp e2) (vars_exp p))
     | bvCmp _ _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
     | bvAnd e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
@@ -712,7 +713,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     match e with
     | bvTrue => True
     | bvEq _ e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | bvEqMod _ e1 e2 p => modulo (toPosZ (eval_exp e1 s)) (toPosZ (eval_exp e2 s)) (toPosZ p)
+    | bvEqMod _ e1 e2 p => modulo (toPosZ (eval_exp e1 s)) (toPosZ (eval_exp e2 s)) (toPosZ (eval_exp p s))
     | bvCmp _ op e1 e2 => eval_cmpop op (eval_exp e1 s) (eval_exp e2 s)
     | bvAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
     end.

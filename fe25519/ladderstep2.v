@@ -1038,7 +1038,7 @@ let        n25519 := 57896044618658097711785492504343953926634992332820282019728
 zEqMod
   (bi_limbs X2')
   (zPow (zsub (zPow (bi_limbs X2) 2) (zPow (bi_limbs Z2) 2)) 2)
-  n25519.
+  (zConst n25519).
 
 Definition fe25519_ladderstep_post2 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1074,7 +1074,7 @@ zEqMod
                      zmuls [:: zConst 486662; bi_limbs X2; bi_limbs Z2];
                      zPow (bi_limbs Z2) 2]
          ])
-  n25519.
+  (zConst n25519).
 
 Definition fe25519_ladderstep_post3 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1109,7 +1109,7 @@ zEqMod
   (zmul (bi_limbs Z3')
         (zPow (zsub (zmul (bi_limbs X2) (bi_limbs X3))
                     (zmul (bi_limbs Z2) (bi_limbs Z3))) 2))
-  n25519.
+  (zConst n25519).
 
 Definition fe25519_ladderstep_post3_1 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1141,7 +1141,7 @@ zEqMod
   (zmul (zConst 4)
         (zPow (zsub (zmul (bi_limbs X2) (bi_limbs X3))
                     (zmul (bi_limbs Z2) (bi_limbs Z3))) 2))
-  n25519.
+  (zConst n25519).
 
 Definition fe25519_ladderstep_post3_2 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1174,7 +1174,7 @@ zEqMod
         (zmul (bi_limbs X1)
               (zPow (zsub (zmul (bi_limbs X3) (bi_limbs Z2))
                           (zmul (bi_limbs X2) (bi_limbs Z3))) 2)))
-  n25519.
+  (zConst n25519).
 
 Definition fe25519_ladderstep_post : bexp :=
   zands [:: fe25519_ladderstep_post1;

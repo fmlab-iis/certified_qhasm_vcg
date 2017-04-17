@@ -83,7 +83,7 @@ zEqMod
     (zConst 121666)
   )
   (radix51 [::zVar r0; zVar r1; zVar r2; zVar r3; zVar r4])
-  (n25519).
+  (zConst n25519).
 
 Definition fe25519_mul121666_spec :=
   {| spre := fe25519_mul121666_pre;

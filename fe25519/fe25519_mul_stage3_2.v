@@ -212,7 +212,7 @@ let        n25519 := 57896044618658097711785492504343953926634992332820282019728
 zEqMod
   (radix51 [::zVar z0; zVar z1; zVar z2; zVar z3; zVar z4])
   (radix51 [::zVar r0; zVar r1; zVar r2; zVar r3; zVar r4])
-  (n25519).
+  (zConst n25519).
 
 Definition fe25519_mul_stage3_2_spec :=
   {| spre := fe25519_mul_stage3_2_pre;

@@ -503,7 +503,7 @@ zEqMod
                 zBinop zAdd (zVar r3) (zmul2p (zVar mulr31) 64);
                 zBinop zAdd (zVar r4) (zmul2p (zVar mulr41) 64) ]
   )
-  n25519.
+  (zConst n25519).
 
 Definition fe25519_mul_stage12_spec :=
   {| spre := fe25519_mul_stage12_pre;

@@ -547,7 +547,7 @@ Module MakeZDSL (V : SsrOrderedType).
   Inductive bexp : Type :=
   | zTrue : bexp
   | zEq : exp -> exp -> bexp
-  | zEqMod : exp -> exp -> Z -> bexp
+  | zEqMod : exp -> exp -> exp -> bexp
   | zAnd : bexp -> bexp -> bexp.
 
   Fixpoint zands es : bexp :=
@@ -561,7 +561,8 @@ Module MakeZDSL (V : SsrOrderedType).
     match e with
     | zTrue => VS.empty
     | zEq e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | zEqMod e1 e2 _ => VS.union (vars_exp e1) (vars_exp e2)
+    | zEqMod e1 e2 p => VS.union (vars_exp e1)
+                                 (VS.union (vars_exp e2) (vars_exp p))
     | zAnd e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
 
@@ -569,7 +570,7 @@ Module MakeZDSL (V : SsrOrderedType).
     match e with
     | zTrue => True
     | zEq e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | zEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) p
+    | zEqMod e1 e2 p => modulo (eval_exp e1 s) (eval_exp e2 s) (eval_exp p s)
     | zAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
     end.
 
@@ -1153,7 +1154,9 @@ Module MakeZDSL (V : SsrOrderedType).
       reflexivity.
     - move=> e1 e2 p Heqm.
       move: (state_eqmod_union1 Heqm) => {Heqm} [Heqm1 Heqm2].
-      rewrite (state_eqmod_exp Heqm1) (state_eqmod_exp Heqm2).
+      move: (state_eqmod_union1 Heqm2) => {Heqm2} [Heqm2 Heqmp].
+      rewrite (state_eqmod_exp Heqm1) (state_eqmod_exp Heqm2)
+              (state_eqmod_exp Heqmp).
       reflexivity.
     - move=> e1 IH1 e2 IH2 Heqm.
       move: (state_eqmod_union1 Heqm) => {Heqm} [Heqm1 Heqm2].
@@ -2083,11 +2086,11 @@ Module MakeZDSL (V : SsrOrderedType).
     match e with
     | zTrue => e
     | zEq e1 e2 =>
-      if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
+      if VSLemmas.disjoint vs (vars_bexp e)
       then zTrue
       else e
     | zEqMod e1 e2 p =>
-      if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
+      if VSLemmas.disjoint vs (vars_bexp e)
       then zTrue
       else e
     | zAnd e1 e2 => zAnd (slice_bexp vs e1) (slice_bexp vs e2)
@@ -2130,7 +2133,9 @@ Module MakeZDSL (V : SsrOrderedType).
         first by done.
       exact: He.
     - move=> e1 e2 p vs s Hm.
-      case: (VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2)));
+      case: (VSLemmas.disjoint vs (VS.union
+                                     (vars_exp e1)
+                                     (VS.union (vars_exp e2) (vars_exp p))));
         first by done.
       exact: Hm.
     - move=> e1 IH1 e2 IH2 vs s [H1 H2].
@@ -2147,7 +2152,9 @@ Module MakeZDSL (V : SsrOrderedType).
       + exact: VSLemmas.subset_empty.
       + exact: VSLemmas.subset_refl.
     - move=> e1 e2 p.
-      case: (VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))) => /=.
+      case: (VSLemmas.disjoint vs (VS.union
+                                     (vars_exp e1)
+                                     (VS.union (vars_exp e2) (vars_exp p)))) => /=.
       + exact: VSLemmas.subset_empty.
       + exact: VSLemmas.subset_refl.
     - move=> e1 IH1 e2 IH2.
