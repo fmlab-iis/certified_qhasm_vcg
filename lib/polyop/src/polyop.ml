@@ -483,7 +483,7 @@ let pdiv ?engine:engine p c =
     | Some e -> e in
   let ifile = Filename.temp_file "inputfgb_" "" in
   let ofile = Filename.temp_file "outputfgb_" "" in
-  let nvars = num_of_vars p in
+  let nvars = num_of_vars p + num_of_vars c in
   let vars = gen_vars nvars in
   let res =
     match eng with
