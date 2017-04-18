@@ -158,7 +158,7 @@ Ltac simplZ :=
 Ltac modp_find_witness_with eng :=
   match goal with
   | |- exists k : Z, ?p = k * ?c =>
-    let l := variables p in
+    let l := variables (p + c) in
     let ap := abstrait p l in
     let ac := abstrait c l in
     pdiv_with eng ap ac ltac:(fun w =>
