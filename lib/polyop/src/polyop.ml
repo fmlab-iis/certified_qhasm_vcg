@@ -371,8 +371,16 @@ let write_singular_input file vars p c =
     "ring r = integer, (" ^ (String.concat "," vars) ^ "), lp;\n"
     ^ "poly f = " ^ (singular_string_of_term p) ^ ";\n"
     ^ "poly g = " ^ (singular_string_of_term c) ^ ";\n"
+    ^ "ideal I = std(g);\n"
+    ^ "matrix M = lift(I, f);\n"
+    ^ "poly h = M[1,1];\n"
+    ^ "h;\n"
+(*
+    ^ "poly f = " ^ (singular_string_of_term p) ^ ";\n"
+    ^ "poly g = " ^ (singular_string_of_term c) ^ ";\n"
     ^ "poly h = f / g;\n"
     ^ "h;\n"
+ *)
     ^ "exit;\n" in
   let ch = open_out file in
   let _ = output_string ch input_text; close_out ch in
