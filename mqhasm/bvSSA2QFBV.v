@@ -779,6 +779,55 @@ Proof.
   - move=> w e IH _ H. exact: (IH H).
 Qed.
 
+Lemma eval_bexp_bexp_safe1 e s :
+  QFBV64.eval_bexp (bexp_bexp_safe e) s -> bv2z_bexp_safe_at e s.
+Proof.
+  elim: e => /=; intros;
+  (let rec tac :=
+       match goal with
+       | |- is_true true => exact: is_true_true
+       | H : _ /\ _ |- _ =>
+         let H1 := fresh in let H2 := fresh in
+         move: H => [H1 H2]; tac
+       | H : QFBV64.eval_bexp (bexp_exp_safe ?e) ?s |-
+         context f [bv2z_exp_safe_at ?e ?s] =>
+         rewrite (eval_bexp_exp_safe1 H) /=; tac
+       | H : is_true (bv2z_bexp_safe_at ?e ?s) |-
+         context f [bv2z_bexp_safe_at ?e ?s] =>
+         rewrite H /=; tac
+       | H1 : QFBV64.eval_bexp (bexp_bexp_safe ?b) ?s ->
+                              is_true (bv2z_bexp_safe_at ?b ?s),
+         H2 : QFBV64.eval_bexp (bexp_bexp_safe ?b) ?s |- _ =>
+         move: (H1 H2) => {H1 H2} H1; tac
+       | |- _ => idtac
+       end in
+   tac).
+Qed.
+
+Lemma eval_bexp_bexp_safe2 e s :
+  bv2z_bexp_safe_at e s -> QFBV64.eval_bexp (bexp_bexp_safe e) s.
+Proof.
+  elim: e => /=; intros;
+  (let rec tac :=
+       lazymatch goal with
+       | |- True => done
+       | H : is_true (_ && _) |- _ =>
+         let H1 := fresh in let H2 := fresh in
+         move/andP: H => [H1 H2]; tac
+       | |- _ /\ _ => split; tac
+       | H : is_true (bv2z_exp_safe_at ?e ?s) |-
+         QFBV64.eval_bexp (bexp_exp_safe ?e) ?s =>
+         exact: (eval_bexp_exp_safe2 H)
+       | H : ?p |- ?p => exact: H
+       | H1 : is_true (bv2z_bexp_safe_at ?b ?s) ->
+              QFBV64.eval_bexp (bexp_bexp_safe ?b) ?s,
+         H2 : is_true (bv2z_bexp_safe_at ?b ?s) |- _ =>
+         move: (H1 H2) => {H1 H2} H1; tac
+       | |- _ => idtac
+       end in
+   tac).
+Qed.
+
 Lemma eval_exp_atomic_succ a i s :
   ssa_vars_unchanged_instr (vars_atomic a) i ->
   QFBV64.eval_exp (exp_atomic a) s =
