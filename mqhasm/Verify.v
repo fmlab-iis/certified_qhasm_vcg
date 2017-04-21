@@ -20,6 +20,8 @@ Open Scope zdsl_scope.
                good for slicing, bad for rewriting a lot of assignments
   - opt_slicing: apply slicing before converting to SSA
   - opt_to_assign: convert equations (e1 = e2) to assignment form (x = e)
+  - opt_keep_unused: do not convert (hi*2^w + lo = e) to (lo = e - hi*2^w)
+                     if lo is not used but hi is used
   - opt_rewrite_assign: rewrite x = e and clear it
   - opt_rewrite_equality: rewrite e1 = e2
   - opt_lazy: use Lazy to do simplification
@@ -32,6 +34,7 @@ Record verify_options : Set :=
   mkOptions { opt_split : bool;
               opt_slicing : bool;
               opt_to_assign : bool;
+              opt_keep_unused : bool;
               opt_rewrite_assign : bool;
               opt_rewrite_equality : bool;
               opt_lazy : bool;
@@ -44,6 +47,7 @@ Definition default_options : verify_options :=
   {| opt_split := true;
      opt_slicing := false;
      opt_to_assign := true;
+     opt_keep_unused := false;
      opt_rewrite_assign := true;
      opt_rewrite_equality := true;
      opt_lazy := false;
@@ -56,6 +60,7 @@ Inductive bool_flag : Set :=
 | Split
 | Slicing
 | ToAssign
+| KeepUnused
 | RewriteAssign
 | RewriteEquality
 | Lazy
@@ -73,6 +78,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Split => {| opt_split := b;
                 opt_slicing := opt_slicing o;
                 opt_to_assign := opt_to_assign o;
+                opt_keep_unused := opt_keep_unused o;
                 opt_rewrite_assign := opt_rewrite_assign o;
                 opt_rewrite_equality := opt_rewrite_equality o;
                 opt_lazy := opt_lazy o;
@@ -83,6 +89,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Slicing => {| opt_split := opt_split o;
                   opt_slicing := b;
                   opt_to_assign := opt_to_assign o;
+                  opt_keep_unused := opt_keep_unused o;
                   opt_rewrite_assign := opt_rewrite_assign o;
                   opt_rewrite_equality := opt_rewrite_equality o;
                   opt_lazy := opt_lazy o;
@@ -93,6 +100,7 @@ Definition set_bool_flag f b o : verify_options :=
   | ToAssign => {| opt_split := opt_split o;
                    opt_slicing := opt_slicing o;
                    opt_to_assign := b;
+                   opt_keep_unused := opt_keep_unused o;
                    opt_rewrite_assign := opt_rewrite_assign o;
                    opt_rewrite_equality := opt_rewrite_equality o;
                    opt_lazy := opt_lazy o;
@@ -100,9 +108,21 @@ Definition set_bool_flag f b o : verify_options :=
                    opt_singular := opt_singular o;
                    opt_magma := opt_magma o;
                    opt_profiling := opt_profiling o |}
+  | KeepUnused => {| opt_split := opt_split o;
+                     opt_slicing := opt_slicing o;
+                     opt_to_assign := opt_to_assign o;
+                     opt_keep_unused := b;
+                     opt_rewrite_assign := opt_rewrite_assign o;
+                     opt_rewrite_equality := opt_rewrite_equality o;
+                     opt_lazy := opt_lazy o;
+                     opt_native := opt_native o;
+                     opt_singular := opt_singular o;
+                     opt_magma := opt_magma o;
+                     opt_profiling := opt_profiling o |}
   | RewriteAssign => {| opt_split := opt_split o;
                         opt_slicing := opt_slicing o;
                         opt_to_assign := opt_to_assign o;
+                        opt_keep_unused := opt_keep_unused o;
                         opt_rewrite_assign := b;
                         opt_rewrite_equality := opt_rewrite_equality o;
                         opt_lazy := opt_lazy o;
@@ -113,6 +133,7 @@ Definition set_bool_flag f b o : verify_options :=
   | RewriteEquality => {| opt_split := opt_split o;
                           opt_slicing := opt_slicing o;
                           opt_to_assign := opt_to_assign o;
+                          opt_keep_unused := opt_keep_unused o;
                           opt_rewrite_assign := opt_rewrite_assign o;
                           opt_rewrite_equality := b;
                           opt_lazy := opt_lazy o;
@@ -123,6 +144,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Lazy => {| opt_split := opt_split o;
                opt_slicing := opt_slicing o;
                opt_to_assign := opt_to_assign o;
+               opt_keep_unused := opt_keep_unused o;
                opt_rewrite_assign := opt_rewrite_assign o;
                opt_rewrite_equality := opt_rewrite_equality o;
                opt_lazy := b;
@@ -133,6 +155,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Native => {| opt_split := opt_split o;
                  opt_slicing := opt_slicing o;
                  opt_to_assign := opt_to_assign o;
+                 opt_keep_unused := opt_keep_unused o;
                  opt_rewrite_assign := opt_rewrite_assign o;
                  opt_rewrite_equality := opt_rewrite_equality o;
                  opt_lazy := ~~b;
@@ -143,6 +166,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Singular => {| opt_split := opt_split o;
                    opt_slicing := opt_slicing o;
                    opt_to_assign := opt_to_assign o;
+                   opt_keep_unused := opt_keep_unused o;
                    opt_rewrite_assign := opt_rewrite_assign o;
                    opt_rewrite_equality := opt_rewrite_equality o;
                    opt_lazy := opt_lazy o;
@@ -153,6 +177,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Magma => {| opt_split := opt_split o;
                 opt_slicing := opt_slicing o;
                 opt_to_assign := opt_to_assign o;
+                opt_keep_unused := opt_keep_unused o;
                 opt_rewrite_assign := opt_rewrite_assign o;
                 opt_rewrite_equality := opt_rewrite_equality o;
                 opt_lazy := opt_lazy o;
@@ -163,6 +188,7 @@ Definition set_bool_flag f b o : verify_options :=
   | Profiling => {| opt_split := opt_split o;
                     opt_slicing := opt_slicing o;
                     opt_to_assign := opt_to_assign o;
+                    opt_keep_unused := opt_keep_unused o;
                     opt_rewrite_assign := opt_rewrite_assign o;
                     opt_rewrite_equality := opt_rewrite_equality o;
                     opt_lazy := opt_lazy o;
@@ -304,7 +330,193 @@ Proof.
   exact: H.
 Qed.
 
-(* The patterns here should include the pattern in PolyGen.bexp_instr. *)
+(* Get the variables at the right-hand side of equations. *)
+Ltac right_variables t :=
+  let rec aux t fv :=
+  match t with
+  | 0 => fv
+  | 1 => fv
+  | Zpos _ => fv
+  | Zneg _ => fv
+  | False  => fv
+  | ?t1 -> ?g1 =>
+    let fv1  := aux t1 fv in
+    let fv2  := aux g1 fv1 in fv2
+  | (_ <= ?t1) => aux t1 fv
+  | (_ < ?t1) => aux t1 fv
+  | (_ = ?t1) => aux t1 fv
+  | (?t1 + ?t2) =>
+    let fv1  := aux t1 fv in
+    let fv2  := aux t2 fv1 in fv2
+  | (?t1 * ?t2) =>
+    let fv1  := aux t1 fv in
+    let fv2  := aux t2 fv1 in fv2
+  | (?t1 - ?t2) =>
+    let fv1  := aux t1 fv in
+    let fv2  := aux t2 fv1 in fv2
+  | (-?t1) =>
+    let fv1  := aux t1 fv in fv1
+  | (?t1 ^ ?t2) =>
+    let fv1  := aux t1 fv in
+    match NCst t2 with
+    | false => let fv1 := rAddFv t fv in fv1
+    | _ => fv1
+    end
+  | _ => let fv1 := rAddFv t fv in fv1
+  end in
+  aux t (@nil Z).
+
+Ltac union_variables vs1 vs2 :=
+  match vs1 with
+  | (cons ?x ?vs) => let vs2 := rAddFv x vs2 in union_variables vs vs2
+  | _ => vs2
+  end.
+
+Ltac goal_variables :=
+  match goal with
+  | |- exists k, ?a = k * ?b =>
+    let vs1 := variables a in
+    let vs2 := variables b in
+    union_variables vs1 vs2
+  | |- modulo ?a ?b ?c =>
+    let vs1 := variables a in
+    let vs2 := variables b in
+    let vs3 := variables c in
+    let vs23 := union_variables vs2 vs3 in
+    union_variables vs1 vs23
+  | |- ?a = ?b =>
+    let vs1 := variables a in
+    let vs2 := variables b in
+    union_variables vs1 vs2
+  end.
+
+Ltac variables_disjoint vs1 vs2 :=
+  match vs1 with
+  | cons ?a ?vs =>
+    match rIN a vs2 with
+    | true => constr:false
+    | false => variables_disjoint vs vs2
+    end
+  | _ => constr:true
+  end.
+
+Ltac keep_unused1 x e vars :=
+  let evs := variables e in
+  match rIN x vars with
+  | true => constr:false
+  | false =>
+    match variables_disjoint evs vars with
+    | true => constr:false
+    | false => constr:true
+    end
+  end.
+
+Ltac keep_unused2 x e1 e2 vars :=
+  let evs1 := variables e1 in
+  let evs2 := variables e2 in
+  match rIN x vars with
+  | true => constr:false
+  | false =>
+    match variables_disjoint evs1 vars with
+    | true =>
+      match variables_disjoint evs2 vars with
+      | true => constr:false
+      | false => constr:true
+      end
+    | false => constr:true
+    end
+  end.
+
+(* Convert (x + y = z) to (x = z - y) where x is a variable.
+   The equation (hi*2^p + lo = e) is not converted if lo is not used
+   by hi is used.
+   The patterns here should include the pattern in PolyGen.bexp_instr. *)
+Ltac to_assign_keep vars :=
+  match goal with
+  | st : _ -> Z |- _ =>
+    match goal with
+    | H : st ?x + ?y = _ |- _ =>
+      match (keep_unused1 (st x) y vars) with
+      | true => idtac "found unused:" x; move: H
+      | false => move: (add_move_r1 H) => {H} H
+      end
+    | H : ?y + st ?x = _ |- _ =>
+      match (keep_unused1 (st x) y vars) with
+      | true => idtac "found unused:" x; move: H
+      | false => move: (add_move_l1 H) => {H} H
+      end
+    | H : (st ?x + ?y) + ?z = _ |- _ =>
+      match (keep_unused2 (st x) y z vars) with
+      | true => move: H
+      | false =>
+        rewrite -Z.add_assoc in H;
+        move: (add_move_r1 H) => {H} H
+      end
+    | H : (?z + st ?x) + ?y = _ |- _ =>
+      match (keep_unused2 (st x) y z vars) with
+      | true => move: H
+      | false =>
+        rewrite (Z.add_comm z (st _)) -Z.add_assoc in H;
+        move: (add_move_r1 H) => {H} H
+      end
+    | H : ?y + (st ?x + ?z) = _ |- _ =>
+      match (keep_unused2 (st x) y z vars) with
+      | true => move: H
+      | false =>
+        rewrite (Z.add_comm (st _) z) Z.add_assoc in H;
+        move: (add_move_l1 H) => {H} H
+      end
+    | H : ?z + (?y + st ?x) = _ |- _ =>
+      match (keep_unused2 (st x) y z vars) with
+      | true => move: H
+      | false =>
+        rewrite Z.add_assoc in H;
+        move: (add_move_l1 H) => {H} H
+      end
+    end
+  | x : Z |- _ =>
+    match goal with
+    | H : x + ?y = _ |- _ =>
+      match (keep_unused1 x y vars) with
+      | true => move: H
+      | false => move: (add_move_r1 H) => {H} H
+      end
+    | H : ?y + x = _ |- _ =>
+      match (keep_unused1 x y vars) with
+      | true => move: H
+      | false => move: (add_move_l1 H) => {H} H
+      end
+    | H : (x +  ?y) + ?z = _ |- _ =>
+      match (keep_unused2 x y z vars) with
+      | true => move: H
+      | false =>
+        rewrite -Z.add_assoc in H;
+        move: (add_move_r1 H) => {H} H
+      end
+    | H : (?z + x) + ?y = _ |- _ =>
+      match (keep_unused2 x y z vars) with
+      | true => move: H
+      | false =>
+        rewrite (Z.add_comm z x) -Z.add_assoc in H;
+        move: (add_move_r1 H) => {H} H
+      end
+    | H : ?y + (x + ?z) = _ |- _ =>
+      match (keep_unused2 x y z vars) with
+      | true => move: H
+      | false =>
+        rewrite (Z.add_comm x z) Z.add_assoc in H;
+        move: (add_move_l1 H) => {H} H
+      end
+    | H : ?z + (?y + x) = _ |- _ =>
+      match (keep_unused2 x y z vars) with
+      | true => move: H
+      | false =>
+        rewrite Z.add_assoc in H;
+        move: (add_move_l1 H) => {H} H
+      end
+    end
+  end.
+
 Ltac to_assign :=
   match goal with
   | st : _ -> Z |- _ =>
@@ -346,30 +558,50 @@ Ltac to_assign :=
 Ltac to_assign_with o :=
   let b := constr:(opt_to_assign o) in
   let b := eval compute in b in
-  match b with
-  | true => repeat to_assign
-  | false => idtac
+  let k := constr:(opt_keep_unused o) in
+  let k := eval compute in k in
+  match k with
+  | true =>
+    let gvars := goal_variables in
+    gen_eqs;
+    match goal with
+    | |- ?g =>
+      let hyplist := lhyps g in
+      let dummy := constr:(0 = 0) in
+      let hyps := ajoute_hyps hyplist dummy in
+      let rvars := right_variables hyps in
+      let vars := union_variables gvars rvars in
+      intros;
+      match b with
+      | true => repeat (to_assign_keep vars)
+      | false => idtac
+      end
+    end
+  | false =>
+    match b with
+    | true => repeat to_assign
+    | false => idtac
+    end
   end.
 
-Ltac rewrite_assign1 :=
+Ltac rewrite_assign1_with o :=
   match goal with
   | st : _ -> Z |- _ =>
     match goal with
-    | H : st _ = _ |- _ =>
-      ( try rewrite -> H in * ); clear H
+    | H : st ?x = _ |- _ => ( try rewrite -> H in * ); clear H
     end
   end.
 
-Ltac rewrite_assign2 :=
+Ltac rewrite_assign2_with o :=
   match goal with
   | x : Z |- _ =>
     match goal with
-    | H : x = _ |- _ =>
-      ( try rewrite -> H in * ); clear H; try clear x
+    | H : ?x = _ |- _ => ( try rewrite -> H in * ); clear H; try clear x
     end
   end.
 
-Ltac rewrite_assign3 := rewrite_assign1 || rewrite_assign2.
+Ltac rewrite_assign3_with o :=
+  rewrite_assign1_with o || rewrite_assign2_with o.
 
 Ltac rewrite_assign_with o :=
   let b := constr:(opt_profiling o) in
@@ -379,11 +611,11 @@ Ltac rewrite_assign_with o :=
   match r with
   | true =>
     match b with
-    | true => time "rewrite_assign" (repeat rewrite_assign3)
-    | false => repeat rewrite_assign3
+    | true => time "rewrite_assign" (repeat rewrite_assign3_with o)
+    | false => repeat rewrite_assign3_with o
     end
   | false => idtac
-  end.
+  end; intros.
 
 Tactic Notation "rewrite_assign" := rewrite_assign_with default_options.
 
