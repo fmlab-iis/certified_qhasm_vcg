@@ -2,7 +2,7 @@
 From Coq Require Import Program ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype div.
 From Common Require Import Arch Types SsrOrdered Bits Lists FSets Bools Nats ZAriths Var Store.
-From mQhasm Require Import bvSSA QF_BV.
+From mQhasm Require Import bvSSA QFBV.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
