@@ -140,11 +140,11 @@ Definition fe25519_sub_spec :=
      spost := fe25519_sub_post |}.
 
 From mathcomp Require Import eqtype ssrbool.
-From mQhasm Require Import Verify.
+From mQhasm Require Import zVerify.
 
-Lemma valid_fe25519_sub : valid_ispec (fe25519_sub_inputs, fe25519_sub_spec).
+Lemma valid_fe25519_sub : valid_zspec (fe25519_sub_inputs, fe25519_sub_spec).
 Proof.
-  time "valid_fe25519_sub" verify_ispec.
+  time "valid_fe25519_sub" verify_zspec.
 Qed.
 
 Close Scope zdsl_scope.

@@ -195,7 +195,7 @@ VFILES:=lib/CompCert/Coqlib.v\
   mqhasm/zSSA.v\
   mqhasm/zPoly.v\
   mqhasm/zRadix.v\
-  mqhasm/Verify.v\
+  mqhasm/zVerify.v\
   mqhasm/QFBV.v\
   mqhasm/QFBVSolve.v\
   mqhasm/bvDSL.v\

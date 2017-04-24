@@ -393,11 +393,11 @@ Definition mul25519_stage1_spec :=
 Add Rec LoadPath "../lib/gbarith/src/" as GBArith.
 Add ML Path "../lib/gbarith/src/".
 From mathcomp Require Import eqtype ssrbool.
-From mQhasm Require Import Verify.
+From mQhasm Require Import zVerify.
 
 Lemma valid_mul25519_stage1 : valid_ispec (mul25519_stage1_inputs, mul25519_stage1_spec).
 Proof.
-  Time verify_ispec.
+  Time verify_zspec.
   (* 843.868s *)
 Qed.
 

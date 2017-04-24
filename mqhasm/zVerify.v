@@ -204,19 +204,19 @@ Definition set_vflag f o : verify_options :=
   | Without g => set_bool_flag g false o
   end.
 
-Definition vconfig_with flags o : verify_options :=
+Definition zconfig_with flags o : verify_options :=
   foldr set_vflag o flags.
 
-Definition vconfig flags : verify_options :=
-  vconfig_with flags default_options.
+Definition zconfig flags : verify_options :=
+  zconfig_with flags default_options.
 
 
 
-(** ispec - specification with specified input variables *)
+(** zispec - specification with specified input variables *)
 
-Definition ispec : Type := (VS.t * zDSL.spec).
+Definition zspec : Type := (VS.t * zDSL.spec).
 
-Definition valid_ispec (s : ispec) : Prop :=
+Definition valid_zspec (s : zspec) : Prop :=
   well_formed_spec (fst s) (snd s) /\ valid_spec (snd s).
 
 
@@ -284,17 +284,17 @@ Ltac simpl_with o :=
   | _ => cbv
   end.
 
-Ltac ispec_to_poly_with o :=
+Ltac zspec_to_poly_with o :=
   let tac _ := (
     match goal with
-    | |- valid_ispec ?ispec =>
+    | |- valid_zspec ?zspec =>
       split; [
         by (simpl_with o; reflexivity)
            || fail 100 "The specification is not well formed" |
         apply_spec_split_post o;
         (apply_zslice_sound o;
         apply: ssa_spec_sound;
-        apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst ispec))); [
+        apply: (bexp_spec_sound (vs:=ssa_vars empty_vmap (fst zspec))); [
           by (simpl_with o; reflexivity) |
           simplZ_with o; intros;
           repeat (remove_exists_hyp || split_conj); clear_true
@@ -304,11 +304,11 @@ Ltac ispec_to_poly_with o :=
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
   match b with
-  | true => time "ispec_to_poly" (tac unit)
+  | true => time "zspec_to_poly" (tac unit)
   | false => tac unit
   end.
 
-Tactic Notation "ispec_to_poly" := ispec_to_poly_with default_options.
+Tactic Notation "zspec_to_poly" := zspec_to_poly_with default_options.
 
 Ltac gen_eqs :=
   match goal with
@@ -690,16 +690,16 @@ Ltac nsatz_with o :=
     end
   end.
 
-Ltac solve_ispec_with o :=
+Ltac solve_zspec_with o :=
   match goal with
-  | |- _ /\ _ => split; solve_ispec_with o
+  | |- _ /\ _ => split; solve_zspec_with o
   | |- exists _, _ = _ => gbarith_with o
   | |- modulo _ _ _ => gbarith_with o
   | |- _ = _ => nsatz_with o
   end.
 
-Tactic Notation "solve_ispec" := solve_ispec_with default_options.
-Tactic Notation "solve_ispec" "with" constr(opts) := solve_ispec_with (vconfig opts).
+Tactic Notation "solve_zspec" := solve_zspec_with default_options.
+Tactic Notation "solve_zspec" "with" constr(opts) := solve_zspec_with (zconfig opts).
 
 Ltac verify_bexp_with o :=
   match goal with
@@ -713,7 +713,7 @@ Ltac verify_bexp_with o :=
   end.
 
 Tactic Notation "verify_bexp" := verify_bexp_with default_options.
-Tactic Notation "verify_bexp" "with" constr(opts) := verify_bexp_with (vconfig opts).
+Tactic Notation "verify_bexp" "with" constr(opts) := verify_bexp_with (zconfig opts).
 
 Ltac verify_entail_with o :=
   match goal with
@@ -725,24 +725,24 @@ Ltac verify_entail_with o :=
   end.
 
 Tactic Notation "verify_entail" := verify_entail_with default_options.
-Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (vconfig opts).
+Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (zconfig opts).
 
-Ltac verify_ispec_with o :=
-  ispec_to_poly_with o; to_assign_with o;
-  rewrite_assign_with o; rewrite_equality_with o; solve_ispec_with o.
+Ltac verify_zspec_with o :=
+  zspec_to_poly_with o; to_assign_with o;
+  rewrite_assign_with o; rewrite_equality_with o; solve_zspec_with o.
 
-Tactic Notation "verify_ispec" := verify_ispec_with default_options.
-Tactic Notation "verify_ispec" "with" constr(opts) := verify_ispec_with (vconfig opts).
+Tactic Notation "verify_zspec" := verify_zspec_with default_options.
+Tactic Notation "verify_zspec" "with" constr(opts) := verify_zspec_with (zconfig opts).
 
-Ltac verify_spec_with o vs :=
+Ltac verify_zdsl_with o vs :=
   match goal with
   | |- valid_spec ?spec =>
-    have: valid_ispec (vs, spec);
-      [ verify_ispec_with o |
+    have: valid_zspec (vs, spec);
+      [ verify_zspec_with o |
         let H := fresh in
         move=> [_ H]; exact: H
       ]
   end.
 
-Tactic Notation "verify_spec" constr(vs) := verify_spec_with default_options vs.
-Tactic Notation "verify_spec" constr(vs) "with" constr(opts) := verify_spec_with (vconfig opts) vs.
+Tactic Notation "verify_zdsl" constr(vs) := verify_zdsl_with default_options vs.
+Tactic Notation "verify_zdsl" constr(vs) "with" constr(opts) := verify_zdsl_with (zconfig opts) vs.

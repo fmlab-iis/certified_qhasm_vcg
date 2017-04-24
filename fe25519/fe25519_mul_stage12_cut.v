@@ -1152,7 +1152,7 @@ Definition fe25519_mul_stage12_part2_spec :=
 (* Verification. *)
 
 From mathcomp Require Import eqtype ssrbool.
-From mQhasm Require Import Verify.
+From mQhasm Require Import zVerify.
 
 Lemma valid_fe25519_mul_stage12_part1 :
   valid_spec fe25519_mul_stage12_part1_spec.

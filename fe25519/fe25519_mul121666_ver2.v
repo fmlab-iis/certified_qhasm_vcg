@@ -91,11 +91,11 @@ Definition fe25519_mul121666_spec :=
      spost := fe25519_mul121666_post |}.
 
 From mathcomp Require Import ssreflect eqtype ssrbool.
-From mQhasm Require Import Verify.
+From mQhasm Require Import zVerify.
 
-Lemma valid_fe25519_mul121666 : valid_ispec (fe25519_mul121666_inputs, fe25519_mul121666_spec).
+Lemma valid_fe25519_mul121666 : valid_zspec (fe25519_mul121666_inputs, fe25519_mul121666_spec).
 Proof.
-  time "valid_fe25519_mul121666" verify_ispec.
+  time "valid_fe25519_mul121666" verify_zspec.
 Qed.
 
 Close Scope zdsl_scope.

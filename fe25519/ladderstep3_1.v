@@ -1212,11 +1212,11 @@ Definition fe25519_ladderstep_spec3_2 :=
      spost := fe25519_ladderstep_post3_2 |}.
 
 From mathcomp Require Import eqtype ssrbool.
-From mQhasm Require Import Verify.
+From mQhasm Require Import zVerify.
 
-Lemma valid_fe25519_ladderstep3_1 : valid_ispec (fe25519_ladderstep_inputs, fe25519_ladderstep_spec3_1).
+Lemma valid_fe25519_ladderstep3_1 : valid_zspec (fe25519_ladderstep_inputs, fe25519_ladderstep_spec3_1).
 Proof.
-  time "valid_fe25519_ladderstep3_1" verify_ispec.
+  time "valid_fe25519_ladderstep3_1" verify_zspec.
 Qed.
 
 Close Scope zdsl_scope.

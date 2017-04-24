@@ -576,11 +576,11 @@ Definition fe25519_mul_spec :=
      spost := fe25519_mul_post |}.
 
 From mathcomp Require Import eqtype ssrbool.
-From mQhasm Require Import Verify.
+From mQhasm Require Import zVerify.
 
-Lemma valid_fe25519_mul : valid_ispec (fe25519_mul_inputs, fe25519_mul_spec).
+Lemma valid_fe25519_mul : valid_zspec (fe25519_mul_inputs, fe25519_mul_spec).
 Proof.
-  time "valid_fe25519_mul" verify_ispec.
+  time "valid_fe25519_mul" verify_zspec.
 Qed.
 
 Close Scope zdsl_scope.
