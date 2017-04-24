@@ -377,7 +377,8 @@ Definition bv2z_binop (op : binop) : zSSA.binop :=
 
 Fixpoint bv2z_exp n (e : exp n) : zSSA.exp :=
   match e with
-  | bvAtomic a => bv2z_atomic a
+  | bvVarE v => zVar v
+  | bvConstE _ c => zConst (toPosZ c)
   | bvBinop _ op e1 e2 => zBinop (bv2z_binop op) (bv2z_exp e1) (bv2z_exp e2)
   | bvExt _ e _ => bv2z_exp e
   end.
@@ -429,7 +430,8 @@ Definition bv2z_binop_safe w op (bv1 bv2 : BITS w) : bool :=
 
 Fixpoint bv2z_exp_safe_at n (e : exp n) s : bool :=
   match e with
-  | bvAtomic a => true
+  | bvVarE _
+  | bvConstE _ _ => true
   | bvBinop _ op e1 e2 =>
     bv2z_exp_safe_at e1 s &&
     bv2z_exp_safe_at e2 s &&
@@ -484,8 +486,8 @@ Lemma bvz_eq_eval_exp w (e : exp w) bs zs :
   toPosZ (eval_exp e bs) = zSSA.eval_exp (bv2z_exp e) zs.
 Proof.
   elim: e => {w} /=.
-  - move=> a _ Heq.
-    exact: bvz_eq_eval_atomic.
+  - move=> a _ Heq. exact: Heq.
+  - reflexivity.
   - move=> w op e1 IH1 e2 IH2 /andP [/andP [Hsafe1 Hsafe2] Hsafeop] Heq.
     rewrite -(IH1 Hsafe1 Heq) -(IH2 Hsafe2 Heq).
     exact: bvz_eq_eval_binop.
@@ -722,8 +724,8 @@ Lemma bv2z_exp_vars w (e : exp w) :
   zSSA.VS.Equal (zSSA.vars_exp (bv2z_exp e)) (bv2z_vars (vars_exp e)).
 Proof.
   elim: e => {w} /=.
-  - move=> a.
-    exact: vars_bv2z_atomic.
+  - move=> a. exact: bv2z_vars_singleton.
+  - reflexivity.
   - move=> w _ e1 IH1 e2 IH2.
     rewrite IH1 IH2 bv2z_vars_union.
     reflexivity.

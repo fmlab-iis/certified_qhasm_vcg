@@ -113,7 +113,8 @@ Definition bexp_program (p : program) : seq QFBV64.bexp :=
 
 Fixpoint exp_exp w (e : exp w) : QFBV64.exp w :=
   match e with
-  | bvAtomic a => exp_atomic a
+  | bvVarE v => QFBV64.bvVar v
+  | bvConstE _ c => QFBV64.bvConst c
   | bvBinop _ op e1 e2 =>
     match op with
     | bvAddOp => QFBV64.bvAdd (exp_exp e1) (exp_exp e2)
@@ -208,7 +209,8 @@ Lemma eval_exp_exp w (e : exp w) s:
   QFBV64.eval_exp (exp_exp e) s = eval_exp e s.
 Proof.
   elim: e => {w} /=.
-  - move=> a. exact: eval_exp_atomic.
+  - reflexivity.
+  - reflexivity.
   - move=> w op e1 IH1 e2 IH2.
     case: op; rewrite /= IH1 IH2; reflexivity.
   - move=> w e IH m.
@@ -560,7 +562,8 @@ Definition bexp_binop_safe w (op : binop) (e1 e2 : exp w) : QFBV64.bexp :=
 
 Fixpoint bexp_exp_safe w (e : exp w) : QFBV64.bexp :=
   match e with
-  | bvAtomic a => QFBV64.bvTrue
+  | bvVarE _
+  | bvConstE _ _ => QFBV64.bvTrue
   | bvBinop _ op e1 e2 =>
     QFBV64.bvConj
       (bexp_exp_safe e1)
@@ -760,6 +763,7 @@ Lemma eval_bexp_exp_safe1 w (e : exp w) s :
 Proof.
   elim: e => {w} /=.
   - done.
+  - done.
   - move=> w op e1 IH1 e2 IH2 [He1 [He2 Hop]]. repeat (apply/andP; split).
     + exact: (IH1 He1).
     + exact: (IH2 He2).
@@ -771,6 +775,7 @@ Lemma eval_bexp_exp_safe2 w (e : exp w) s :
   bv2z_exp_safe_at e s -> QFBV64.eval_bexp (bexp_exp_safe e) s.
 Proof.
   elim: e => {w} /=.
+  - done.
   - done.
   - move=> w op e1 IH1 e2 IH2 /andP [/andP [He1 He2] Hop]. repeat split.
     + exact: (IH1 He1).

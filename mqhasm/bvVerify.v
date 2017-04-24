@@ -2,7 +2,7 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat.
 From Common Require Import Arch Var Bits Nats SsrOrdered FSets Store.
-From mQhasm Require Import bvDSL bvSSA bvSSA2zSSA QFBV bvSSA2QFBV QFBVSolve.
+From mQhasm Require Import bvDSL bvSSA bvSSA2zSSA QFBV bvSSA2QFBV QFBVSolve Verify.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

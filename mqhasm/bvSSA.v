@@ -194,7 +194,8 @@ Fixpoint ssa_program (m : vmap) (p : program) : (vmap * bv64SSA.program) :=
 
 Fixpoint ssa_exp (n : nat) (m : vmap) (e : exp n) : bv64SSA.exp n :=
   match e with
-  | bvAtomic a => bv64SSA.bvAtomic (ssa_atomic m a)
+  | bvVarE v => bv64SSA.bvVarE (ssa_var m v)
+  | bvConstE w c => @bv64SSA.bvConstE w c
 (*  | bvUnop _ op e => bv64SSA.bvUnop (ssa_unop op) (ssa_exp m e) *)
   | bvBinop _ op e1 e2 => bv64SSA.bvBinop (ssa_binop op) (ssa_exp m e1) (ssa_exp m e2)
   | bvExt _ e i => bv64SSA.bvExt (ssa_exp m e) i
@@ -654,6 +655,14 @@ Proof.
     exact: eqxx.
 Qed.
 
+Lemma ssa_vars_singleton m v :
+  bv64SSA.VS.Equal (ssa_vars m (VS.singleton v))
+                   (bv64SSA.VS.singleton (ssa_var m v)).
+Proof.
+  rewrite /ssa_vars (M2.map2_singleton (ssa_var_well m)).
+  reflexivity.
+Qed.
+
 Lemma ssa_vars_union m vs1 vs2 :
   bv64SSA.VS.Equal (ssa_vars m (VS.union vs1 vs2))
                    (bv64SSA.VS.union (ssa_vars m vs1) (ssa_vars m vs2)).
@@ -668,8 +677,7 @@ Lemma ssa_vars_atomic_comm  m (e : atomic) :
 Proof.
   case: e.
   - move=> v.
-    rewrite /ssa_vars (M2.map2_singleton (ssa_var_well m)).
-    reflexivity.
+    exact: ssa_vars_singleton.
   - reflexivity.
 Qed.
 
@@ -678,9 +686,10 @@ Lemma ssa_vars_exp_comm w m (e : exp w) :
                    (bv64SSA.vars_exp (ssa_exp m e)).
 Proof.
   elim: e => {w} /=.
-  - exact: ssa_vars_atomic_comm.
+  - exact: ssa_vars_singleton.
 (*  - move=> w op e IH.
     assumption. *)
+  - reflexivity.
   - move=> w op e1 IH1 e2 IH2.
     rewrite -IH1 -IH2 ssa_vars_union.
     reflexivity.
@@ -1263,7 +1272,8 @@ Lemma ssa_eval_exp w m s ss (e : exp w) :
 Proof.
   move=> Heq; elim: e => {w} /=.
   - move=> v.
-    exact: ssa_eval_atomic.
+    exact: (Logic.eq_sym (Heq v)).
+  - reflexivity.
 (*  - move=> w op e IH.
     rewrite ssa_eval_unop IH.
     reflexivity. *)
@@ -2124,15 +2134,23 @@ Proof.
   exact: bv64SSA.well_formed_instr_subset_rvs.
 Qed.
 
+Lemma ssa_unchanged_instr_eval_singleton v s1 s2 i :
+  ssa_vars_unchanged_instr (bv64SSA.VS.singleton v) i ->
+  bv64SSA.eval_instr s1 i = s2 ->
+  bv64SSA.State.acc v s1 = bv64SSA.State.acc v s2.
+Proof.
+  move=> Hun Hei.
+  move: (ssa_unchanged_instr_singleton1 Hun) => {Hun} Hun.
+  exact: (acc_unchanged_instr Hun Hei).
+Qed.
+
 Lemma ssa_unchanged_instr_eval_atomic a s1 s2 i :
   ssa_vars_unchanged_instr (bv64SSA.vars_atomic a) i ->
   bv64SSA.eval_instr s1 i = s2 ->
   bv64SSA.eval_atomic a s1 = bv64SSA.eval_atomic a s2.
 Proof.
   case: a => /=.
-  - move=> v Hun Hei.
-    move: (ssa_unchanged_instr_singleton1 Hun) => {Hun} Hun.
-    exact: (acc_unchanged_instr Hun Hei).
+  - move=> v. exact: ssa_unchanged_instr_eval_singleton.
   - reflexivity.
 Qed.
 
@@ -2143,8 +2161,9 @@ Lemma ssa_unchanged_instr_eval_exp w (e : bv64SSA.exp w) s1 s2 i :
 Proof.
   elim: e => {w} /=.
   - move=> a.
-    exact: ssa_unchanged_instr_eval_atomic.
-(*  - move=> w op e IH Hun Hei.
+    exact: ssa_unchanged_instr_eval_singleton.
+  - reflexivity.
+  (*  - move=> w op e IH Hun Hei.
     rewrite (IH Hun Hei); reflexivity. *)
   - move=> w op e1 IH1 e2 IH2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -2153,15 +2172,23 @@ Proof.
     rewrite (IH Hun Hei); reflexivity.
 Qed.
 
+Lemma ssa_unchanged_program_eval_singleton v s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.VS.singleton v) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.State.acc v s1 = bv64SSA.State.acc v s2.
+Proof.
+  move=> Hun Hep.
+  move: (ssa_unchanged_program_singleton1 Hun) => {Hun} Hun.
+  exact: (acc_unchanged_program Hun Hep).
+Qed.
+
 Lemma ssa_unchanged_program_eval_atomic a s1 s2 p :
   ssa_vars_unchanged_program (bv64SSA.vars_atomic a) p ->
   bv64SSA.eval_program s1 p = s2 ->
   bv64SSA.eval_atomic a s1 = bv64SSA.eval_atomic a s2.
 Proof.
   case: a => /=.
-  - move=> v Hun Hep.
-    move: (ssa_unchanged_program_singleton1 Hun) => {Hun} Hun.
-    exact: (acc_unchanged_program Hun Hep).
+  - move=> v. exact: ssa_unchanged_program_eval_singleton.
   - reflexivity.
 Qed.
 
@@ -2172,7 +2199,8 @@ Lemma ssa_unchanged_program_eval_exp w (e : bv64SSA.exp w) s1 s2 p :
 Proof.
   elim: e => {w} /=.
   - move=> a Hun Hep.
-    exact: (ssa_unchanged_program_eval_atomic Hun Hep).
+    exact: (ssa_unchanged_program_eval_singleton Hun Hep).
+  - reflexivity.
 (*  - move=> w op e IH Hun Hep.
     rewrite (IH Hun Hep); reflexivity. *)
   - move=> w op e1 IH1 e2 IH2 Hun Hep.
@@ -2980,14 +3008,21 @@ Proof.
   exact: dclosed_empty.
 Qed.
 
+Lemma ssa_singleton_var_index m t v i :
+  bv64SSA.VS.mem (v, i) (bv64SSA.VS.singleton (ssa_var m t)) ->
+  get_index v m = i.
+Proof.
+  move=> Hmem.
+  move: (bv64SSA.VSLemmas.mem_singleton1 Hmem) => /eqP [] <- <-.
+  reflexivity.
+Qed.
+
 Lemma ssa_atomic_var_index m a v i :
   bv64SSA.VS.mem (v, i) (bv64SSA.vars_atomic (ssa_atomic m a)) ->
   get_index v m = i.
 Proof.
   case: a => /=.
-  - move=> x Hmem.
-    move: (bv64SSA.VSLemmas.mem_singleton1 Hmem) => /eqP [] <- <-.
-    reflexivity.
+  - move=> x. exact: ssa_singleton_var_index.
   - move=> _ H.
     rewrite bv64SSA.VSLemmas.mem_empty in H.
     discriminate.
@@ -2999,8 +3034,11 @@ Lemma ssa_exp_var_index w m (e : exp w) v i :
 Proof.
   elim: e m v i => {w} /=.
   - move=> a m x i Hmem.
-    exact: (ssa_atomic_var_index Hmem).
-(*  - move=> w op e IH m v i Hmem.
+    exact: (ssa_singleton_var_index Hmem).
+  - move=> w c m v i H.
+    rewrite bv64SSA.VSLemmas.mem_empty in H.
+    discriminate.
+  (*  - move=> w op e IH m v i Hmem.
     exact: IH. *)
   - move=> w op e1 IH1 e2 IH2 m v i Hmem.
     case: (bv64SSA.VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.

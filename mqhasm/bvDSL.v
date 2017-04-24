@@ -644,7 +644,8 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   | bvUgeOp.
 
   Inductive exp : nat -> Type :=
-  | bvAtomic : atomic -> exp A.wordsize
+  | bvVarE : var -> exp A.wordsize
+  | bvConstE : forall n : nat, BITS n -> exp n
 (*  | bvUnop : forall n : nat, unop -> exp n -> exp n *)
   | bvBinop : forall n : nat, binop -> exp n -> exp n -> exp n
   | bvExt : forall n : nat, exp n -> forall m : nat, exp (n + m).
@@ -665,7 +666,8 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
   Fixpoint vars_exp (n : nat) (e : exp n) : VS.t :=
     match e with
-    | bvAtomic a => vars_atomic a
+    | bvVarE x => VS.singleton x
+    | bvConstE _ _ => VS.empty
 (*    | bvUnop _ _ e => vars_exp e *)
     | bvBinop _ _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
     | bvExt _ e _ => vars_exp e
@@ -703,7 +705,8 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
   Fixpoint eval_exp (n : nat) (e : exp n) (s : State.t) : BITS n :=
     match e with
-    | bvAtomic a => eval_atomic a s
+    | bvVarE x => State.acc x s
+    | bvConstE _ n => n
 (*    | bvUnop _ op e => eval_unop op (eval_exp e s) *)
     | bvBinop _ op e1 e2 => eval_binop op (eval_exp e1 s) (eval_exp e2 s)
     | bvExt _ e m => zeroExtend m (eval_exp e s)
@@ -1226,7 +1229,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
 
   (** Big integers *)
-(*
+
   Section BigIntegers.
 
     From Common Require Import Nats.
@@ -1234,22 +1237,27 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
     Variable w : nat.
 
-    Fixpoint limbs_rec vs (n : nat) : exp :=
+    Fixpoint limbs_rec i ew (vs : seq (exp ew)) (n : nat) : exp (ew + (i - ew)) :=
       match vs with
-      | [::] => zConst 0
-      | hd::[::] => if n == 0 then hd
-                    else zmul hd (zpow2 (Pos.of_nat n))
+      | [::] => bvConstE (@fromNat (ew + (i - ew)) 0)
+      | hd::[::] => if n == 0 then bvExt hd (i - ew)
+                    else bvBinop bvMulOp
+                                 (bvExt hd (i - ew))
+                                 (bvConstE (fromPosZ (Zpower_nat 2 n)))
       | hd::tl =>
         let m := (n + w) in
-        if n == 0 then zadd hd (limbs_rec tl m)
-        else zadd (zmul hd (zpow2 (Pos.of_nat n))) (limbs_rec tl m)
+        if n == 0 then bvBinop bvAddOp (bvExt hd (i - ew)) (limbs_rec i tl m)
+        else bvBinop bvAddOp
+                     (bvBinop bvMulOp (bvExt hd (i - ew))
+                              (bvConstE (fromPosZ (Zpower_nat 2 n))))
+                     (limbs_rec i tl m)
       end.
 
-    Definition limbs (vs : seq exp) : exp :=
-      limbs_rec vs 0.
+    Definition limbs i ew (vs : seq (exp ew)) : exp (ew + (i - ew)) :=
+      limbs_rec i vs 0.
 
   End BigIntegers.
-*)
+
 
 
   (** State equality modulo values of a set of variables *)
