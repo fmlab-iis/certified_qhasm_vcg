@@ -49,6 +49,8 @@ vo_to_obj = $(addsuffix .o,\
 #                        #
 ##########################
 
+OCAMLLIBS?=-I "mqhasm"\
+  -I "."
 COQLIBS?=\
   -Q "lib/CompCert" CompCert\
   -Q "lib/gbarith/src" GBArith\
@@ -57,6 +59,7 @@ COQLIBS?=\
   -Q "qhasm" Qhasm\
   -Q "sqhasm" sQhasm\
   -Q "mqhasm" mQhasm\
+  -I "mqhasm"\
   -I "."
 COQCHKLIBS?=\
   -R "lib/CompCert" CompCert\
@@ -92,6 +95,54 @@ GALLINA?="$(COQBIN)gallina"
 COQDOC?="$(COQBIN)coqdoc"
 COQCHK?="$(COQBIN)coqchk"
 COQMKTOP?="$(COQBIN)coqmktop"
+
+COQSRCLIBS?=-I "$(COQLIB)kernel" \
+-I "$(COQLIB)lib" \
+-I "$(COQLIB)library" \
+-I "$(COQLIB)parsing" \
+-I "$(COQLIB)pretyping" \
+-I "$(COQLIB)interp" \
+-I "$(COQLIB)printing" \
+-I "$(COQLIB)intf" \
+-I "$(COQLIB)proofs" \
+-I "$(COQLIB)tactics" \
+-I "$(COQLIB)tools" \
+-I "$(COQLIB)toplevel" \
+-I "$(COQLIB)stm" \
+-I "$(COQLIB)grammar" \
+-I "$(COQLIB)config" \
+ \
+  -I "$(COQLIB)/plugins/btauto" \
+  -I "$(COQLIB)/plugins/cc" \
+  -I "$(COQLIB)/plugins/decl_mode" \
+  -I "$(COQLIB)/plugins/derive" \
+  -I "$(COQLIB)/plugins/extraction" \
+  -I "$(COQLIB)/plugins/firstorder" \
+  -I "$(COQLIB)/plugins/fourier" \
+  -I "$(COQLIB)/plugins/funind" \
+  -I "$(COQLIB)/plugins/micromega" \
+  -I "$(COQLIB)/plugins/nsatz" \
+  -I "$(COQLIB)/plugins/omega" \
+  -I "$(COQLIB)/plugins/quote" \
+  -I "$(COQLIB)/plugins/romega" \
+  -I "$(COQLIB)/plugins/rtauto" \
+  -I "$(COQLIB)/plugins/setoid_ring" \
+  -I "$(COQLIB)/plugins/syntax" \
+  -I "$(COQLIB)/plugins/xml"
+ZFLAGS=$(OCAMLLIBS) $(COQSRCLIBS) -I $(CAMLP4LIB)
+
+CAMLC?=$(OCAMLC) -c -rectypes -thread
+CAMLOPTC?=$(OCAMLOPT) -c -rectypes -thread
+CAMLLINK?=$(OCAMLC) -rectypes -thread
+CAMLOPTLINK?=$(OCAMLOPT) -rectypes -thread
+GRAMMARS?=grammar.cma
+ifeq ($(CAMLP4),camlp5)
+CAMLP4EXTEND=pa_extend.cmo q_MLast.cmo pa_macro.cmo unix.cma threads.cma
+else
+CAMLP4EXTEND=threads.cma
+endif
+PP?=-pp '$(CAMLP4O) -I $(CAMLLIB) -I $(CAMLLIB)threads/ $(COQSRCLIBS) compat5.cmo \
+  $(CAMLP4EXTEND) $(GRAMMARS) $(CAMLP4OPTIONS) -impl'
 
 ##################
 #                #
@@ -144,13 +195,15 @@ VFILES:=lib/CompCert/Coqlib.v\
   mqhasm/zSSA.v\
   mqhasm/zPoly.v\
   mqhasm/zRadix.v\
+  mqhasm/Verify.v\
   mqhasm/QFBV.v\
+  mqhasm/QFBVSolve.v\
   mqhasm/bvDSL.v\
   mqhasm/bvSSA.v\
   mqhasm/bvDSL2zDSL.v\
   mqhasm/bvSSA2zSSA.v\
   mqhasm/bvSSA2QFBV.v\
-  mqhasm/Verify.v
+  mqhasm/bvVerify.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
@@ -164,6 +217,7 @@ endif
 
 VO=vo
 VOFILES:=$(VFILES:.v=.$(VO))
+VOFILESINC=$(filter $(wildcard mqhasm/*),$(VOFILES)) 
 VOFILES1=$(patsubst lib/CompCert/%,%,$(filter lib/CompCert/%,$(VOFILES)))
 VOFILES4=$(patsubst common/%,%,$(filter common/%,$(VOFILES)))
 VOFILES5=$(patsubst qhasm/%,%,$(filter qhasm/%,$(VOFILES)))
@@ -176,11 +230,77 @@ GHTMLFILES:=$(VFILES:.v=.g.html)
 OBJFILES=$(call vo_to_obj,$(VOFILES))
 ALLNATIVEFILES=$(OBJFILES:.o=.cmi) $(OBJFILES:.o=.cmo) $(OBJFILES:.o=.cmx) $(OBJFILES:.o=.cmxs)
 NATIVEFILES=$(foreach f, $(ALLNATIVEFILES), $(wildcard $f))
+NATIVEFILESINC=$(filter $(wildcard mqhasm/*),$(NATIVEFILES)) 
 NATIVEFILES1=$(patsubst lib/CompCert/%,%,$(filter lib/CompCert/%,$(NATIVEFILES)))
 NATIVEFILES4=$(patsubst common/%,%,$(filter common/%,$(NATIVEFILES)))
 NATIVEFILES5=$(patsubst qhasm/%,%,$(filter qhasm/%,$(NATIVEFILES)))
 NATIVEFILES6=$(patsubst sqhasm/%,%,$(filter sqhasm/%,$(NATIVEFILES)))
 NATIVEFILES7=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(NATIVEFILES)))
+ML4FILES:=mqhasm/qf_bv_tactic.ml4
+
+ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
+-include $(addsuffix .d,$(ML4FILES))
+else
+ifeq ($(MAKECMDGOALS),)
+-include $(addsuffix .d,$(ML4FILES))
+endif
+endif
+
+.SECONDARY: $(addsuffix .d,$(ML4FILES))
+
+MLFILES:=mqhasm/qf_bv.ml\
+  mqhasm/qf_bv_plugin_mod.ml
+
+ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
+-include $(addsuffix .d,$(MLFILES))
+else
+ifeq ($(MAKECMDGOALS),)
+-include $(addsuffix .d,$(MLFILES))
+endif
+endif
+
+.SECONDARY: $(addsuffix .d,$(MLFILES))
+
+MLLIBFILES:=mqhasm/qf_bv_plugin.mllib
+
+ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
+-include $(addsuffix .d,$(MLLIBFILES))
+else
+ifeq ($(MAKECMDGOALS),)
+-include $(addsuffix .d,$(MLLIBFILES))
+endif
+endif
+
+.SECONDARY: $(addsuffix .d,$(MLLIBFILES))
+
+MLIFILES:=mqhasm/qf_bv.mli
+
+ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
+-include $(addsuffix .d,$(MLIFILES))
+else
+ifeq ($(MAKECMDGOALS),)
+-include $(addsuffix .d,$(MLIFILES))
+endif
+endif
+
+.SECONDARY: $(addsuffix .d,$(MLIFILES))
+
+ALLCMOFILES:=$(ML4FILES:.ml4=.cmo) $(MLFILES:.ml=.cmo)
+CMOFILES=$(filter-out $(addsuffix .cmo,$(foreach lib,$(MLLIBFILES:.mllib=_MLLIB_DEPENDENCIES) $(MLPACKFILES:.mlpack=_MLPACK_DEPENDENCIES),$($(lib)))),$(ALLCMOFILES))
+CMOFILESINC=$(filter $(wildcard mqhasm/*),$(CMOFILES)) 
+CMOFILES7=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(CMOFILES)))
+CMXFILES=$(CMOFILES:.cmo=.cmx)
+OFILES=$(CMXFILES:.cmx=.o)
+CMAFILES:=$(MLLIBFILES:.mllib=.cma)
+CMAFILESINC=$(filter $(wildcard mqhasm/*),$(CMAFILES)) 
+CMAFILES7=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(CMAFILES)))
+CMXAFILES:=$(CMAFILES:.cma=.cmxa)
+CMIFILES=$(sort $(ALLCMOFILES:.cmo=.cmi) $(MLIFILES:.mli=.cmi))
+CMIFILESINC=$(filter $(wildcard mqhasm/*),$(CMIFILES)) 
+CMIFILES7=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(CMIFILES)))
+CMXSFILES=$(CMXFILES:.cmx=.cmxs) $(CMXAFILES:.cmxa=.cmxs)
+CMXSFILESINC=$(filter $(wildcard mqhasm/*),$(CMXSFILES)) 
+CMXSFILES7=$(patsubst mqhasm/%,%,$(filter mqhasm/%,$(CMXSFILES)))
 ifeq '$(HASNATDYNLINK)' 'true'
 HASNATDYNLINK_OR_EMPTY := yes
 else
@@ -193,7 +313,14 @@ endif
 #                                     #
 #######################################
 
-all: $(VOFILES) 
+all: $(VOFILES) $(CMOFILES) $(CMAFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)) 
+
+mlihtml: $(MLIFILES:.mli=.cmi)
+	 mkdir $@ || rm -rf $@/*
+	$(OCAMLDOC) -html -rectypes -d $@ -m A $(ZDEBUG) $(ZFLAGS) $(^:.cmi=.mli)
+
+all-mli.tex: $(MLIFILES:.mli=.cmi)
+	$(OCAMLDOC) -latex -rectypes -o $@ -m A $(ZDEBUG) $(ZFLAGS) $(^:.cmi=.mli)
 
 quick: $(VOFILES:.vo=.vio)
 
@@ -248,26 +375,86 @@ opt:
 userinstall:
 	+$(MAKE) USERINSTALL=true install
 
-install:
-	cd "mqhasm" && for i in $(NATIVEFILES7) $(GLOBFILES7) $(VFILES7) $(VOFILES7); do \
+install-natdynlink:
+	cd "mqhasm" && for i in $(CMXSFILES7); do \
+	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/$$i`"; \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/$$i; \
+	done
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm; \
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm; \
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/Common; \
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Common/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/PolyOp; \
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/PolyOp/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/GBArith; \
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/GBArith/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/CompCert; \
+	for i in $(CMXSFILESINC); do \
+	 install -m 0755 $$i "$(DSTROOT)"$(COQLIBINSTALL)/CompCert/`basename $$i`; \
+	done
+
+install-toploop: $(MLLIBFILES:.mllib=.cmxs)
+	 install -d "$(DSTROOT)"$(COQTOPINSTALL)/
+	 install -m 0755 $?  "$(DSTROOT)"$(COQTOPINSTALL)/
+
+install:$(if $(HASNATDYNLINK_OR_EMPTY),install-natdynlink)
+	cd "mqhasm" && for i in $(CMAFILES7) $(CMIFILES7) $(CMOFILES7) $(NATIVEFILES7) $(GLOBFILES7) $(VFILES7) $(VOFILES7); do \
 	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/$$i`"; \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/$$i; \
+	done
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/mQhasm/`basename $$i`; \
 	done
 	cd "sqhasm" && for i in $(NATIVEFILES6) $(GLOBFILES6) $(VFILES6) $(VOFILES6); do \
 	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm/$$i`"; \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm/$$i; \
 	done
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/sQhasm/`basename $$i`; \
+	done
 	cd "qhasm" && for i in $(NATIVEFILES5) $(GLOBFILES5) $(VFILES5) $(VOFILES5); do \
 	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm/$$i`"; \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm/$$i; \
+	done
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Qhasm/`basename $$i`; \
 	done
 	cd "common" && for i in $(NATIVEFILES4) $(GLOBFILES4) $(VFILES4) $(VOFILES4); do \
 	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/Common/$$i`"; \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Common/$$i; \
 	done
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/Common/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/PolyOp; \
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/PolyOp/`basename $$i`; \
+	done
+	install -d "$(DSTROOT)"$(COQLIBINSTALL)/GBArith; \
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/GBArith/`basename $$i`; \
+	done
 	cd "lib/CompCert" && for i in $(NATIVEFILES1) $(GLOBFILES1) $(VFILES1) $(VOFILES1); do \
 	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/CompCert/$$i`"; \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/CompCert/$$i; \
+	done
+	for i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/CompCert/`basename $$i`; \
 	done
 
 install-doc:
@@ -275,19 +462,33 @@ install-doc:
 	for i in html/*; do \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT)/$$i;\
 	done
+	install -d "$(DSTROOT)"$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT)/mlihtml
+	for i in mlihtml/*; do \
+	 install -m 0644 $$i "$(DSTROOT)"$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT)/$$i;\
+	done
 
 uninstall_me.sh: Makefile.coq
 	echo '#!/bin/sh' > $@
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/mQhasm && rm -f $(NATIVEFILES7) $(GLOBFILES7) $(VFILES7) $(VOFILES7) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "mQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/sQhasm && rm -f $(NATIVEFILES6) $(GLOBFILES6) $(VFILES6) $(VOFILES6) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "sQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Qhasm && rm -f $(NATIVEFILES5) $(GLOBFILES5) $(VFILES5) $(VOFILES5) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Qhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Common && rm -f $(NATIVEFILES4) $(GLOBFILES4) $(VFILES4) $(VOFILES4) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Common" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/PolyOp && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "PolyOp" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/GBArith && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "GBArith" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/CompCert && rm -f $(NATIVEFILES1) $(GLOBFILES1) $(VFILES1) $(VOFILES1) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "CompCert" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/mQhasm && rm -f $(CMXSFILES7) && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "mQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/sQhasm && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "sQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Qhasm && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Qhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Common && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Common" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/PolyOp && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "PolyOp" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/GBArith && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "GBArith" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/CompCert && \\\nfor i in $(CMXSFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "CompCert" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/mQhasm && rm -f $(CMAFILES7) $(CMIFILES7) $(CMOFILES7) $(NATIVEFILES7) $(GLOBFILES7) $(VFILES7) $(VOFILES7) && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "mQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/sQhasm && rm -f $(NATIVEFILES6) $(GLOBFILES6) $(VFILES6) $(VOFILES6) && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "sQhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Qhasm && rm -f $(NATIVEFILES5) $(GLOBFILES5) $(VFILES5) $(VOFILES5) && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Qhasm" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/Common && rm -f $(NATIVEFILES4) $(GLOBFILES4) $(VFILES4) $(VOFILES4) && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "Common" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/PolyOp && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "PolyOp" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/GBArith && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "GBArith" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/CompCert && rm -f $(NATIVEFILES1) $(GLOBFILES1) $(VFILES1) $(VOFILES1) && \\\nfor i in $(CMAFILESINC) $(CMIFILESINC) $(CMOFILESINC) $(NATIVEFILESINC) $(GLOBFILESINC) $(VFILESINC) $(VOFILESINC); do rm -f "`basename "$$i"`"; done && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "CompCert" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
 	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT) \\\n' >> "$@"
 	printf '&& rm -f $(shell find "html" -maxdepth 1 -and -type f -print)\n' >> "$@"
 	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL) && find $(INSTALLDEFAULTROOT)/html -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL)/$(INSTALLDEFAULTROOT) \\\n' >> "$@"
+	printf '&& rm -f $(shell find "mlihtml" -maxdepth 1 -and -type f -print)\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL) && find $(INSTALLDEFAULTROOT)/mlihtml -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
 	chmod +x $@
 
 uninstall: uninstall_me.sh
@@ -310,10 +511,15 @@ uninstall: uninstall_me.sh
 	@echo "B $(COQLIB) stm" >> .merlin
 	@echo "B $(COQLIB) grammar" >> .merlin
 	@echo "B $(COQLIB) config" >> .merlin
+	@echo "B /Users/mht208/.git/certified_qhasm_vcg/mqhasm" >> .merlin
+	@echo "S /Users/mht208/.git/certified_qhasm_vcg/mqhasm" >> .merlin
 	@echo "B /Users/mht208/.git/certified_qhasm_vcg" >> .merlin
 	@echo "S /Users/mht208/.git/certified_qhasm_vcg" >> .merlin
 
 clean::
+	rm -f $(ALLCMOFILES) $(CMIFILES) $(CMAFILES)
+	rm -f $(ALLCMOFILES:.cmo=.cmx) $(CMXAFILES) $(CMXSFILES) $(ALLCMOFILES:.cmo=.o) $(CMXAFILES:.cmxa=.a)
+	rm -f $(addsuffix .d,$(MLFILES) $(MLIFILES) $(ML4FILES) $(MLLIBFILES) $(MLPACKFILES))
 	rm -f $(OBJFILES) $(OBJFILES:.o=.native) $(NATIVEFILES)
 	find . -name .coq-native -type d -empty -delete
 	rm -f $(VOFILES) $(VOFILES:.vo=.vio) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)
@@ -345,6 +551,45 @@ Makefile.coq: .project
 # Implicit rules. #
 #                 #
 ###################
+
+$(MLIFILES:.mli=.cmi): %.cmi: %.mli
+	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $<
+
+$(addsuffix .d,$(MLIFILES)): %.mli.d: %.mli
+	$(OCAMLDEP) -slash $(OCAMLLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
+
+$(ML4FILES:.ml4=.cmo): %.cmo: %.ml4
+	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $(PP) -impl $<
+
+$(filter-out $(addsuffix .cmx,$(foreach lib,$(MLPACKFILES:.mlpack=_MLPACK_DEPENDENCIES),$($(lib)))),$(ML4FILES:.ml4=.cmx)): %.cmx: %.ml4
+	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $(PP) -impl $<
+
+$(addsuffix .d,$(ML4FILES)): %.ml4.d: %.ml4
+	$(OCAMLDEP) -slash $(OCAMLLIBS) $(PP) -impl "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
+
+$(MLFILES:.ml=.cmo): %.cmo: %.ml
+	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $<
+
+$(filter-out $(addsuffix .cmx,$(foreach lib,$(MLPACKFILES:.mlpack=_MLPACK_DEPENDENCIES),$($(lib)))),$(MLFILES:.ml=.cmx)): %.cmx: %.ml
+	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $<
+
+$(addsuffix .d,$(MLFILES)): %.ml.d: %.ml
+	$(OCAMLDEP) -slash $(OCAMLLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
+
+$(filter-out $(MLLIBFILES:.mllib=.cmxs),$(MLFILES:.ml=.cmxs) $(ML4FILES:.ml4=.cmxs) $(MLPACKFILES:.mlpack=.cmxs)): %.cmxs: %.cmx
+	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $<
+
+$(MLLIBFILES:.mllib=.cmxs): %.cmxs: %.cmxa
+	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -linkall -shared -o $@ $<
+
+$(MLLIBFILES:.mllib=.cma): %.cma: | %.mllib
+	$(CAMLLINK) $(ZDEBUG) $(ZFLAGS) -a -o $@ $^
+
+$(MLLIBFILES:.mllib=.cmxa): %.cmxa: | %.mllib
+	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -a -o $@ $^
+
+$(addsuffix .d,$(MLLIBFILES)): %.mllib.d: %.mllib
+	$(COQDEP) $(OCAMLLIBS) -c "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
 
 $(VOFILES): %.vo: %.v
 	$(COQC) $(COQDEBUG) $(COQFLAGS) $<

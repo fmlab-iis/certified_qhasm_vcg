@@ -5,6 +5,7 @@
 -Q qhasm Qhasm
 -Q sqhasm sQhasm
 -Q mqhasm mQhasm
+-I mqhasm
 -I .
 # 3rd Party Libraries
 lib/CompCert/Coqlib.v
@@ -40,10 +41,17 @@ mqhasm/zDSL.v
 mqhasm/zSSA.v
 mqhasm/zPoly.v
 mqhasm/zRadix.v
+mqhasm/Verify.v
 mqhasm/QFBV.v
+mqhasm/qf_bv.mli
+mqhasm/qf_bv.ml
+mqhasm/qf_bv_tactic.ml4
+mqhasm/qf_bv_plugin_mod.ml
+mqhasm/qf_bv_plugin.mllib
+mqhasm/QFBVSolve.v
 mqhasm/bvDSL.v
 mqhasm/bvSSA.v
 mqhasm/bvDSL2zDSL.v
 mqhasm/bvSSA2zSSA.v
 mqhasm/bvSSA2QFBV.v
-mqhasm/Verify.v
+mqhasm/bvVerify.v
