@@ -65,7 +65,7 @@ Ltac verify_program_safe_with o vs :=
         done
         |
         (* implication of QFBV64.eval_bexp *)
-        verify_qfbv_with a || fail 100 a(*"Failed to prove bv2z_program_safe_at"*)
+        verify_qfbv_with a || fail 100 "Failed to prove bv2z_program_safe_at"
         ]
       | |- _ => fail 100 "Failed to prove bv2z_program_safe_at: goal does not match"
       end in
