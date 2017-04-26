@@ -204,4 +204,4 @@ Ltac verify_bvspec_with o :=
   end.
 
 Tactic Notation "verify_bvspec" := verify_bvspec_with default_options.
-Tactic Notation "verify_bvsecp" "with" constr(opts) := verify_bvspec_with (oconf opts).
+Tactic Notation "verify_bvspec" "with" constr(opts) := verify_bvspec_with (oconf opts).
