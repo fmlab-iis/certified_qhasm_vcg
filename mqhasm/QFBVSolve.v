@@ -274,15 +274,15 @@ Ltac solve_simp f k :=
 
 Axiom valid_simp : forall P : Prop, P.
 
-Ltac verify_qfbv_with s :=
+Ltac solve_qfbv_with s :=
   bvsimpl; intros; split_hyps; split_goals; clear_trivials; gen_bexps;
   let f := abs in
   solve_simp_with s f ltac:(fun res =>
     match res with
     | true => exact: valid_simp
-    | false => fail
+    | false => fail "Invalid QF_BV formula"
     end
   ).
 
-Ltac verify_qfbv :=
-  verify_qfbv_with Z3 || verify_qfbv_with Boolector.
+Ltac solve_qfbv :=
+  solve_qfbv_with Z3 || solve_qfbv_with Boolector.

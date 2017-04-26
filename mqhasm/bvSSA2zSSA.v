@@ -460,10 +460,20 @@ Definition bv2z_spec_poly s : zSSA.spec :=
      zSSA.sprog := bv2z_program (sprog s);
      zSSA.spost := bv2z_ebexp (fst (split_bexp (spost s))) |}.
 
+Definition bv2z_spre_safe f : Prop :=
+  forall s, eval_bexp f s -> bv2z_bexp_safe_at f s.
+
+Definition bv2z_sprog_safe f p : Prop :=
+  forall s, eval_bexp f s -> bv2z_program_safe_at p s.
+
+Definition bv2z_spost_safe f p g : Prop :=
+  forall s1 s2, eval_bexp f s1 -> eval_program s1 p = s2 ->
+                bv2z_bexp_safe_at g s2.
+
 Definition bv2z_spec_safe sp :=
-  (forall s, eval_bexp (spre sp) s -> bv2z_program_safe_at (sprog sp) s) /\
-  (forall s, bv2z_bexp_safe_at (spre sp) s) /\
-  (forall s, bv2z_bexp_safe_at (spost sp) s).
+  bv2z_spre_safe (spre sp) /\
+  bv2z_sprog_safe (spre sp) (sprog sp) /\
+  bv2z_spost_safe (spre sp) (sprog sp) (spost sp).
 
 
 
@@ -960,14 +970,14 @@ Theorem bv2z_spec_sound sp :
   valid_spec sp.
 Proof.
   destruct sp as [f p g] => /=.
-  move=> [/= Hsafep [Hsafef Hsafeg]] Hrng Heqn bs1 bs2 /= Hbf Hbp.
+  move=> [/= Hsafef [Hsafep Hsafeg]] Hrng Heqn bs1 bs2 /= Hbf Hbp.
   move: (Hrng bs1 bs2 Hbf Hbp) => {Hrng} /= Hrng.
   set zs1 := bv2z_state bs1.
   set zs2 := zSSA.eval_program zs1 (bv2z_program p).
   move: (Heqn zs1 zs2
-              (bvz_eq_eval_bexp (Hsafef bs1) (bv2z_state_eq bs1) Hbf)
+              (bvz_eq_eval_bexp (Hsafef bs1 Hbf) (bv2z_state_eq bs1) Hbf)
               (Logic.eq_refl zs2)) => {Heqn} /= Heqn.
-  apply: (@split_bexp_combine g bs2 zs2 (Hsafeg bs2) _ Hrng Heqn).
+  apply: (@split_bexp_combine g bs2 zs2 (Hsafeg bs1 bs2 Hbf Hbp) _ Hrng Heqn).
   rewrite -Hbp.
   exact: (bvz_eq_eval_program (bv2z_state_eq bs1) (Hsafep _ Hbf)).
 Qed.

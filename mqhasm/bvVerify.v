@@ -36,6 +36,10 @@ Ltac get_smt_solver o :=
       end in
   a.
 
+Ltac verify_qfbv_with o :=
+  let a := get_smt_solver o in
+  bvsimpl; solve_qfbv_with a.
+
 (* Prove bv2z_bexp_safe_at with SMT solvers. *)
 Ltac verify_bexp_safe_with o :=
   let a := get_smt_solver o in
@@ -43,13 +47,12 @@ Ltac verify_bexp_safe_with o :=
   | |- forall s, is_true (bv2z_bexp_safe_at ?e s) =>
     intro s; verify_bexp_safe_with o
   | |- is_true (bv2z_bexp_safe_at ?e ?s) =>
-    apply: eval_bexp_bexp_safe1; bvsimpl; verify_qfbv_with a
+    apply: eval_bexp_bexp_safe1; bvsimpl; solve_qfbv_with a
   | |- _ => fail 100 "Failed to prove bv2z_bexp_safe_at: goal does not match"
   end.
 
 (* Prove that program is safe. *)
 Ltac verify_program_safe_with o vs :=
-  let a := get_smt_solver o in
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
   let tac _ :=
@@ -61,11 +64,11 @@ Ltac verify_program_safe_with o vs :=
           (* ssa_vars_unchanged_program *)
           done
         |
-        (* well_formed_ssa_program *)
-        done
+          (* well_formed_ssa_program *)
+          done
         |
-        (* implication of QFBV64.eval_bexp *)
-        verify_qfbv_with a || fail 100 "Failed to prove bv2z_program_safe_at"
+          (* implication of QFBV64.eval_bexp *)
+          verify_qfbv_with o || fail 100 "Failed to prove bv2z_program_safe_at"
         ]
       | |- _ => fail 100 "Failed to prove bv2z_program_safe_at: goal does not match"
       end in
@@ -76,19 +79,18 @@ Ltac verify_program_safe_with o vs :=
 
 (* Prove specifications regarding ranges. *)
 Ltac verify_spec_rng_with o vs :=
-  let a := get_smt_solver o in
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
   let tac _ :=
       match goal with
       | |- bv64SSA.valid_spec ?s =>
-        apply: (@bexp_spec_sound_imp (ssa_vars empty_vmap vs));
+        apply: (@bexp_spec_sound_imp (bvSSA.ssa_vars bvSSA.empty_vmap vs));
         [
           (* well_formed_ssa_spec *)
           done
         |
-        (*  valid_bexp_spec_imp *)
-        verify_qfbv_with a || fail 100 "Failed to prove bv2z_spec_rng"
+          (*  valid_bexp_spec_imp *)
+          verify_qfbv_with o || fail 100 "Failed to prove bv2z_spec_rng"
         ]
       | |- _ => fail 100 "Failed to verify bv2z_spec_rng: goal does not match"
       end in
@@ -157,28 +159,36 @@ Ltac verify_bvdsl_with o vs :=
   | |- bv64DSL.valid_spec ?sp =>
     apply: ssa_spec_sound; apply: bv2z_spec_sound;
     [
-      (* spec_safe *)
-      split; last split;
+      (* bv2z_spec_safe *)
+      apply: (bv2z_spec_safe_qfbv1 (vs := (bvSSA.ssa_vars bvSSA.empty_vmap vs)));
       [
-        (* program_safe *)
-        verify_program_safe_with o vs
+        (* well_formed_ssa_spec *)
+        done
       |
-        (* bexp_safe precondition *)
-        (match b with
-         | true => time "verify_precondition_safe" (verify_bexp_safe_with o)
-         | false => (verify_bexp_safe_with o)
-         end)
-        || fail 100 "Failed to prove bexp_safe for precondition"
-      |
-        (* bexp_safe postcondition *)
-        (match b with
-         | true => time "verify_postcondition_safe" (verify_bexp_safe_with o)
-         | false => (verify_bexp_safe_with o)
-         end)
-        || fail 100 "Failed to prove bexp_safe for postcondition"
+        (* bv2z_spec_safe_qfbv *)
+        split; last split;
+        [
+          (* bv2z_spre_safe_qfbv *)
+          (match b with
+           | true => time "bv2z_spre_safe_qfbv" (verify_qfbv_with o)
+           | false => (verify_qfbv_with o)
+           end)
+        |
+          (* bv2z_sprog_safe_qfbv *)
+          (match b with
+           | true => time "bv2z_sprog_safe_qfbv" (verify_qfbv_with o)
+           | false => (verify_qfbv_with o)
+           end)
+        |
+          (* bv2z_spost_safe_qfbv *)
+          (match b with
+           | true => time "bv2z_spost_safe_qfbv" (verify_qfbv_with o)
+           | false => (verify_qfbv_with o)
+           end)
+        ]
       ]
     |
-      (* rng_safe *)
+      (* valid bv2z_spec_rng *)
       verify_spec_rng_with o vs
     |
       (* valid_spec on the zSSA side *)

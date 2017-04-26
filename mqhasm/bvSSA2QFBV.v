@@ -986,3 +986,68 @@ Lemma eval_bexp_program_safe2 vs pre p :
 Proof.
   (* We may need to construct an initial state given a final state. *)
 Abort.
+
+
+
+Definition bv2z_spre_safe_qfbv f : Prop :=
+  forall s, QFBV64.eval_bexp (bexp_bexp f) s ->
+            QFBV64.eval_bexp (bexp_bexp_safe f) s.
+
+Definition bv2z_sprog_safe_qfbv f p : Prop :=
+  forall s,
+    QFBV64.eval_bexp (bexp_bexp f) s -> eval_bexps_conj (bexp_program p) s ->
+    QFBV64.eval_bexp (bexp_program_safe p) s.
+
+Definition bv2z_spost_safe_qfbv f p g : Prop :=
+  forall s,
+    QFBV64.eval_bexp (bexp_bexp f) s -> eval_bexps_conj (bexp_program p) s ->
+    QFBV64.eval_bexp (bexp_bexp_safe g) s.
+
+Definition bv2z_spec_safe_qfbv sp : Prop :=
+  bv2z_spre_safe_qfbv (spre sp) /\
+  bv2z_sprog_safe_qfbv (spre sp) (sprog sp) /\
+  bv2z_spost_safe_qfbv (spre sp) (sprog sp) (spost sp).
+
+Lemma bv2z_spre_safe_qfbv1 f :
+  bv2z_spre_safe_qfbv f -> bv2z_spre_safe f.
+Proof.
+  move=> H s Hf. apply: eval_bexp_bexp_safe1. apply: H.
+  exact: (eval_bexp_bexp2 Hf).
+Qed.
+
+Corollary bv2z_sprog_safe_qfbv1 vs f p :
+  ssa_vars_unchanged_program (vars_bexp f) p ->
+  well_formed_ssa_program vs p ->
+  bv2z_sprog_safe_qfbv f p -> bv2z_sprog_safe f p.
+Proof.
+  exact: eval_bexp_program_safe1.
+Qed.
+
+Lemma bv2z_spost_safe_qfbv1 vs f p g :
+  ssa_vars_unchanged_program (vars_bexp f) p ->
+  well_formed_ssa_program vs p ->
+  VS.subset (vars_bexp g) (VS.union vs (vars_program p)) ->
+  bv2z_spost_safe_qfbv f p g ->
+  bv2z_spost_safe f p g.
+Proof.
+  move=> Hun Hwell Hsub Hqfbv s1 s2 Hf Hp. apply: eval_bexp_bexp_safe1.
+  apply: Hqfbv.
+  - apply: eval_bexp_bexp2. exact: (ssa_unchanged_program_eval_bexp1 Hun Hp Hf).
+  - exact: (bexp_program_eval Hwell Hp).
+Qed.
+
+Lemma bv2z_spec_safe_qfbv1 vs sp :
+  well_formed_ssa_spec vs sp ->
+  bv2z_spec_safe_qfbv sp ->
+  bv2z_spec_safe sp.
+Proof.
+  destruct sp as [f p g]. move => Hwell [/= Hf [Hp Hg]].
+  split => /=; last split => /=.
+  - exact: (bv2z_spre_safe_qfbv1 Hf).
+  - exact: (bv2z_sprog_safe_qfbv1 (well_formed_ssa_spec_pre_unchanged Hwell)
+                                  (well_formed_ssa_spec_program Hwell) Hp).
+  - exact: (bv2z_spost_safe_qfbv1 (well_formed_ssa_spec_pre_unchanged Hwell)
+                                  (well_formed_ssa_spec_program Hwell)
+                                  (well_formed_ssa_spec_post_subset Hwell)
+                                  Hg).
+Qed.

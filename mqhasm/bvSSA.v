@@ -1607,15 +1607,6 @@ Definition well_formed_ssa_spec (vs : bv64SSA.VS.t) (s : bv64SSA.spec) : bool :=
   ssa_vars_unchanged_program vs (bv64SSA.sprog s) &&
   ssa_single_assignment (bv64SSA.sprog s).
 
-Lemma well_formed_ssa_spec_program vs s :
-  well_formed_ssa_spec vs s ->
-  well_formed_ssa_program vs (bv64SSA.sprog s).
-Proof.
-  move=> /andP [/andP [/andP [/andP [Hpre Hwell] Hprog] Hvs] Hssa].
-  rewrite /well_formed_ssa_program Hwell Hvs Hssa.
-  done.
-Qed.
-
 (* Given that (ssa_var_unchanged_instr x i), prove that (x != v) where
    v is an lval of i.*)
 Ltac ssa_var_unchanged_lv_neq :=
@@ -2288,6 +2279,32 @@ Proof.
   move=> Hunch Hp He.
   move: (ssa_unchanged_program_eval_bexp Hunch Hp) => [H1 H2].
   exact: (H2 He).
+Qed.
+
+Corollary well_formed_ssa_spec_program vs s :
+  well_formed_ssa_spec vs s ->
+  well_formed_ssa_program vs (bv64SSA.sprog s).
+Proof.
+  move=> /andP [/andP [/andP [/andP [Hpre Hwell] Hprog] Hvs] Hssa].
+  rewrite /well_formed_ssa_program Hwell Hvs Hssa.
+  done.
+Qed.
+
+Corollary well_formed_ssa_spec_pre_unchanged vs s :
+  well_formed_ssa_spec vs s ->
+  ssa_vars_unchanged_program (bv64SSA.vars_bexp (bv64SSA.spre s)) (bv64SSA.sprog s).
+Proof.
+  move=> /andP [/andP [/andP [/andP [Hf Hp] Hg] Hun] Hssa].
+  exact: (ssa_unchanged_program_subset Hun Hf).
+Qed.
+
+Corollary well_formed_ssa_spec_post_subset vs s :
+  well_formed_ssa_spec vs s ->
+  bv64SSA.VS.subset (bv64SSA.vars_bexp (bv64SSA.spost s))
+                    (bv64SSA.VS.union vs (bv64SSA.vars_program (bv64SSA.sprog s))).
+Proof.
+  move=> /andP [/andP [/andP [/andP [Hf Hp] Hg] Hun] Hssa].
+  exact: Hg.
 Qed.
 
 Ltac le_ssa_var_unchanged_instr :=
