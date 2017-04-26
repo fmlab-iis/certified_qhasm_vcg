@@ -37,6 +37,7 @@ qhasm/IProgGenAMD64.v
 sqhasm/IProg.v
 sqhasm/MiniQhasmPlusAMD64.v
 # Domain specific language
+mqhasm/Options.v
 mqhasm/zDSL.v
 mqhasm/zSSA.v
 mqhasm/zPoly.v

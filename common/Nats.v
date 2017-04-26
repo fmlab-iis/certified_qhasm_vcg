@@ -23,6 +23,46 @@ Section NatLemmas.
     reflexivity.
   Qed.
 
+  Lemma leq_le_iff n m : n <= m <-> (n <= m)%coq_nat.
+  Proof.
+    elim: m n => /=.
+    - move=> n; split => H.
+      + rewrite /leq subn0 in H. rewrite (eqP H). done.
+      + inversion_clear H. done.
+    - move=> m IH n; split => H.
+      + apply: (proj1 (Nat.le_pred_le_succ n m)). apply: (proj1 (IH (n.-1))).
+        rewrite -subn1 leq_subLR addnC addn1. exact: H.
+      + rewrite -addn1 addnC -leq_subLR subn1. apply: (proj2 (IH (n.-1))).
+        apply: (proj2 (Nat.le_pred_le_succ n m)). exact: H.
+  Qed.
+
+  Lemma leq_le n m : n <= m -> (n <= m)%coq_nat.
+  Proof.
+    exact: (proj1 (leq_le_iff n m)).
+  Qed.
+
+  Lemma le_leq n m : (n <= m)%coq_nat -> n <= m.
+  Proof.
+    exact: (proj2 (leq_le_iff n m)).
+  Qed.
+
+  Lemma ltn_lt_iff n m : n < m <-> (n < m)%coq_nat.
+  Proof.
+    split => H.
+    - apply: (proj1 (Nat.le_succ_l n m)). apply: leq_le. exact: H.
+    - apply: le_leq. apply: (proj2 (Nat.le_succ_l n m)). exact: H.
+  Qed.
+
+  Lemma ltn_lt n m : n < m -> (n < m)%coq_nat.
+  Proof.
+    exact: (proj1 (ltn_lt_iff n m)).
+  Qed.
+
+  Lemma lt_ltn n m : (n < m)%coq_nat -> n < m.
+  Proof.
+    exact: (proj2 (ltn_lt_iff n m)).
+  Qed.
+
   Lemma subn_gtn : forall n m r, n < m - r -> r < m.
   Proof.
     move=> n m r H.

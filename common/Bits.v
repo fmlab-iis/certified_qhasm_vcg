@@ -447,13 +447,24 @@ Section BitsLemmas.
 
   Definition toPosZBounded := toPosZ_max.
 
-  Lemma toPosZ_fromPosZBounded n m :
+  Lemma toPosZ_fromPosZBounded_nat n m :
     (m < 2^n)%N ->
     toPosZ (fromPosZ (n:=n) (Z.of_nat m)) = (Z.of_nat m).
   Proof.
     rewrite toPosZ_toNat fromPosZ_fromNat => H.
     apply: (proj2 (Nat2Z.inj_iff (toNat (@fromNat n m)) m)).
     exact: toNat_fromNatBounded.
+  Qed.
+
+  Lemma toPosZ_fromPosZBounded n m :
+    (0 <= m < Zpower_nat 2 n)%Z ->
+    toPosZ (fromPosZ (n:=n) m) = m.
+  Proof.
+    move=> [H1 H2]. rewrite -{1}(Z2Nat.id m H1) toPosZ_fromPosZBounded_nat.
+    - rewrite (Z2Nat.id m H1). reflexivity.
+    - apply: lt_ltn. apply: (proj2 (Nat2Z.inj_lt (Z.to_nat m) (2^n)%N)).
+      rewrite (Z2Nat.id _ H1). rewrite expn_pow Nat2Z_inj_pow /= -Zpower_nat_Z.
+      exact: H2.
   Qed.
 
   Lemma toPosZ_zero n : toPosZ (zero n) = 0%Z.
@@ -710,6 +721,23 @@ Section BitsInterval.
   Abort.
 
 End BitsInterval.
+
+
+Global Transparent adcB sbbB.
+Ltac bvsimpl :=
+  lazy beta iota zeta delta -[
+    adcB adcBmain sbbB fullmulB mulB ltB leB
+         rorB rolB shrB shrBn shlB shlBn
+         fromNat toNat fromPosZ toPosZ fromZ toZ
+  ].
+Ltac bvzsimpl :=
+  lazy beta iota zeta delta -[
+    Zmult Zplus Zpower Z.pow_pos Zpower_nat Zminus Zopp Zdiv Zmod
+    adcB adcBmain sbbB fullmulB mulB ltB leB
+         rorB rolB shrB shrBn shlB shlBn
+         fromNat toNat fromPosZ toPosZ fromZ toZ
+  ].
+Global Opaque adcB sbbB.
 
 (* Don't simplify fullmulB. Otherwise, Coq freezes. *)
 Global Opaque low high fullmulB mulB ltB leB shlBn shrBn.

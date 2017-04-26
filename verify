@@ -2,6 +2,7 @@
 COQC=coqc
 PKGS="-Q . Top -Q lib/CompCert CompCert -Q lib/gbarith/src GBArith -Q lib/polyop/src PolyOp -Q common Common -Q qhasm Qhasm -Q sqhasm sQhasm -Q mqhasm mQhasm"
 LOG_GB=log_gb
+LOG_QFBV=log_qfbv
 case `uname` in
 Linux*)
   TIME=/usr/bin/time
@@ -25,9 +26,18 @@ if [[ -f ${LOG_GB} ]]; then
   rm ${LOG_GB}
 fi
 
+if [[ -f ${LOG_QFBV} ]]; then
+  rm ${LOG_QFBV}
+fi
+
 ${TIME} ${COQC} -q ${PKGS} -I . ${1} &> ${OUTPUT}
 
 if [[ -f ${LOG_GB} ]]; then
   echo -e "\n\n\n===== GB Log =====\n" >> ${OUTPUT}
   cat ${LOG_GB} >> ${OUTPUT}
+fi
+
+if [[ -f ${LOG_QFBV} ]]; then
+  echo -e "\n\n\n===== QFBV Log =====\n" >> ${OUTPUT}
+  cat ${LOG_QFBV} >> ${OUTPUT}
 fi

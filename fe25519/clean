@@ -1,0 +1,7 @@
+DIRS="bvdsl zdsl"
+
+for d in ${DIRS}; do
+  pushd $d
+  rm *.vo *.glob
+  popd
+done

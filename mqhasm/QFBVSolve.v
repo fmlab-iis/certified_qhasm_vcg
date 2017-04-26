@@ -14,7 +14,7 @@ Declare ML Module "qf_bv_plugin".
 
 Import QFBV64.
 
-Inductive Solver : Set :=
+Inductive solver : Set :=
 | Z3
 | Boolector.
 
@@ -263,9 +263,9 @@ Ltac abs :=
   | |- ?g => abs_imp g
   end.
 
-Ltac solve_simp_with solver f k :=
+Ltac solve_simp_with s f k :=
   let id := fresh in
-  ((solve_simp_ml id f || idtac "Failed to solve on the OCaml side: " f);
+  ((solve_simp_ml s id f || fail 100 "Failed to solve on the OCaml side: " f);
   let res := eval compute in id in
   k res).
 
@@ -274,12 +274,15 @@ Ltac solve_simp f k :=
 
 Axiom valid_simp : forall P : Prop, P.
 
-Ltac verify_qfbv :=
+Ltac verify_qfbv_with s :=
   bvsimpl; intros; split_hyps; split_goals; clear_trivials; gen_bexps;
   let f := abs in
-  solve_simp f ltac:(fun res =>
+  solve_simp_with s f ltac:(fun res =>
     match res with
     | true => exact: valid_simp
     | false => fail
     end
   ).
+
+Ltac verify_qfbv :=
+  verify_qfbv_with Z3 || verify_qfbv_with Boolector.

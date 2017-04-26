@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
-From mQhasm Require Import zDSL zSSA zPoly.
+From mQhasm Require Import zDSL zSSA zPoly Options.
 From GBArith Require Import GBCompute.
 From PolyOp Require Import Modp.
 
@@ -13,206 +13,7 @@ Import Prenex Implicits.
 
 Open Scope zdsl_scope.
 
-(** Options *)
-
-(*
-  - opt_split: split postcondition at specification level,
-               good for slicing, bad for rewriting a lot of assignments
-  - opt_slicing: apply slicing before converting to SSA
-  - opt_to_assign: convert equations (e1 = e2) to assignment form (x = e)
-  - opt_keep_unused: do not convert (hi*2^w + lo = e) to (lo = e - hi*2^w)
-                     if lo is not used but hi is used
-  - opt_rewrite_assign: rewrite x = e and clear it
-  - opt_rewrite_equality: rewrite e1 = e2
-  - opt_lazy: use Lazy to do simplification
-  - opt_native: use native_compute to do simplification
-  - opt_singular: use Singular to do polynomial operations
-  - opt_magma: use Magma to do polynomial operations
-  - opt_profiling: print some timing information
-*)
-Record verify_options : Set :=
-  mkOptions { opt_split : bool;
-              opt_slicing : bool;
-              opt_to_assign : bool;
-              opt_keep_unused : bool;
-              opt_rewrite_assign : bool;
-              opt_rewrite_equality : bool;
-              opt_lazy : bool;
-              opt_native : bool;
-              opt_singular : bool;
-              opt_magma : bool;
-              opt_profiling : bool }.
-
-Definition default_options : verify_options :=
-  {| opt_split := true;
-     opt_slicing := false;
-     opt_to_assign := true;
-     opt_keep_unused := false;
-     opt_rewrite_assign := true;
-     opt_rewrite_equality := true;
-     opt_lazy := false;
-     opt_native := true;
-     opt_singular := true;
-     opt_magma := false;
-     opt_profiling := true |}.
-
-Inductive bool_flag : Set :=
-| Split
-| Slicing
-| ToAssign
-| KeepUnused
-| RewriteAssign
-| RewriteEquality
-| Lazy
-| Native
-| Singular
-| Magma
-| Profiling.
-
-Inductive vflag : Set :=
-| With : bool_flag -> vflag
-| Without : bool_flag -> vflag.
-
-Definition set_bool_flag f b o : verify_options :=
-  match f with
-  | Split => {| opt_split := b;
-                opt_slicing := opt_slicing o;
-                opt_to_assign := opt_to_assign o;
-                opt_keep_unused := opt_keep_unused o;
-                opt_rewrite_assign := opt_rewrite_assign o;
-                opt_rewrite_equality := opt_rewrite_equality o;
-                opt_lazy := opt_lazy o;
-                opt_native := opt_native o;
-                opt_singular := opt_singular o;
-                opt_magma := opt_magma o;
-                opt_profiling := opt_profiling o |}
-  | Slicing => {| opt_split := opt_split o;
-                  opt_slicing := b;
-                  opt_to_assign := opt_to_assign o;
-                  opt_keep_unused := opt_keep_unused o;
-                  opt_rewrite_assign := opt_rewrite_assign o;
-                  opt_rewrite_equality := opt_rewrite_equality o;
-                  opt_lazy := opt_lazy o;
-                  opt_native := opt_native o;
-                  opt_singular := opt_singular o;
-                  opt_magma := opt_magma o;
-                  opt_profiling := opt_profiling o |}
-  | ToAssign => {| opt_split := opt_split o;
-                   opt_slicing := opt_slicing o;
-                   opt_to_assign := b;
-                   opt_keep_unused := opt_keep_unused o;
-                   opt_rewrite_assign := opt_rewrite_assign o;
-                   opt_rewrite_equality := opt_rewrite_equality o;
-                   opt_lazy := opt_lazy o;
-                   opt_native := opt_native o;
-                   opt_singular := opt_singular o;
-                   opt_magma := opt_magma o;
-                   opt_profiling := opt_profiling o |}
-  | KeepUnused => {| opt_split := opt_split o;
-                     opt_slicing := opt_slicing o;
-                     opt_to_assign := opt_to_assign o;
-                     opt_keep_unused := b;
-                     opt_rewrite_assign := opt_rewrite_assign o;
-                     opt_rewrite_equality := opt_rewrite_equality o;
-                     opt_lazy := opt_lazy o;
-                     opt_native := opt_native o;
-                     opt_singular := opt_singular o;
-                     opt_magma := opt_magma o;
-                     opt_profiling := opt_profiling o |}
-  | RewriteAssign => {| opt_split := opt_split o;
-                        opt_slicing := opt_slicing o;
-                        opt_to_assign := opt_to_assign o;
-                        opt_keep_unused := opt_keep_unused o;
-                        opt_rewrite_assign := b;
-                        opt_rewrite_equality := opt_rewrite_equality o;
-                        opt_lazy := opt_lazy o;
-                        opt_native := opt_native o;
-                        opt_singular := opt_singular o;
-                        opt_magma := opt_magma o;
-                        opt_profiling := opt_profiling o |}
-  | RewriteEquality => {| opt_split := opt_split o;
-                          opt_slicing := opt_slicing o;
-                          opt_to_assign := opt_to_assign o;
-                          opt_keep_unused := opt_keep_unused o;
-                          opt_rewrite_assign := opt_rewrite_assign o;
-                          opt_rewrite_equality := b;
-                          opt_lazy := opt_lazy o;
-                          opt_native := opt_native o;
-                          opt_singular := opt_singular o;
-                          opt_magma := opt_magma o;
-                          opt_profiling := opt_profiling o |}
-  | Lazy => {| opt_split := opt_split o;
-               opt_slicing := opt_slicing o;
-               opt_to_assign := opt_to_assign o;
-               opt_keep_unused := opt_keep_unused o;
-               opt_rewrite_assign := opt_rewrite_assign o;
-               opt_rewrite_equality := opt_rewrite_equality o;
-               opt_lazy := b;
-               opt_native := ~~b;
-               opt_singular := opt_singular o;
-               opt_magma := opt_magma o;
-               opt_profiling := opt_profiling o |}
-  | Native => {| opt_split := opt_split o;
-                 opt_slicing := opt_slicing o;
-                 opt_to_assign := opt_to_assign o;
-                 opt_keep_unused := opt_keep_unused o;
-                 opt_rewrite_assign := opt_rewrite_assign o;
-                 opt_rewrite_equality := opt_rewrite_equality o;
-                 opt_lazy := ~~b;
-                 opt_native := b;
-                 opt_singular := opt_singular o;
-                 opt_magma := opt_magma o;
-                 opt_profiling := opt_profiling o |}
-  | Singular => {| opt_split := opt_split o;
-                   opt_slicing := opt_slicing o;
-                   opt_to_assign := opt_to_assign o;
-                   opt_keep_unused := opt_keep_unused o;
-                   opt_rewrite_assign := opt_rewrite_assign o;
-                   opt_rewrite_equality := opt_rewrite_equality o;
-                   opt_lazy := opt_lazy o;
-                   opt_native := opt_native o;
-                   opt_singular := b;
-                   opt_magma := ~~b;
-                   opt_profiling := opt_profiling o |}
-  | Magma => {| opt_split := opt_split o;
-                opt_slicing := opt_slicing o;
-                opt_to_assign := opt_to_assign o;
-                opt_keep_unused := opt_keep_unused o;
-                opt_rewrite_assign := opt_rewrite_assign o;
-                opt_rewrite_equality := opt_rewrite_equality o;
-                opt_lazy := opt_lazy o;
-                opt_native := opt_native o;
-                opt_singular := ~~b;
-                opt_magma := b;
-                opt_profiling := opt_profiling o |}
-  | Profiling => {| opt_split := opt_split o;
-                    opt_slicing := opt_slicing o;
-                    opt_to_assign := opt_to_assign o;
-                    opt_keep_unused := opt_keep_unused o;
-                    opt_rewrite_assign := opt_rewrite_assign o;
-                    opt_rewrite_equality := opt_rewrite_equality o;
-                    opt_lazy := opt_lazy o;
-                    opt_native := opt_native o;
-                    opt_singular := opt_singular o;
-                    opt_magma := opt_magma o;
-                    opt_profiling := b |}
-  end.
-
-Definition set_vflag f o : verify_options :=
-  match f with
-  | With g => set_bool_flag g true o
-  | Without g => set_bool_flag g false o
-  end.
-
-Definition zconfig_with flags o : verify_options :=
-  foldr set_vflag o flags.
-
-Definition zconfig flags : verify_options :=
-  zconfig_with flags default_options.
-
-
-
-(** zispec - specification with specified input variables *)
+(** zspec - specification with specified input variables *)
 
 Definition zspec : Type := (VS.t * zDSL.spec).
 
@@ -699,7 +500,7 @@ Ltac solve_zspec_with o :=
   end.
 
 Tactic Notation "solve_zspec" := solve_zspec_with default_options.
-Tactic Notation "solve_zspec" "with" constr(opts) := solve_zspec_with (zconfig opts).
+Tactic Notation "solve_zspec" "with" constr(opts) := solve_zspec_with (oconf opts).
 
 Ltac verify_bexp_with o :=
   match goal with
@@ -713,7 +514,7 @@ Ltac verify_bexp_with o :=
   end.
 
 Tactic Notation "verify_bexp" := verify_bexp_with default_options.
-Tactic Notation "verify_bexp" "with" constr(opts) := verify_bexp_with (zconfig opts).
+Tactic Notation "verify_bexp" "with" constr(opts) := verify_bexp_with (oconf opts).
 
 Ltac verify_entail_with o :=
   match goal with
@@ -725,14 +526,14 @@ Ltac verify_entail_with o :=
   end.
 
 Tactic Notation "verify_entail" := verify_entail_with default_options.
-Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (zconfig opts).
+Tactic Notation "verify_entail" "with" constr(opts) := verify_entail_with (oconf opts).
 
 Ltac verify_zspec_with o :=
   zspec_to_poly_with o; to_assign_with o;
   rewrite_assign_with o; rewrite_equality_with o; solve_zspec_with o.
 
 Tactic Notation "verify_zspec" := verify_zspec_with default_options.
-Tactic Notation "verify_zspec" "with" constr(opts) := verify_zspec_with (zconfig opts).
+Tactic Notation "verify_zspec" "with" constr(opts) := verify_zspec_with (oconf opts).
 
 Ltac verify_zdsl_with o vs :=
   match goal with
@@ -745,4 +546,4 @@ Ltac verify_zdsl_with o vs :=
   end.
 
 Tactic Notation "verify_zdsl" constr(vs) := verify_zdsl_with default_options vs.
-Tactic Notation "verify_zdsl" constr(vs) "with" constr(opts) := verify_zdsl_with (zconfig opts) vs.
+Tactic Notation "verify_zdsl" constr(vs) "with" constr(opts) := verify_zdsl_with (oconf opts) vs.

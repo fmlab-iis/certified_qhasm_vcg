@@ -568,20 +568,20 @@ let coq_boolector = 2
 
 let convert_coq_solver (v : Globnames.global_reference) : solver =
   match v with
-  | Globnames.ConstructRef ((ind, _), idx) when Names.MutInd.to_string ind = "mQhasm.QFBVSolver.solver" ->
+  | Globnames.ConstructRef ((ind, _), idx) when Names.MutInd.to_string ind = "mQhasm.QFBVSolve.solver" ->
      if idx = coq_z3 then Z3
      else if idx = coq_boolector then Boolector
-     else failwith "Unknown solver."
+     else fail "Unknown solver."
   | Globnames.ConstRef cr ->
      begin
      match Global.body_of_constant cr with
-     | None -> failwith "Unknown solver."
+     | None -> fail "Unknown solver."
      | Some c ->
         if Constr.equal c (Lazy.force CoqQFBV._Z3) then Z3
         else if Constr.equal c (Lazy.force CoqQFBV._Boolector) then Boolector
-        else failwith "Unknown solver."
+        else fail "Unknown solver."
      end
-  | _ -> failwith "Unknown solver."
+  | _ -> fail "Solver is not of type mQhasm.QFBVSolve.solver."
 
 
 

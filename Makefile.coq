@@ -191,6 +191,7 @@ VFILES:=lib/CompCert/Coqlib.v\
   qhasm/IProgGenAMD64.v\
   sqhasm/IProg.v\
   sqhasm/MiniQhasmPlusAMD64.v\
+  mqhasm/Options.v\
   mqhasm/zDSL.v\
   mqhasm/zSSA.v\
   mqhasm/zPoly.v\

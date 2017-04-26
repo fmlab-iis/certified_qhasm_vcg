@@ -650,12 +650,23 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   | bvBinop : forall n : nat, binop -> exp n -> exp n -> exp n
   | bvExt : forall n : nat, exp n -> forall m : nat, exp (n + m).
 
+  Definition bvvar v := bvVarE v.
+  Definition bvposz {w} n := bvConstE (@fromPosZ w n).
+  Definition bvadd w (e1 e2 : exp w) := bvBinop bvAddOp e1 e2.
+  Definition bvsub w (e1 e2 : exp w) := bvBinop bvSubOp e1 e2.
+  Definition bvmul w (e1 e2 : exp w) := bvBinop bvMulOp e1 e2.
+
   Inductive bexp : Type :=
   | bvTrue : bexp
   | bvEq : forall n : nat, exp n -> exp n -> bexp
   | bvEqMod : forall n : nat, exp n -> exp n -> exp n -> bexp
   | bvCmp : forall n : nat, cmpop -> exp n -> exp n -> bexp
   | bvAnd : bexp -> bexp -> bexp.
+
+  Definition bvult w (e1 e2 : exp w) := bvCmp bvUltOp e1 e2.
+  Definition bvule w (e1 e2 : exp w) := bvCmp bvUleOp e1 e2.
+  Definition bvugt w (e1 e2 : exp w) := bvCmp bvUgtOp e1 e2.
+  Definition bvuge w (e1 e2 : exp w) := bvCmp bvUgeOp e1 e2.
 
   Fixpoint bvands es : bexp :=
     match es with
