@@ -116,5 +116,5 @@ Proof.
   time "valid_fe25519_mul121666" verify_bvspec.
 Qed.
 
-Close Scope zdsl_scope.
+Close Scope bvdsl_scope.
 Close Scope N_scope.
