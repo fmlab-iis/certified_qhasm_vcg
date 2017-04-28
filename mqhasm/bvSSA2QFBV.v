@@ -34,15 +34,25 @@ Qed.
 
 (* Conversion from bv64SSA to QFBV64. *)
 
+Definition exp_var v : QFBV64.exp wordsize := QFBV64.bvVar v.
+
+Definition exp_const c : QFBV64.exp wordsize := QFBV64.bvConst c.
+
 Definition exp_atomic (a : atomic) : QFBV64.exp wordsize :=
   match a with
-  | bvVar v => QFBV64.bvVar v
-  | bvConst c => QFBV64.bvConst c
+  | bvVar v => exp_var v
+  | bvConst c => exp_const c
   end.
 
 Definition extAdd n a1 a2 :=
   QFBV64.bvAdd (QFBV64.bvZeroExtend n (exp_atomic a1))
                (QFBV64.bvZeroExtend n (exp_atomic a2)).
+
+Definition extAdc n a1 a2 v :=
+  QFBV64.bvAdd
+    (QFBV64.bvAdd (QFBV64.bvZeroExtend n (exp_atomic a1))
+                  (QFBV64.bvZeroExtend n (exp_atomic a2)))
+    (QFBV64.bvZeroExtend n (QFBV64.bvVar v)).
 
 Definition extMul n a1 a2 :=
   QFBV64.bvMul (QFBV64.bvZeroExtend n (exp_atomic a1))
@@ -63,11 +73,18 @@ Definition bexp_instr (i : instr) : QFBV64.bexp :=
   | bvAddC c v a1 a2 =>
     QFBV64.bvConj
       (QFBV64.bvEq (QFBV64.bvVar c)
-                   (QFBV64.bvZeroExtend
-                      (wordsize - 1)
-                      (@QFBV64.bvHigh _ 1 (extAdd 1 a1 a2))))
+                   (@QFBV64.bvHigh _ wordsize (extAdd wordsize a1 a2)))
       (QFBV64.bvEq (QFBV64.bvVar v)
-                   (@QFBV64.bvLow wordsize _ (extAdd 1 a1 a2)))
+                   (@QFBV64.bvLow wordsize _ (extAdd wordsize a1 a2)))
+  | bvAdc v a1 a2 c =>
+    QFBV64.bvEq (QFBV64.bvVar v)
+                (@QFBV64.bvLow wordsize _ (extAdc wordsize a1 a2 c))
+  | bvAdcC c v a1 a2 a =>
+    QFBV64.bvConj
+      (QFBV64.bvEq (QFBV64.bvVar c)
+                   (@QFBV64.bvHigh _ wordsize (extAdc wordsize a1 a2 a)))
+      (QFBV64.bvEq (QFBV64.bvVar v)
+                   (@QFBV64.bvLow wordsize _ (extAdc wordsize a1 a2 a)))
   | bvSub v a1 a2 => QFBV64.bvEq (QFBV64.bvVar v)
                                  (QFBV64.bvSub (exp_atomic a1)
                                                (exp_atomic a2))
@@ -195,6 +212,12 @@ Qed.
 
 Lemma store_state_acc v s :
   QFBV64.Store.acc v s = State.acc v s.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma eval_exp_var v s :
+  QFBV64.eval_exp (exp_var v) s = State.acc v s.
 Proof.
   reflexivity.
 Qed.
@@ -341,44 +364,66 @@ Lemma bexp_instr_eval vs i s1 s2 :
   QFBV64.eval_bexp (bexp_instr i) s2.
 Proof.
   case: i => /=.
-  - move=> v a Hsub Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
-    reflexivity.
-  - move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
-    reflexivity.
-  - move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+  - (* bvAssign *)
+    move=> v a Hsub Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
-    split.
-    + exact: (addB_zeroExtend1_high_ext (eval_atomic a1 s1)
-                                        (eval_atomic a2 s1)).
-    + exact: (ssrfun.esym (addB_zeroExtend1_low (eval_atomic a1 s1)
-                                                (eval_atomic a2 s1))).
-  - move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
+    reflexivity.
+  - (* bvAdd *)
+    move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    reflexivity.
+  - (* bvAddC *)
+    move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    split; reflexivity.
+  - (* bvAdc *)
+    move=> v a1 a2 c /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    have Hcv: (c != v).
+    { move: (ssa_unchanged_instr_mem Hun Hne). rewrite /ssa_var_unchanged_instr /=.
+      move/negP => Hmem. apply/negP=> Heq. apply: Hmem.
+      exact: (VSLemmas.mem_singleton2 Heq). }
+    rewrite (QFBV64.Store.acc_upd_neq _ _ Hcv). reflexivity.
+  - (* bvAdcC *)
+    move=> c v a1 a2 a /andP [/andP [/andP [Hne Hmem] Hsub1] Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    have Havc: (a != v) && (a != c).
+    { move: (ssa_unchanged_instr_mem Hun Hmem). rewrite /ssa_var_unchanged_instr /=.
+      move=> H. move: (VSLemmas.not_mem_add1 H) => [/idP H1 H2].
+      move: (VSLemmas.not_mem_singleton1 H2) => {H2} /idP H2.
+      by rewrite H1 H2. }
+    move/andP: Havc => [Hav Hac].
+    rewrite (QFBV64.Store.acc_upd_neq _ _ Hav) (QFBV64.Store.acc_upd_neq _ _ Hac).
+    split; reflexivity.
+  - (* bvSub *)
+    move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
     reflexivity.
-  - move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
+  - (* bvMul *)
+    move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
     reflexivity.
-  - move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+  - (* bvMulf *)
+    move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
     by rewrite -fullmulB_zeroExtend.
-  - move=> v a n Hsub Hun Hupd.
+  - (* bvShl *)
+    move=> v a n Hsub Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
     reflexivity.
-  - move=> vh vl a n /andP [Hne Hsub] Hun Hupd.
+  - (* bvSplit *)
+    move=> vh vl a n /andP [Hne Hsub] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
     split; first by reflexivity.
     rewrite fromNatK; first by reflexivity.
     exact: bv_width_sub_bounded.
-  - move=> vh vl a1 a2 n /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+  - (* bvConcatShl *)
+    move=> vh vl a1 a2 n /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
     rewrite fromNatK; first by done.
@@ -511,6 +556,15 @@ From mQhasm Require Import bvSSA2zSSA.
 Definition bexp_atomic_addB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvAddo (exp_atomic a1) (exp_atomic a2)).
 
+Definition bexp_atomic_adcB_safe (a1 a2 : atomic) (c : var) : QFBV64.bexp :=
+  QFBV64.bvEq
+    (@QFBV64.bvHigh _ wordsize
+                    (QFBV64.bvAdd
+                       (QFBV64.bvAdd (QFBV64.bvZeroExtend wordsize (exp_atomic a1))
+                                     (QFBV64.bvZeroExtend wordsize (exp_atomic a2)))
+                       (QFBV64.bvZeroExtend wordsize (exp_var c))))
+    (QFBV64.bvConst (fromNat 0)).
+
 Definition bexp_atomic_subB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvSubo (exp_atomic a1) (exp_atomic a2)).
 
@@ -528,6 +582,15 @@ Definition bexp_atomic_concatshl_safe (a1 a2 : atomic) (n : bv64SSA.value) : QFB
 Definition bexp_exp_addB_safe w (e1 e2 : exp w) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvAddo (exp_exp e1) (exp_exp e2)).
 
+Definition bexp_exp_adcB_safe w (e1 e2 c : exp w) : QFBV64.bexp :=
+  QFBV64.bvEq
+    (@QFBV64.bvHigh _ w
+                    (QFBV64.bvAdd
+                       (QFBV64.bvAdd (QFBV64.bvZeroExtend w (exp_exp e1))
+                                     (QFBV64.bvZeroExtend w (exp_exp e2)))
+                       (QFBV64.bvZeroExtend w (exp_exp c))))
+    (QFBV64.bvConst (fromNat 0)).
+
 Definition bexp_exp_subB_safe w (e1 e2 : exp w) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvSubo (exp_exp e1) (exp_exp e2)).
 
@@ -539,6 +602,8 @@ Definition bexp_instr_safe (i : instr) : QFBV64.bexp :=
   | bvAssign _ _ => QFBV64.bvTrue
   | bvAdd _ a1 a2 => bexp_atomic_addB_safe a1 a2
   | bvAddC _ _ _ _ => QFBV64.bvTrue
+  | bvAdc _ a1 a2 c => bexp_atomic_adcB_safe a1 a2 c
+  | bvAdcC _ _ _ _ _ => QFBV64.bvTrue
   | bvSub _ a1 a2 => bexp_atomic_subB_safe a1 a2
   | bvMul _ a1 a2 => bexp_atomic_mulB_safe a1 a2
   | bvMulf _ _ _ _ => QFBV64.bvTrue
@@ -601,6 +666,22 @@ Lemma eval_bexp_atomic_addB_safe2 a1 a2 s :
   QFBV64.eval_bexp (bexp_atomic_addB_safe a1 a2) s.
 Proof.
   rewrite /addB_safe /= !eval_exp_atomic. move/negP=> H. exact: H.
+Qed.
+
+Lemma eval_bexp_atomic_adcB_safe1 a1 a2 c s :
+  QFBV64.eval_bexp (bexp_atomic_adcB_safe a1 a2 c) s ->
+  adcB_safe (eval_atomic a1 s) (eval_atomic a2 s) (State.acc c s).
+Proof.
+  rewrite /adcB_safe /= !eval_exp_atomic store_state_acc.
+  move=> ->. exact: eqxx.
+Qed.
+
+Lemma eval_bexp_atomic_adcB_safe2 a1 a2 c s :
+  adcB_safe (eval_atomic a1 s) (eval_atomic a2 s) (State.acc c s) ->
+  QFBV64.eval_bexp (bexp_atomic_adcB_safe a1 a2 c) s.
+Proof.
+  rewrite /adcB_safe /= !eval_exp_atomic store_state_acc.
+  move=> /eqP ->. reflexivity.
 Qed.
 
 Lemma eval_bexp_atomic_subB_safe1 a1 a2 s :
@@ -669,11 +750,18 @@ Lemma eval_bexp_instr_safe1 i s :
   QFBV64.eval_bexp (bexp_instr_safe i) s ->
   bv2z_instr_safe_at i s.
 Proof.
-  elim: i => //=; intros.
+  (* "elim: i => //=; intros" makes Coq freeze *)
+  elim: i; intros.
+  - done.
   - exact: eval_bexp_atomic_addB_safe1.
+  - done.
+  - exact: eval_bexp_atomic_adcB_safe1.
+  - done.
   - exact: eval_bexp_atomic_subB_safe1.
   - exact: eval_bexp_atomic_mulB_safe1.
+  - done.
   - exact: eval_bexp_atomic_shlBn_safe1.
+  - done.
   - exact: eval_bexp_atomic_concatshl_safe1.
 Qed.
 
@@ -681,12 +769,21 @@ Lemma eval_bexp_instr_safe2 i s :
   bv2z_instr_safe_at i s ->
   QFBV64.eval_bexp (bexp_instr_safe i) s.
 Proof.
-  case: i => //=; intros.
+  (* "elim: i => //=; intros" makes Coq freeze *)
+  case: i; intros.
+  - done.
   - exact: (eval_bexp_atomic_addB_safe2 H).
+  - done.
+  - (* without rewriting, the exact tactic fails *)
+    rewrite /bv2z_instr_safe_at in H.
+    exact: (eval_bexp_atomic_adcB_safe2 H).
+  - done.
   - exact: (eval_bexp_atomic_subB_safe2 H).
     (* exact: (eval_bexp_subB_safe2) is much slower. *)
   - exact: (eval_bexp_atomic_mulB_safe2 H).
+  - done.
   - exact: (eval_bexp_atomic_shlBn_safe2 H).
+  - done.
   - exact: (eval_bexp_atomic_concatshl_safe2 H).
 Qed.
 
@@ -833,6 +930,17 @@ Proof.
    tac).
 Qed.
 
+Lemma eval_exp_var_succ v i s :
+  ssa_var_unchanged_instr v i ->
+  QFBV64.eval_exp (exp_var v) s =
+  QFBV64.eval_exp (exp_var v) (eval_instr s i).
+Proof.
+  move=> Hun. rewrite !(eval_exp_var v _).
+  rewrite -(ssa_unchanged_instr_eval_singleton
+              (ssa_unchanged_instr_singleton2 Hun) Logic.eq_refl).
+  reflexivity.
+Qed.
+
 Lemma eval_exp_atomic_succ a i s :
   ssa_vars_unchanged_instr (vars_atomic a) i ->
   QFBV64.eval_exp (exp_atomic a) s =
@@ -840,6 +948,17 @@ Lemma eval_exp_atomic_succ a i s :
 Proof.
   move=> Hun. rewrite !(eval_exp_atomic a _).
   rewrite -(ssa_unchanged_instr_eval_atomic Hun Logic.eq_refl).
+  reflexivity.
+Qed.
+
+Lemma eval_exp_var_succs v p s :
+  ssa_var_unchanged_program v p ->
+  QFBV64.eval_exp (exp_var v) s =
+  QFBV64.eval_exp (exp_var v) (eval_program s p).
+Proof.
+  move=> Hun. rewrite !(eval_exp_var v _).
+  rewrite -(ssa_unchanged_program_eval_singleton
+              (ssa_unchanged_program_singleton2 Hun) Logic.eq_refl).
   reflexivity.
 Qed.
 
@@ -865,12 +984,19 @@ Proof.
        | H : is_true (ssa_vars_unchanged_instr (VS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_instr_union1 H) => {H} [H1 H2]; tac
+       | H : is_true (ssa_vars_unchanged_instr (VS.add _ _) _) |- _ =>
+         let H1 := fresh in let H2 := fresh in
+         move: (ssa_unchanged_instr_add1 H) => {H} [H1 H2]; tac
        | H : is_true (ssa_vars_unchanged_instr (vars_atomic ?a) _) |-
          context f [QFBV64.eval_exp (exp_atomic ?a) (State.upd _ _ ?s)] =>
          rewrite -(eval_exp_atomic_succ s H); tac
        | H : is_true (ssa_vars_unchanged_instr (vars_atomic ?a) _) |-
          context f [QFBV64.eval_exp (exp_atomic ?a) (State.upd2 _ _ _ _ ?s)] =>
          rewrite -(eval_exp_atomic_succ s H); tac
+       | H : is_true (ssa_var_unchanged_instr ?v _) |-
+         context f [QFBV64.Store.acc ?v (State.upd _ _ ?s)] =>
+         move: (eval_exp_var_succ s H) =>
+         /= <-; tac
        | H : ?p |- ?p => exact: H
        | |- _ => idtac
        end in
@@ -889,9 +1015,16 @@ Proof.
        | H : is_true (ssa_vars_unchanged_program (VS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_program_union1 H) => {H} [H1 H2]; tac
+       | H : is_true (ssa_vars_unchanged_program (VS.add _ _) _) |- _ =>
+         let H1 := fresh in let H2 := fresh in
+         move: (ssa_unchanged_program_add1 H) => {H} [H1 H2]; tac
        | H : is_true (ssa_vars_unchanged_program (vars_atomic ?a) ?p) |-
          context f [QFBV64.eval_exp (exp_atomic ?a) (eval_program ?s ?p)] =>
          rewrite -(eval_exp_atomic_succs s H); tac
+       | H : is_true (ssa_var_unchanged_program ?v _) |-
+         context f [QFBV64.Store.acc ?v (eval_program ?s ?p)] =>
+         move: (eval_exp_var_succs s H) =>
+         /= <-; tac
        | H : ?p |- ?p => exact: H
        | |- _ => idtac
        end in
@@ -910,6 +1043,9 @@ Proof.
        | H : is_true (ssa_vars_unchanged_instr (VS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_instr_union1 H) => {H} [H1 H2]; tac
+       | H : is_true (ssa_vars_unchanged_instr (VS.add _ _) _) |- _ =>
+         let H1 := fresh in let H2 := fresh in
+         move: (ssa_unchanged_instr_add1 H) => {H} [H1 H2]; tac
        | H1 : is_true (ssa_vars_unchanged_instr (vars_atomic ?a) _),
          H2 : context f [QFBV64.eval_exp (exp_atomic ?a) (State.upd _ _ ?s)]
          |- _ =>
@@ -918,10 +1054,15 @@ Proof.
          H2 : context f [QFBV64.eval_exp (exp_atomic ?a) (State.upd2 _ _ _ _ ?s)]
          |- _ =>
          rewrite -(eval_exp_atomic_succ s H1) in H2; tac
+       | H1 : is_true (ssa_var_unchanged_instr ?v _),
+         H2 : context f [QFBV64.Store.acc ?v (State.upd _ _ ?s)]
+         |- _ =>
+         move: (eval_exp_var_succ s H1) => /= <- in H2; tac
+         idtac
        | H : ?p |- ?p => exact: H
        | |- _ => idtac
        end in
-   tac).
+      tac).
 Qed.
 
 Lemma eval_bexp_instr_safe_preds i p s :
@@ -936,14 +1077,22 @@ Proof.
        | H : is_true (ssa_vars_unchanged_program (VS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_program_union1 H) => {H} [H1 H2]; tac
+       | H : is_true (ssa_vars_unchanged_program (VS.add _ _) _) |- _ =>
+         let H1 := fresh in let H2 := fresh in
+         move: (ssa_unchanged_program_add1 H) => {H} [H1 H2]; tac
        | H1 : is_true (ssa_vars_unchanged_program (vars_atomic ?a) _),
          H2 : context f [QFBV64.eval_exp (exp_atomic ?a) (eval_program ?s ?p)]
          |- _ =>
          rewrite -(eval_exp_atomic_succs s H1) in H2; tac
+       | H1 : is_true (ssa_var_unchanged_program ?v _),
+         H2 : context f [QFBV64.Store.acc ?v (eval_program ?s ?p)]
+         |- _ =>
+         move: (eval_exp_var_succs s H1) => /= <- in H2; tac
+         idtac
        | H : ?p |- ?p => exact: H
        | |- _ => idtac
        end in
-   tac).
+      tac).
 Qed.
 
 Lemma eval_bexp_program_safe1 vs pre p :

@@ -728,14 +728,16 @@ Ltac bvsimpl :=
   lazy beta iota zeta delta -[
     adcB adcBmain sbbB fullmulB mulB ltB leB
          rorB rolB shrB shrBn shlB shlBn
+         zeroExtend signExtend high low
          fromNat toNat fromPosZ toPosZ fromZ toZ
   ].
 Ltac bvzsimpl :=
   lazy beta iota zeta delta -[
     Zmult Zplus Zpower Z.pow_pos Zpower_nat Zminus Zopp Zdiv Zmod
-    adcB adcBmain sbbB fullmulB mulB ltB leB
-         rorB rolB shrB shrBn shlB shlBn
-         fromNat toNat fromPosZ toPosZ fromZ toZ
+          adcB adcBmain sbbB fullmulB mulB ltB leB
+          rorB rolB shrB shrBn shlB shlBn
+          zeroExtend signExtend high low
+          fromNat toNat fromPosZ toPosZ fromZ toZ
   ].
 Global Opaque adcB sbbB.
 

@@ -2,7 +2,7 @@
 (** * A domain specific language over bit-vectors *)
 
 From Coq Require Import Program ZArith.
-From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype.
+From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype ssrfun.
 From Common Require Import Arch Types SsrOrdered Env Nats ZAriths Bits FSets Var Store Tactics.
 
 Set Implicit Arguments.
@@ -49,6 +49,8 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
   (*
     bvAddC carry v e1 e2: carry? v = e1 + e2
+    bvAdc v e1 e2 c: v = e1 + e2 + c
+    bvAdcC carry v e1 e2 c: carry? v = e1 + e2 + c
     bvSubC carry v e1 e2: carry? v = e1 - e2
     bvMulf vh vl e1 e2: split (e1 * e2) at A.wordsize
     bvShl v e p: v = e * 2^p
@@ -60,6 +62,8 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 (*  | bvNeg : var -> atomic -> instr *)
   | bvAdd : var -> atomic -> atomic -> instr
   | bvAddC : var -> var -> atomic -> atomic -> instr
+  | bvAdc : var -> atomic -> atomic -> var -> instr
+  | bvAdcC : var -> var -> atomic -> atomic -> var -> instr
   | bvSub : var -> atomic -> atomic -> instr
 (*  | bvSubC : var -> var -> atomic -> atomic -> instr *)
   | bvMul : var -> atomic -> atomic -> instr
@@ -87,7 +91,9 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvSub v e1 e2
     | bvMul v e1 e2 => VS.add v (VS.union (vars_atomic e1) (vars_atomic e2))
     | bvAddC c v e1 e2
+    | bvAdc v e1 e2 c
     (*| bvSubC c v e1 e2*) => VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2)))
+    | bvAdcC c v e1 e2 a => VS.add a (VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2))))
     | bvSplit vh vl e _ => VS.add vh (VS.add vl (vars_atomic e))
     | bvMulf vh vl e1 e2
     | bvConcatShl vh vl e1 e2 _ =>
@@ -99,10 +105,12 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvAssign v _
 (*    | bvNeg v _ *)
     | bvAdd v _ _
+    | bvAdc v _ _ _
     | bvSub v _ _
     | bvMul v _ _
     | bvShl v _ _ => VS.singleton v
     | bvAddC c v _ _
+    | bvAdcC c v _ _ _
     (*| bvSubC c v _ _*) => VS.add c (VS.singleton v)
     | bvMulf vh vl _ _
     | bvSplit vh vl _ _
@@ -115,11 +123,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 (*    | bvNeg _ e *)
     | bvShl _ e _
     | bvSplit _ _ e _ => vars_atomic e
+    | bvAdc _ e1 e2 c
+    | bvAdcC _ _ e1 e2 c => VS.add c (VS.union (vars_atomic e1) (vars_atomic e2))
     | bvAdd _ e1 e2
     | bvAddC _ _ e1 e2
     | bvSub _ e1 e2
 (*    | bvSubC _ _ e1 e2 *)
-    | bvMul _ e1 e2 => VS.union (vars_atomic e1) (vars_atomic e2)
+    | bvMul _ e1 e2
     | bvMulf _ _ e1 e2
     | bvConcatShl _ _ e1 e2 _ => VS.union (vars_atomic e1) (vars_atomic e2)
     end.
@@ -153,24 +163,42 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     match goal with
     | |- VS.Equal (VS.add ?v (vars_atomic ?e)) (VS.union (VS.singleton ?v) (vars_atomic ?e)) =>
       rewrite -VSLemmas.OP.P.add_union_singleton;
-        reflexivity
+      reflexivity
     | |- VS.Equal (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))
                   (VS.union (VS.singleton ?v)
                             (VS.union (vars_atomic ?e1) (vars_atomic ?e2))) =>
       rewrite -VSLemmas.OP.P.add_union_singleton;
-        reflexivity
+      reflexivity
     | |- VS.Equal (VS.add ?vh (VS.add ?vl (vars_atomic ?e)))
                   (VS.union (VS.add ?vh (VS.singleton ?vl)) (vars_atomic ?e)) =>
       rewrite VSLemmas.OP.P.union_add;
-        rewrite -VSLemmas.OP.P.add_union_singleton;
-        reflexivity
+      rewrite -VSLemmas.OP.P.add_union_singleton;
+      reflexivity
     | |- VS.Equal
            (VS.add ?vh (VS.add ?vl (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))
            (VS.union (VS.add ?vh (VS.singleton ?vl))
                      (VS.union (vars_atomic ?e1) (vars_atomic ?e2))) =>
       rewrite VSLemmas.OP.P.union_add;
-        rewrite -VSLemmas.OP.P.add_union_singleton;
-        reflexivity
+      rewrite -VSLemmas.OP.P.add_union_singleton;
+      reflexivity
+    | |- VS.Equal
+           (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))
+           (VS.union (VS.singleton ?v)
+                     (VS.add ?c (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))) =>
+      rewrite VSLemmas.OP.P.add_add;
+      rewrite VSLemmas.OP.P.add_union_singleton;
+      reflexivity
+    | |- VS.Equal
+           (VS.add ?a
+                   (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))))
+           (VS.union (VS.add ?c (VS.singleton ?v))
+                     (VS.add ?a (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))) =>
+      rewrite (VSLemmas.OP.P.union_sym (VS.add _ _) (VS.add _ _))
+              VSLemmas.OP.P.union_add
+              (VSLemmas.OP.P.union_sym (VS.union _ _) (VS.add _ _))
+              VSLemmas.OP.P.union_add
+              -VSLemmas.OP.P.add_union_singleton;
+      reflexivity
     | |- _ => idtac "not matched"
     end.
   Qed.
@@ -525,8 +553,35 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvAdd v e1 e2 => State.upd v (addB (eval_atomic e1 s) (eval_atomic e2 s)) s
     | bvAddC c v e1 e2 =>
       State.upd2 c
-                 (fromNat (carry_addB (eval_atomic e1 s) (eval_atomic e2 s)))
-                 v (addB (eval_atomic e1 s) (eval_atomic e2 s))
+                 (high A.wordsize
+                       (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                             (zeroExtend A.wordsize (eval_atomic e2 s))))
+                 v
+                 (low A.wordsize
+                      (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                            (zeroExtend A.wordsize (eval_atomic e2 s))))
+                 s
+    | bvAdc v e1 e2 c =>
+      State.upd v
+                (low A.wordsize
+                     (addB
+                        (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                              (zeroExtend A.wordsize (eval_atomic e2 s)))
+                        (zeroExtend A.wordsize (State.acc c s))))
+                s
+    | bvAdcC c v e1 e2 a =>
+      State.upd2 c
+                 (high A.wordsize
+                       (addB
+                          (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                                (zeroExtend A.wordsize (eval_atomic e2 s)))
+                          (zeroExtend A.wordsize (State.acc a s))))
+                 v
+                 (low A.wordsize
+                      (addB
+                         (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                               (zeroExtend A.wordsize (eval_atomic e2 s)))
+                         (zeroExtend A.wordsize (State.acc a s))))
                  s
     | bvSub v e1 e2 => State.upd v (subB (eval_atomic e1 s) (eval_atomic e2 s)) s
 (*    | bvSubC c v e1 e2 =>
@@ -840,6 +895,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     (*| bvSubC c v e1 e2*) => (c != v)
                             && VS.subset (vars_atomic e1) vs
                             && VS.subset (vars_atomic e2) vs
+    | bvAdc v e1 e2 c => VS.mem c vs
+                                && VS.subset (vars_atomic e1) vs
+                                && VS.subset (vars_atomic e2) vs
+    | bvAdcC c v e1 e2 a => (c != v)
+                              && VS.mem a vs
+                              && VS.subset (vars_atomic e1) vs
+                              && VS.subset (vars_atomic e2) vs
     | bvShl v e p => VS.subset (vars_atomic e) vs
     | bvSplit vh vl e _ => (vh != vl) && (VS.subset (vars_atomic e) vs)
     | bvMulf vh vl e1 e2
@@ -883,23 +945,19 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     well_formed_instr vs i ->
     VS.subset (rvs_instr i) vs.
   Proof.
-    elim: i => /=; move=> *;
-    (match goal with
-     | H: ?a |- ?a => assumption
-     | H: is_true (VS.subset ?s1 ?vs && VS.subset ?s2 ?vs) |- _ =>
-       let H1 := fresh in
-       let H2 := fresh in
-       move/andP: H => [H1 H2];
-       apply: VSLemmas.subset_union3; assumption
-     | H: is_true (negb (?vh == ?vl) && VS.subset ?s1 ?vs && VS.subset ?s2 ?vs) |- _ =>
-       let H1 := fresh in
-       let H2 := fresh in
-       move/andP: H => [/andP [_ H1] H2];
-       apply: VSLemmas.subset_union3; assumption
-     | H: is_true (negb (?vh == ?vl) && VS.subset ?s ?vs) |- _ =>
-       move/andP: H => [_ H]; assumption
-     | |- _ => idtac
-     end).
+    elim: i => /=; intros;
+    (let rec tac :=
+         match goal with
+         | H : ?a |- ?a => assumption
+         | H : is_true (_ && _) |- _ =>
+           let H1 := fresh in let H2 := fresh in move/andP: H => [H1 H2]; tac
+         | |- is_true (VS.subset (VS.add _ _) _) =>
+           apply: VSLemmas.subset_add3; tac
+         | |- is_true (VS.subset (VS.union _ _) _) =>
+           apply: VSLemmas.subset_union3; tac
+         | |- _ => idtac
+         end in
+     tac).
   Qed.
 
   Lemma well_formed_instr_subset vs1 vs2 i :
@@ -915,6 +973,10 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
        H2 : is_true (VS.subset ?vs1 ?vs2)
        |- is_true (VS.subset ?s ?vs2) =>
          by rewrite (VSLemmas.subset_trans H1 H2)
+     | H1 : is_true (VS.mem ?v ?vs1),
+       H2 : is_true (VS.subset ?vs1 ?vs2)
+       |- is_true (VS.mem ?v ?vs3) =>
+       exact: (VSLemmas.mem_subset H1 H2)
      | |- _ => idtac
      end).
   Qed.
@@ -959,7 +1021,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     well_formed_instr vs i ->
     VS.Equal (VS.union vs (vars_instr i)) (VS.union vs (lvs_instr i)).
   Proof.
-    case: i => /=; move=> *; hyps_splitb;
+    case: i => /=; intros; hyps_splitb;
     (match goal with
      | H: is_true (VS.subset ?s ?vs) |-
        VS.Equal (VS.union ?vs (VS.add ?t ?s)) (VS.union ?vs (VS.singleton ?t)) =>
@@ -1005,6 +1067,49 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
                VSLemmas.OP.P.union_add
                (VSLemmas.union_subset_equal H)
                (VSLemmas.OP.P.union_sym vs (VS.add _ _))
+               VSLemmas.OP.P.union_add
+               -VSLemmas.OP.P.add_union_singleton;
+       reflexivity
+     | H0 : is_true (VS.subset (vars_atomic ?e2) ?vs),
+       H1 : is_true (VS.mem ?c ?vs),
+       H2 : is_true (VS.subset (vars_atomic ?e1) ?vs) |-
+       VS.Equal
+         (VS.union ?vs
+                   (VS.add ?c
+                           (VS.add ?v
+                                   (VS.union
+                                      (vars_atomic ?e1) (vars_atomic ?e2)))))
+         (VS.union ?vs (VS.singleton ?v)) =>
+       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
+               VSLemmas.OP.P.union_add
+               VSLemmas.OP.P.union_add
+               VSLemmas.OP.P.union_assoc
+               (VSLemmas.union_subset_equal H0)
+               (VSLemmas.union_subset_equal H2)
+               VSLemmas.OP.P.add_add
+               (VSLemmas.add_equal H1)
+               VSLemmas.OP.P.union_sym
+               -VSLemmas.OP.P.add_union_singleton;
+       reflexivity
+     | H1 : is_true (VS.subset (vars_atomic ?e2) ?vs),
+       H2 : is_true (VS.subset (vars_atomic ?e1) ?vs),
+       H0 : is_true (?c != ?v),
+       H3 : is_true (VS.mem ?a vs) |-
+       VS.Equal
+         (VS.union ?vs
+                   (VS.add ?a (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))))
+         (VS.union ?vs (VS.add ?c (VS.singleton ?v))) =>
+       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
+               VSLemmas.OP.P.union_add
+               VSLemmas.OP.P.union_add
+               VSLemmas.OP.P.union_add
+               VSLemmas.OP.P.union_assoc
+               (VSLemmas.union_subset_equal H1)
+               (VSLemmas.union_subset_equal H2)
+               (VSLemmas.OP.P.add_add)
+               (VSLemmas.OP.P.add_add vs)
+               (VSLemmas.add_equal H3)
+               VSLemmas.OP.P.union_sym
                VSLemmas.OP.P.union_add
                -VSLemmas.OP.P.add_union_singleton;
        reflexivity
@@ -1156,10 +1261,12 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvAssign _ _
 (*    | bvNeg _ _ *)
     | bvAdd _ _ _
+    | bvAdc _ _ _ _
     | bvSub _ _ _
     | bvMul _ _ _
     | bvShl _ _ _ => true
     | bvAddC c v _ _
+    | bvAdcC c v _ _ _
     (*| bvSubC c v _ _*) => c != v
     | bvMulf vh vl _ _
     | bvSplit vh vl _ _
@@ -1225,16 +1332,20 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     well_formed_instr vs i.
   Proof.
     case: i => /=; intros; repeat splitb;
-    (match goal with
-     | H: ?a |- ?a => assumption
-     | H: is_true (VS.subset (VS.union ?s1 ?s2) ?vs) |-
-       is_true (VS.subset ?s1 ?vs) =>
-       exact: (VSLemmas.subset_union4 H)
-     | H: is_true (VS.subset (VS.union ?s1 ?s2) ?vs) |-
-       is_true (VS.subset ?s2 ?vs) =>
-       exact: (VSLemmas.subset_union5 H)
-     | |- _ => idtac
-     end).
+    (let rec tac :=
+         match goal with
+         | H: ?a |- ?a => assumption
+         | H : is_true (VS.subset (VS.union _ _) _) |- _ =>
+           let H1 := fresh in let H2 := fresh in
+           rewrite VSLemmas.subset_union6 in H;
+           move/andP: H => [H1 H2]; tac
+         | H : is_true (VS.subset (VS.add _ _) _) |- _ =>
+           let H1 := fresh in let H2 := fresh in
+           rewrite VSLemmas.subset_add6 in H;
+           move/andP: H => [H1 H2]; tac
+         | |- _ => idtac
+         end in
+     tac).
   Qed.
 
 

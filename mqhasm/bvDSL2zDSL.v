@@ -29,6 +29,10 @@ Definition bv2z_instr (i : instr) : seq zDSL.instr :=
   | bvAdd v a1 a2 => [:: zAssign v (zadd (bv2z_atomic a1) (bv2z_atomic a2))]
   | bvAddC c v a1 a2 =>
     [:: zSplit c v (zadd (bv2z_atomic a1) (bv2z_atomic a2)) wordsize]
+  | bvAdc v a1 a2 c =>
+    [:: zAssign v (zadd (zadd (bv2z_atomic a1) (bv2z_atomic a2)) (zVar c))]
+  | bvAdcC c v a1 a2 a =>
+    [:: zSplit c v (zadd (zadd (bv2z_atomic a1) (bv2z_atomic a2)) (zVar a)) wordsize]
   | bvSub v a1 a2 => [:: zAssign v (zsub (bv2z_atomic a1) (bv2z_atomic a2))]
 (*  | bvSubC c v a1 a2 =>
     [:: zSplit
@@ -57,6 +61,11 @@ Fixpoint bv2z_program (p : program) : zDSL.program :=
 Definition addB_safe w (bv1 bv2 : BITS w) : bool :=
   ~~ carry_addB bv1 bv2.
 
+Definition adcB_safe w (bv1 bv2 c : BITS w) : bool :=
+  high w (addB (addB (zeroExtend w bv1)
+                     (zeroExtend w bv2))
+               (zeroExtend w c)) == fromNat 0.
+
 Definition subB_safe w (bv1 bv2 : BITS w) : bool :=
   ~~ carry_subB bv1 bv2.
 
@@ -75,6 +84,9 @@ Definition bv2z_instr_safe_at (i : instr) (s : bv64DSL.State.t) : bool :=
 (*  | bvNeg _ _ => true *)
   | bvAdd _ a1 a2 => addB_safe (eval_atomic a1 s) (eval_atomic a2 s)
   | bvAddC _ _ _ _ => true
+  | bvAdc _ a1 a2 c => adcB_safe (eval_atomic a1 s) (eval_atomic a2 s)
+                                 (bv64DSL.State.acc c s)
+  | bvAdcC _ _ _ _ _ => true
   | bvSub _ a1 a2 => subB_safe (eval_atomic a1 s) (eval_atomic a2 s)
 (*  | bvSubC _ _ _ _ => true *)
   | bvMul _ a1 a2 => mulB_safe (eval_atomic a1 s) (eval_atomic a2 s)
@@ -157,7 +169,7 @@ Proof.
   rewrite Nat2Z.inj_add -!toPosZ_toNat. reflexivity.
 Qed.
 
-Lemma toPosZ_addB2 w q r (bv1 bv2 : BITS w) :
+Lemma toPosZ_addB2' w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
   toPosZ (@fromNat (1 + (w - 1)) (carry_addB bv1 bv2)) = q.
 Proof.
@@ -206,9 +218,39 @@ Proof.
   - rewrite -{1}Hq => ->. reflexivity.
 Qed.
 
-Lemma toPosZ_addB3 w q r (bv1 bv2 : BITS w) :
+Lemma toPosZ_addB2 w q r (bv1 bv2 : BITS w) :
+  (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
+  toPosZ (high w (zeroExtend w bv1 + zeroExtend w bv2)) = q.
+Proof.
+Admitted.
+
+Lemma toPosZ_addB3' w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
   toPosZ (bv1 + bv2) = r.
+Proof.
+Admitted.
+
+Lemma toPosZ_addB3 w q r (bv1 bv2 : BITS w) :
+  (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
+  toPosZ (low w (zeroExtend w bv1 + zeroExtend w bv2)) = r.
+Proof.
+Admitted.
+
+Lemma toPosZ_adcB1 w (bv1 bv2 bv3 : BITS w) :
+  toPosZ (low w ((zeroExtend w bv1 + zeroExtend w bv2) + zeroExtend w bv3))%bits =
+  (toPosZ bv1 + toPosZ bv2 + toPosZ bv3)%Z.
+Proof.
+Admitted.
+
+Lemma toPosZ_adcB2 w q r (bv1 bv2 bv3 : BITS w) :
+  (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2 + toPosZ bv3) (2 ^ Z.of_nat w) ->
+  toPosZ (high w ((zeroExtend w bv1 + zeroExtend w bv2)%bits + zeroExtend w bv3)) = q.
+Proof.
+Admitted.
+
+Lemma toPosZ_adcB3 w q r (bv1 bv2 bv3 : BITS w) :
+  (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2 + toPosZ bv3) (2 ^ Z.of_nat w) ->
+  toPosZ (low w ((zeroExtend w bv1 + zeroExtend w bv2)%bits + zeroExtend w bv3)) = r.
 Proof.
 Admitted.
 
@@ -276,14 +318,17 @@ Lemma bvz_eq_eval_instr i sb sz :
   bvz_eq (eval_instr sb i) (zDSL.eval_program sz (bv2z_instr i)).
 Proof.
   move=> Heq; case: i => /=.
-  - move=> v a _ x.
+  - (* bvAssign *)
+    move=> v a _ x.
     apply: (bvz_eq_upd _ Heq).
     exact: bvz_eq_eval_atomic.
-  - move=> v a1 a2 Hsafe.
+  - (* bvAdd *)
+    move=> v a1 a2 Hsafe.
     apply: (bvz_eq_upd _ Heq).
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
     exact: toPosZ_addB1.
-  - move=> vh vl a1 a2 _ x.
+  - (* bvAddC *)
+    move=> vh vl a1 a2 _ x.
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
     set tmp :=
       Z.div_eucl (toPosZ (eval_atomic a1 sb) + toPosZ (eval_atomic a2 sb))
@@ -295,15 +340,37 @@ Proof.
     apply: (bvz_eq_upd2 _ _ Heq).
     + exact: (toPosZ_addB2 Hqr).
     + exact: (toPosZ_addB3 Hqr).
-  - move=> v a1 a2 Hsafe.
+  - (* bvAdc *)
+    move=> v a1 a2 c Hsafe. apply: (bvz_eq_upd _ Heq).
+    rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq) -(Heq c).
+    exact: toPosZ_adcB1.
+  - (* bvAdcC *)
+    move=> c v a1 a2 a _.
+    rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq) -(Heq a).
+    set tmp :=
+      Z.div_eucl
+         (toPosZ (eval_atomic a1 sb) + toPosZ (eval_atomic a2 sb) +
+          toPosZ (State.acc a sb)) (2 ^ Z.of_nat wordsize).
+    have: tmp =
+          Z.div_eucl
+            (toPosZ (eval_atomic a1 sb) + toPosZ (eval_atomic a2 sb) +
+             toPosZ (State.acc a sb)) (2 ^ Z.of_nat wordsize) by reflexivity.
+    destruct tmp as [q r] => Hqr.
+    apply: (bvz_eq_upd2 _ _ Heq).
+    + exact: (toPosZ_adcB2 Hqr).
+    + exact: (toPosZ_adcB3 Hqr).
+  - (* bvSub *)
+    move=> v a1 a2 Hsafe.
     apply: (bvz_eq_upd _ Heq).
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
     exact: toPosZ_subB1.
-  - move=> v a1 a2 Hsafe x.
+  - (* bvMul *)
+    move=> v a1 a2 Hsafe x.
     apply: (bvz_eq_upd _ Heq).
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
     exact: toPosZ_mulB.
-  - move=> vh vl a1 a2 _ x.
+  - (* bvMulf *)
+    move=> vh vl a1 a2 _ x.
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
     set tmp :=
       Z.div_eucl (toPosZ (eval_atomic a1 sb) * toPosZ (eval_atomic a2 sb))
@@ -315,11 +382,13 @@ Proof.
     apply: (bvz_eq_upd2 _ _ Heq).
     + exact: (toPosZ_fullmulB1 Hqr).
     + exact: (toPosZ_fullmulB2 Hqr).
-  - move=> v a n Hsafe.
+  - (* bvShl *)
+    move=> v a n Hsafe.
     apply: (bvz_eq_upd _ Heq).
     rewrite -(bvz_eq_eval_atomic a Heq).
     exact: toPosZ_shlBn.
-  - move=> vh vl a n _ x.
+  - (* bvSplit *)
+    move=> vh vl a n _ x.
     rewrite -(bvz_eq_eval_atomic a Heq).
     set tmp := Z.div_eucl (toPosZ (eval_atomic a sb)) (2 ^ Z.of_nat (toNat n)).
     have: tmp = Z.div_eucl (toPosZ (eval_atomic a sb)) (2 ^ Z.of_nat (toNat n))
@@ -328,7 +397,8 @@ Proof.
     apply: (bvz_eq_upd2 _ _ Heq).
     + exact: (toPosZ_shrBn1 Hqr).
     + exact: (toPosZ_shrBn2 Hqr).
-  - move=> vh vl a1 a2 n Hsafe x.
+  - (* bvConcatShl *)
+    move=> vh vl a1 a2 n Hsafe x.
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
     set tmp :=
       Z.div_eucl
@@ -692,6 +762,12 @@ Proof.
        | |- _ => idtac
        end in
    tac).
+  - rewrite -zDSL.VSLemmas.add_union_singleton2 zDSL.VSLemmas.OP.P.add_add.
+    reflexivity.
+  - rewrite -zDSL.VSLemmas.add_union_singleton2.
+    rewrite (zDSL.VSLemmas.OP.P.add_add _ t0 t1).
+    rewrite (zDSL.VSLemmas.OP.P.add_add _ t1 t).
+    reflexivity.
 Qed.
 
 Lemma vars_bv2z_program p :
@@ -812,6 +888,11 @@ Proof.
        | |- is_true (zDSL.VS.subset zDSL.VS.empty _) =>
          exact: zDSL.VSLemmas.subset_empty
        | H : is_true (?x != ?y) |- is_true (?x != ?y) => exact: H
+       | |- is_true (zDSL.VS.subset (zDSL.VS.singleton _) _) =>
+         apply: zDSL.VSLemmas.subset_singleton2; tac
+       | H : is_true (VS.mem ?v ?vs) |-
+         is_true (zDSL.VS.mem ?v (bv2z_vars ?vs)) =>
+         by rewrite -bv2z_vars_mem
        | |- _ => idtac
        end in
    tac).

@@ -2,6 +2,6 @@ DIRS="bvdsl zdsl"
 
 for d in ${DIRS}; do
   pushd $d
-  rm *.vo *.glob
+  rm *.vo *.glob .*.aux
   popd
 done

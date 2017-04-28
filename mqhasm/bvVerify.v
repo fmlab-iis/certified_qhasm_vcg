@@ -118,8 +118,12 @@ Ltac rewrite_toPosZfromPosZ :=
     [done | move=> ->]
   end.
 
+Ltac rewrite_toNatfromNat :=
+  rewrite toNat_fromNatBounded; last by done.
+
 Ltac rewrite_bv2z_consts :=
-  repeat fold_toPosZfromPosZ; repeat rewrite_toPosZfromPosZ.
+  repeat fold_toPosZfromPosZ; repeat rewrite_toPosZfromPosZ;
+  repeat rewrite_toNatfromNat.
 
 (* Convert bv2z_spec_poly to polynomials. *)
 Ltac bv2zspec_to_poly_with o vs :=

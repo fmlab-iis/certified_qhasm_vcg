@@ -212,6 +212,11 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: (Hsub _ Hin).
   Qed.
 
+  Lemma add_equal x s : S.mem x s -> S.Equal (S.add x s) s.
+  Proof.
+    move/memP=> Hin. exact: (OP.P.add_equal Hin).
+  Qed.
+
   Lemma union_emptyl s :
     S.Equal (S.union S.empty s) s.
   Proof.
@@ -230,6 +235,29 @@ Module FSetLemmas (S : FSetInterface.S).
   Proof.
     rewrite OP.P.union_sym.
     exact: union_emptyl.
+  Qed.
+
+  Lemma union_add1 x s1 s2 :
+    S.Equal (S.union (S.add x s1) s2) (S.add x (S.union s1 s2)).
+  Proof.
+    exact: OP.P.union_add.
+  Qed.
+
+  Lemma union_add2 x s1 s2 :
+    S.Equal (S.union s1 (S.add x s2)) (S.add x (S.union s1 s2)).
+  Proof.
+    rewrite (OP.P.union_sym s1 (S.add _ _)) (OP.P.union_sym s1 s2).
+    exact: union_add1.
+  Qed.
+
+  Lemma add_union_singleton1 x s : S.Equal (S.add x s) (S.union (S.singleton x) s).
+  Proof.
+    exact: OP.P.add_union_singleton.
+  Qed.
+
+  Lemma add_union_singleton2 x s : S.Equal (S.add x s) (S.union s (S.singleton x)).
+  Proof.
+    rewrite OP.P.union_sym. exact: OP.P.add_union_singleton.
   Qed.
 
   Lemma union_subsets sa1 sa2 sb1 sb2 :
@@ -420,6 +448,15 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: (S.add_2 _ Hin).
   Qed.
 
+  Lemma subset_add2 x s1 s2 :
+    S.subset s1 s2 -> S.subset s1 (S.add x s2).
+  Proof.
+    move=> Hsub.
+    move: (S.subset_2 Hsub) => {Hsub} Hsub.
+    apply/S.subset_1.
+    exact: OP.P.subset_add_2.
+  Qed.
+
   Lemma subset_add3 x s1 s2 :
     S.mem x s2 -> S.subset s1 s2 -> S.subset (S.add x s1) s2.
   Proof.
@@ -429,13 +466,26 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: OP.P.subset_add_3.
   Qed.
 
-  Lemma subset_add2 x s1 s2 :
-    S.subset s1 s2 -> S.subset s1 (S.add x s2).
+  Lemma subset_add4 x s1 s2 :
+    S.subset (S.add x s1) s2 -> S.mem x s2.
   Proof.
-    move=> Hsub.
-    move: (S.subset_2 Hsub) => {Hsub} Hsub.
-    apply/S.subset_1.
-    exact: OP.P.subset_add_2.
+    rewrite OP.P.add_union_singleton. move=> H.
+    move: (subset_union4 H) => {H} H. exact: (subset_singleton1 H).
+  Qed.
+
+  Lemma subset_add5 x s1 s2 :
+    S.subset (S.add x s1) s2 -> S.subset s1 s2.
+  Proof.
+    rewrite OP.P.add_union_singleton. move=> H. exact: (subset_union5 H).
+  Qed.
+
+  Lemma subset_add6 x s1 s2 :
+  S.subset (S.add x s1) s2 = S.mem x s2 && S.subset s1 s2.
+  Proof.
+    case H: (S.mem x s2 && S.subset s1 s2).
+    - move/andP: H => [H1 H2]. exact: (subset_add3 H1 H2).
+    - apply/negP => Hsub. move/negP: H; apply.
+      by rewrite (subset_add4 Hsub) (subset_add5 Hsub).
   Qed.
 
   Lemma mem_empty :

@@ -144,6 +144,19 @@ Definition ssa_instr (m : vmap) (i : instr) : vmap * bv64SSA.instr :=
     let mc := upd_index c m in
     let mv := upd_index v mc in
     (mv, bv64SSA.bvAddC (ssa_var mc c) (ssa_var mv v) e1 e2)
+  | bvAdc v e1 e2 c =>
+    let e1 := ssa_atomic m e1 in
+    let e2 := ssa_atomic m e2 in
+    let c := ssa_var m c in
+    let m := upd_index v m in
+    (m, bv64SSA.bvAdc (ssa_var m v) e1 e2 c)
+  | bvAdcC c v e1 e2 a =>
+    let e1 := ssa_atomic m e1 in
+    let e2 := ssa_atomic m e2 in
+    let a := ssa_var m a in
+    let mc := upd_index c m in
+    let mv := upd_index v mc in
+    (mv, bv64SSA.bvAdcC (ssa_var mc c) (ssa_var mv v) e1 e2 a)
   | bvSub v e1 e2 =>
     let e1 := ssa_atomic m e1 in
     let e2 := ssa_atomic m e2 in
@@ -250,6 +263,22 @@ Lemma ssa_bvaddc m1 m2 c v e1 e2 si :
 Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
+Qed.
+
+Lemma ssa_bvadc m1 m2 v e1 e2 c si :
+  ssa_instr m1 (bvAdc v e1 e2 c) = (m2, si) ->
+  m2 = upd_index v m1 /\
+  si = bv64SSA.bvAdc (ssa_var m2 v) (ssa_atomic m1 e1)  (ssa_atomic m1 e2) (ssa_var m1 c).
+Proof.
+  move=> [Hm Hsi]. by rewrite -Hm.
+Qed.
+
+Lemma ssa_bvadcc m1 m2 c v e1 e2 a si :
+  ssa_instr m1 (bvAdcC c v e1 e2 a) = (m2, si) ->
+  m2 = upd_index v (upd_index c m1) /\
+  si = bv64SSA.bvAdcC (ssa_var (upd_index c m1) c) (ssa_var m2 v) (ssa_atomic m1 e1)  (ssa_atomic m1 e2) (ssa_var m1 a).
+Proof.
+  move=> [Hm Hsi]. by rewrite -Hm.
 Qed.
 
 Lemma ssa_bvsub m1 m2 v e1 e2 si :
@@ -980,6 +1009,53 @@ Proof.
       assumption.
 Qed.
 
+(* one lval, two atomics plus one rval *)
+Lemma ssa_vars_instr_subset13 m1 vs v e1 e2 c :
+  let m2 := upd_index v m1 in
+  let vse1 := vars_atomic e1 in
+  let vse2 := vars_atomic e2 in
+  let ssam1vs := ssa_vars m1 vs in
+  let ssam2v := ssa_var m2 v in
+  let ssam1c := ssa_var m1 c in
+  let vsssam1e1 := bv64SSA.vars_atomic (ssa_atomic m1 e1) in
+  let vsssam1e2 := bv64SSA.vars_atomic (ssa_atomic m1 e2) in
+  bv64SSA.VS.subset
+    (ssa_vars m2 (VS.union vs (VS.add c (VS.add v (VS.union vse1 vse2)))))
+    (bv64SSA.VS.union
+       ssam1vs
+       (bv64SSA.VS.add
+          ssam1c
+          (bv64SSA.VS.add ssam2v (bv64SSA.VS.union vsssam1e1 vsssam1e2)))).
+Proof.
+  move=> /=.
+  set m2 := upd_index v m1.
+  set vse1 := vars_atomic e1.
+  set vse2 := vars_atomic e2.
+  set ssam1vs := ssa_vars m1 vs.
+  set ssam2v := ssa_var m2 v.
+  set ssam1c := ssa_var m1 c.
+  set vsssam1e1 := bv64SSA.vars_atomic (ssa_atomic m1 e1).
+  set vsssam1e2 := bv64SSA.vars_atomic (ssa_atomic m1 e2).
+  set ssavs :=
+    (bv64SSA.VS.union ssam1vs
+       (bv64SSA.VS.add ssam1c
+          (bv64SSA.VS.add ssam2v (bv64SSA.VS.union vsssam1e1 vsssam1e2)))).
+  have: bv64SSA.VS.mem (ssa_var m2 c) ssavs.
+  { case Hcv: (c == v).
+    - rewrite (eqP Hcv). apply: bv64SSA.VSLemmas.mem_union3.
+      apply: bv64SSA.VSLemmas.mem_add3. apply: bv64SSA.VSLemmas.mem_add2.
+      exact: eqxx.
+    - move/idP/negP: Hcv => Hcv. rewrite (ssa_var_upd_neq _ Hcv).
+      apply: bv64SSA.VSLemmas.mem_union3. apply: bv64SSA.VSLemmas.mem_add2.
+      exact: eqxx. }
+  move=> Hc.
+  rewrite ssa_vars_union ssa_vars_add bv64SSA.VSLemmas.union_add2 -ssa_vars_union.
+  apply: (bv64SSA.VSLemmas.subset_add3 Hc).
+  rewrite /ssavs bv64SSA.VSLemmas.union_add2.
+  apply: bv64SSA.VSLemmas.subset_add2.
+  exact: ssa_vars_instr_subset12.
+Qed.
+
 (* two lvals, one atomic *)
 Lemma ssa_vars_instr_subset21 m1 vs v1 v2 e :
   let m2 := upd_index v1 m1 in
@@ -1181,6 +1257,77 @@ Proof.
       assumption.
 Qed.
 
+(* two lvals, two atomics plus one rval *)
+Lemma ssa_vars_instr_subset23 m1 vs v1 v2 e1 e2 a :
+  let m2 := upd_index v1 m1 in
+  let m3 := upd_index v2 m2 in
+  let vse1 := vars_atomic e1 in
+  let vse2 := vars_atomic e2 in
+  let ssam1vs := ssa_vars m1 vs in
+  let ssam2v1 := ssa_var m2 v1 in
+  let ssam3v2 := ssa_var m3 v2 in
+  let ssam1a := ssa_var m1 a in
+  let vsssam1e1 := bv64SSA.vars_atomic (ssa_atomic m1 e1) in
+  let vsssam1e2 := bv64SSA.vars_atomic (ssa_atomic m1 e2) in
+  bv64SSA.VS.subset
+    (ssa_vars m3 (VS.union vs (VS.add a (VS.add v1 (VS.add v2 (VS.union vse1 vse2))))))
+    (bv64SSA.VS.union
+       ssam1vs
+       (bv64SSA.VS.add
+          ssam1a
+          (bv64SSA.VS.add
+             ssam2v1
+             (bv64SSA.VS.add ssam3v2 (bv64SSA.VS.union vsssam1e1 vsssam1e2))))).
+Proof.
+  move=> /=.
+  set m2 := upd_index v1 m1.
+  set m3 := upd_index v2 m2.
+  set vse1 := (vars_atomic e1).
+  set vse2 := (vars_atomic e2).
+  set ssam1vs := (ssa_vars m1 vs).
+  set ssam2v1 := ssa_var m2 v1.
+  set ssam3v1 := ssa_var m3 v1.
+  set ssam3v2 := ssa_var m3 v2.
+  set ssam1e1 := ssa_vars m1 (vars_atomic e1).
+  set ssam1e2 := ssa_vars m1 (vars_atomic e2).
+  set ssam1a := ssa_var m1 a.
+  set vsssam1e1 := bv64SSA.vars_atomic (ssa_atomic m1 e1).
+  set vsssam1e2 := bv64SSA.vars_atomic (ssa_atomic m1 e2).
+  set ssavs :=
+    (bv64SSA.VS.union ssam1vs
+       (bv64SSA.VS.add ssam1a
+          (bv64SSA.VS.add ssam2v1
+             (bv64SSA.VS.add ssam3v2 (bv64SSA.VS.union vsssam1e1 vsssam1e2))))).
+  have: bv64SSA.VS.mem (ssa_var m3 a) ssavs.
+  { case Hav2: (a == v2).
+    - rewrite (eqP Hav2). apply: bv64SSA.VSLemmas.mem_union3.
+      apply: bv64SSA.VSLemmas.mem_add3. apply: bv64SSA.VSLemmas.mem_add3.
+      apply: bv64SSA.VSLemmas.mem_add2. exact: eqxx.
+    - move/idP/negP: Hav2 => Hav2.
+      rewrite /m3 (ssa_var_upd_neq _ Hav2).
+      case Hav1: (a == v1).
+      + rewrite (eqP Hav1). apply: bv64SSA.VSLemmas.mem_union3.
+        apply: bv64SSA.VSLemmas.mem_add3. apply: bv64SSA.VSLemmas.mem_add2.
+        exact: eqxx.
+      + move/idP/negP: Hav1 => Hav1.
+        rewrite /m2 (ssa_var_upd_neq _ Hav1). apply: bv64SSA.VSLemmas.mem_union3.
+        apply: bv64SSA.VSLemmas.mem_add2. exact: eqxx. }
+  move=> Ha.
+  rewrite ssa_vars_union ssa_vars_add bv64SSA.VSLemmas.union_add2 -ssa_vars_union.
+  apply: (bv64SSA.VSLemmas.subset_add3 Ha).
+  apply: bv64SSA.VSLemmas.subset_trans; first by exact: ssa_vars_instr_subset22.
+  have: bv64SSA.VS.Equal
+          ssavs
+          (bv64SSA.VS.add ssam1a
+              (bv64SSA.VS.union ssam1vs
+                  (bv64SSA.VS.add ssam2v1
+                     (bv64SSA.VS.add ssam3v2 (bv64SSA.VS.union vsssam1e1 vsssam1e2))))).
+  { rewrite -bv64SSA.VSLemmas.union_add2. reflexivity. }
+  move=> ->.
+  apply: bv64SSA.VSLemmas.subset_add2.
+  exact: bv64SSA.VSLemmas.subset_refl.
+Qed.
+
 Lemma ssa_vars_instr_subset m1 m2 vs i si :
   ssa_instr m1 i = (m2, si) ->
   bv64SSA.VS.subset (ssa_vars m2 (VS.union vs (vars_instr i)))
@@ -1194,8 +1341,10 @@ Proof.
   by first [
     exact: ssa_vars_instr_subset11 |
     exact: ssa_vars_instr_subset12 |
+    exact: ssa_vars_instr_subset13 |
     exact: ssa_vars_instr_subset21 |
-    exact: ssa_vars_instr_subset22
+    exact: ssa_vars_instr_subset22 |
+    exact: ssa_vars_instr_subset23
   ].
 Qed.
 
@@ -1364,12 +1513,15 @@ Qed.
 Ltac ssa_eval_state_equiv_tac :=
   simpl; intros;
   let rec tac :=
-      match goal with
+      lazymatch goal with
       | H : (_, _) = (_, _) |- _ =>
         case: H; intros; subst; simpl; tac
       | H : state_equiv ?m ?s ?ss
         |- context f [bv64SSA.eval_atomic (ssa_atomic ?m ?a) ?ss] =>
         rewrite (ssa_eval_atomic a H); tac
+      | H : state_equiv ?m ?s ?ss
+        |- context f [bv64SSA.State.acc (ssa_var ?m ?a) ?ss] =>
+        rewrite -(H a); tac
       | H : state_equiv ?m ?s ?ss |- _ =>
           try first [ exact: (state_equiv_upd _ _ H) |
                       exact: (state_equiv_upd2 _ _ _ _ H) ]
@@ -1982,6 +2134,28 @@ Proof.
   exact: (bv64SSA.VSLemmas.mem_subset Hmem Hsub).
 Qed.
 
+Lemma ssa_unchanged_instr_add1 v s p :
+  ssa_vars_unchanged_instr (bv64SSA.VS.add v s) p ->
+  ssa_var_unchanged_instr v p /\ ssa_vars_unchanged_instr s p.
+Proof.
+  move=> H; split.
+  - apply: (ssa_unchanged_instr_mem H).
+    exact: bv64SSA.VSLemmas.mem_add2.
+  - apply: (ssa_unchanged_instr_subset H).
+    exact: (bv64SSA.VSLemmas.subset_add _ (bv64SSA.VSLemmas.subset_refl s)).
+Qed.
+
+Lemma ssa_unchanged_instr_add2 v s p :
+  ssa_var_unchanged_instr v p /\ ssa_vars_unchanged_instr s p ->
+  ssa_vars_unchanged_instr (bv64SSA.VS.add v s) p.
+Proof.
+  move=> [H1 H2].
+  apply: ssa_unchanged_instr_global => x Hmem.
+  case: (bv64SSA.VSLemmas.mem_add1 Hmem) => {Hmem}.
+  - move=> Heq. by rewrite (eqP Heq).
+  - move=> Hmem. exact: (ssa_unchanged_instr_mem H2 Hmem).
+Qed.
+
 Lemma ssa_unchanged_program_add1 v s p :
   ssa_vars_unchanged_program (bv64SSA.VS.add v s) p ->
   ssa_var_unchanged_program v p /\ ssa_vars_unchanged_program s p.
@@ -2448,6 +2622,9 @@ Proof.
          |- is_true (ssa_var (upd_index ?v1 ?m) ?v1 !=
                              ssa_var (upd_index ?v2 (upd_index ?v1 ?m)) ?v2) =>
          exact: (pair_neq1 _ _ H)
+       | H : is_true (VS.mem ?v ?vs) |-
+         is_true (bv64SSA.VS.mem (ssa_var ?m ?v) (ssa_vars ?m ?vs)) =>
+         rewrite ssa_vars_mem1; exact: H
        | |- _ => idtac
        end in
    tac).
@@ -2460,6 +2637,12 @@ Definition dclosed m ivs lvs svs : Prop :=
   (forall v, VS.mem v lvs -> 0 <? get_index v m) /\
   (* svs contains all versions of ivs and lvs. *)
   (forall v i, bv64SSA.VS.mem (v, i) svs = (VS.mem v ivs) && (i <=? get_index v m) || (VS.mem v lvs) && (0 <? i <=? get_index v m)).
+
+Lemma dclosed_lvs_idx_gt0 m ivs lvs svs v :
+  dclosed m ivs lvs svs -> VS.mem v lvs -> 0 <? get_index v m.
+Proof.
+  move=> [_ [H _]]. exact: H.
+Qed.
 
 Lemma dclosed_not_mem m ivs lvs svs v :
   dclosed m ivs lvs svs ->
@@ -2528,6 +2711,18 @@ Proof.
     rewrite Nleqn0 in Hi2.
     rewrite (eqP Hi2) Nltnn in Hi1.
     discriminate.
+Qed.
+
+Lemma dclosed_mem6 m ivs lvs svs v :
+  dclosed m ivs lvs svs ->
+  VS.mem v (VS.union ivs lvs) ->
+  bv64SSA.VS.mem (ssa_var m v) svs.
+Proof.
+  move=> Hd Hmv. set sv := ssa_var m v. have: sv = ssa_var m v by reflexivity.
+  destruct sv as [x i]. move=> [] -> ->. case: (VSLemmas.mem_union1 Hmv) => {Hmv} Hmv.
+  - apply: (dclosed_mem2 Hd Hmv). exact: N.leb_refl.
+  - apply: (dclosed_mem3 Hd Hmv). rewrite (dclosed_lvs_idx_gt0 Hd Hmv) N.leb_refl.
+    done.
 Qed.
 
 Lemma dclosed_empty vs :
@@ -2599,6 +2794,10 @@ Ltac dclosed_instr_well_formed_tac :=
     |- is_true (ssa_var (upd_index ?v1 ?m) ?v1 !=
                         ssa_var (upd_index ?v2 (upd_index ?v1 ?m)) ?v2) =>
     exact: (pair_neq1 _ _ H)
+  | H1 : dclosed ?m ?ivs ?lvs ?svs,
+    H2 : is_true (VS.mem ?v (VS.union ?ivs ?lvs)) |-
+    is_true (bv64SSA.VS.mem (ssa_var ?m ?v) ?svs) =>
+    exact: (dclosed_mem6 H1 H2)
   | |- _ => idtac
   end.
 
