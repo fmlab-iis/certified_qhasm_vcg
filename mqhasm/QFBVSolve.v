@@ -213,20 +213,54 @@ Ltac abs_bexp e :=
   | @bvConj ?e1 ?e2 =>
     let e1 := abs_bexp e1 in
     let e2 := abs_bexp e2 in
-    constr:(sbvConj e1 e2)
+    match e1 with
+    | sbvTrue => e2
+    | _ => match e2 with
+           | sbvTrue => e1
+           | _ => constr:(sbvConj e1 e2)
+           end
+    end
   | _ => fail 100
               "Failed to convert the QFBV.bexp '" e
               "' to QFBVSolver.sbexp: not matched."
   end.
 
+Ltac simp_concat es1 es2 :=
+  match es1 with
+  | sbvNil => es2
+  | sbvConst ?e ?es1 =>
+    let es2 := simp_concat es1 es2 in
+    constr:(sbvCons e es2)
+  end.
+
+Ltac abs_conjs es :=
+  lazymatch es with
+  | ?a /\ ?b =>
+    let a := abs_conjs a in
+    let b := abs_conjs b in
+    match a with
+    | sbvTrue => b
+    | _ => match b with
+           | sbvTrue => a
+           | _ => constr:(sbvConj a b)
+           end
+    end
+  | QFBV64.eval_bexp ?a ?s =>
+    abs_bexp a
+  | True => constr:(sbvTrue)
+  end.
+
 Ltac abs_imp g :=
   lazymatch g with
-  | QFBV64.eval_bexp ?a ?s -> ?b =>
-    let a := abs_bexp a in
+  | ?a -> ?b =>
+    let a := abs_conjs a in
     let b := abs_imp b in
-    constr:(sbvCons a b)
-  | QFBV64.eval_bexp ?a ?s =>
-    let a := abs_bexp a in
+    match a with
+    | sbvTrue => b
+    | _ => constr:(sbvCons a b)
+    end
+  | ?a =>
+    let a := abs_conjs a in
     constr:(sbvCons a sbvNil)
   end.
 
@@ -275,7 +309,7 @@ Ltac solve_simp f k :=
 Axiom valid_simp : forall P : Prop, P.
 
 Ltac solve_qfbv_with s :=
-  bvsimpl; intros; split_hyps; split_goals; clear_trivials; gen_bexps;
+  bvsimpl; intro;
   let f := abs in
   solve_simp_with s f ltac:(fun res =>
     match res with
