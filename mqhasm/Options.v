@@ -40,8 +40,8 @@ Record verify_options : Set :=
               opt_profiling : bool }.
 
 Definition default_options : verify_options :=
-  {| opt_z3 := true;
-     opt_boolector := false;
+  {| opt_z3 := false;
+     opt_boolector := true;
      opt_split := true;
      opt_slicing := false;
      opt_to_assign := true;

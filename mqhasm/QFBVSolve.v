@@ -67,7 +67,7 @@ Ltac abs_exp e :=
     let w := eval compute in w in
     let m := constr:(toPosZ n) in
     let m := eval compute in m in
-        constr:(sbvConst w m)
+    constr:(sbvConst w m)
   | @bvNot ?w ?e =>
     let w := eval compute in w in
     let e := abs_exp e in
@@ -228,7 +228,7 @@ Ltac abs_bexp e :=
 Ltac simp_concat es1 es2 :=
   match es1 with
   | sbvNil => es2
-  | sbvConst ?e ?es1 =>
+  | sbvCons ?e ?es1 =>
     let es2 := simp_concat es1 es2 in
     constr:(sbvCons e es2)
   end.

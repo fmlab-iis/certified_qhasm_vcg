@@ -176,19 +176,19 @@ Ltac verify_bvdsl_with o vs :=
           (match b with
            | true => time "bv2z_spre_safe_qfbv" (verify_qfbv_with o)
            | false => (verify_qfbv_with o)
-           end)
+           end) || fail 100 "bv2z_spre_safe_qfbv fails"
         |
           (* bv2z_sprog_safe_qfbv *)
           (match b with
            | true => time "bv2z_sprog_safe_qfbv" (verify_qfbv_with o)
            | false => (verify_qfbv_with o)
-           end)
+           end) || fail 100 "bv2z_sprog_safe_qfbv fails"
         |
           (* bv2z_spost_safe_qfbv *)
           (match b with
            | true => time "bv2z_spost_safe_qfbv" (verify_qfbv_with o)
            | false => (verify_qfbv_with o)
-           end)
+           end) || fail 100 "bv2z_spost_safe_qfbv fails"
         ]
       ]
     |

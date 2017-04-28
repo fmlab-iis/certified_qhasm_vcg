@@ -592,7 +592,7 @@ Definition fe25519_mul_spec :=
 
 Lemma valid_fe25519_mul : valid_bvspec (fe25519_mul_inputs, fe25519_mul_spec).
 Proof.
-  time "valid_fe25519_mul" verify_bvspec with [:: With Boolector].
+  time "valid_fe25519_mul" verify_bvspec.
 Qed.
 
 Close Scope zdsl_scope.
