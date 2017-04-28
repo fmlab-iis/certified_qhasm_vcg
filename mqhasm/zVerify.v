@@ -497,6 +497,7 @@ Ltac solve_zspec_with o :=
   | |- exists _, _ = _ => gbarith_with o
   | |- modulo _ _ _ => gbarith_with o
   | |- _ = _ => nsatz_with o
+  | |- True => by trivial
   end.
 
 Tactic Notation "solve_zspec" := solve_zspec_with default_options.

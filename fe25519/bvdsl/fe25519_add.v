@@ -143,14 +143,21 @@ let            r2 :=  22 in
 let            r3 :=  23 in
 let            r4 :=  24 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
-bvEqMod
-  (
-    (radix51 [:: bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
-    @+
-    (radix51 [:: bvvar y0; bvvar y1; bvvar y2; bvvar y3; bvvar y4])
-  )
-  (radix51 [:: bvvar r0; bvvar r1; bvvar r2; bvvar r3; bvvar r4])
-  (bvposz n25519).
+bvands [::
+          bvEqMod
+          (
+            (radix51 [:: bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
+              @+
+              (radix51 [:: bvvar y0; bvvar y1; bvvar y2; bvvar y3; bvvar y4])
+          )
+          (radix51 [:: bvvar r0; bvvar r1; bvvar r2; bvvar r3; bvvar r4])
+          (bvposz n25519);
+          bvult (bvvar r0) (bvposz (2^53)%Z);
+          bvult (bvvar r1) (bvposz (2^53)%Z);
+          bvult (bvvar r2) (bvposz (2^53)%Z);
+          bvult (bvvar r3) (bvposz (2^53)%Z);
+          bvult (bvvar r4) (bvposz (2^53)%Z)
+       ].
 
 Definition fe25519_add_spec :=
   {| spre := fe25519_add_pre;
