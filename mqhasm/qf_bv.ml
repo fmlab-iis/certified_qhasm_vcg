@@ -600,6 +600,13 @@ let rec hex_of_num w n =
     let r = mod_num n num_16 in
     hex_of_num (w - 1) q ^ List.nth hextbl (int_of_num r)
 
+let rec bin_of_num w n =
+  if w = 0 then ""
+  else
+    let q = quo_num n num_2 in
+    let r = mod_num n num_2 in
+    bin_of_num (w - 1) q ^ (string_of_num r)
+
 let smtlib2_declare_vars vars =
   let decls = VM.fold (
                   fun v w res ->
@@ -638,10 +645,14 @@ let bvaddo w e1 e2 = bveq (bvhigh w 1 (bvadd (zero_extend 1 e1) (zero_extend 1 e
 let bvsubo w e1 e2 = bveq (bvhigh w 1 (bvsub (zero_extend 1 e1) (zero_extend 1 e2))) "#b1"
 let bvmulo w e1 e2 = bvneq (bvhigh w w (bvmul (zero_extend w e1) (zero_extend w e2))) ("(_ bv0 " ^ string_of_int w ^ ")")
 
+let smtlib2_of_const w n =
+  if w / 4 * 4 = w then "#x" ^ hex_of_num (w / 4) n
+  else "#b" ^ bin_of_num w n
+
 let rec smtlib2_of_exp e =
   match e with
   | Var (w, v) -> string_of_var v
-  | Const (w, n) -> "#x" ^ hex_of_num (w / 4) n
+  | Const (w, n) -> smtlib2_of_const w n
   | Not (w, e) -> bvnot (smtlib2_of_exp e)
   | And (w, e1, e2) -> bvand (smtlib2_of_exp e1) (smtlib2_of_exp e2)
   | Or (w, e1, e2) -> bvor (smtlib2_of_exp e1) (smtlib2_of_exp e2)
