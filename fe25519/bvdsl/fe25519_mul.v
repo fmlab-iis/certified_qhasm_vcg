@@ -573,8 +573,8 @@ bvands [::
           bvEqMod
           (
             (radix51 [:: bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
-              @*
-              (radix51 [:: bvvar y0; bvvar y1; bvvar y2; bvvar y3; bvvar y4])
+            @*
+            (radix51 [:: bvvar y0; bvvar y1; bvvar y2; bvvar y3; bvvar y4])
           )
           (radix51 [:: bvvar r0; bvvar r1; bvvar r2; bvvar r3; bvvar r4])
           (bvposz n25519);
