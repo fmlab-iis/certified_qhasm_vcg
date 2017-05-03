@@ -14,6 +14,16 @@ let boolector_path = "boolector"
 
 let vname = "x"
 
+let wordsize = ref 64
+
+let use_btor = ref true
+
+type sat_engine =
+  | Lingeling
+  | Minisat
+
+let sat_engine = ref Minisat
+
 type solver = Z3 | Boolector
 
 let default_solver = Z3
@@ -122,7 +132,7 @@ let rec cbool_of_obool b : Constr.t =
 let rec obool_of_cbool (n : Constr.t) : bool =
   if Constr.equal n (Lazy.force CoqBool._true) then true
   else if Constr.equal n (Lazy.force CoqBool._false) then false
-  else failwith "Not a valid Coq bool."
+  else fail "Not a valid Coq bool."
 
 
 
@@ -149,8 +159,8 @@ let rec oint_of_cnat (n : Constr.t) : int =
     try
       let (constructor, args) = Term.destApp n in
       if Constr.equal constructor (Lazy.force CoqNat._S) then 1 + (oint_of_cnat args.(0))
-      else failwith "Not a valid Coq nat."
-    with destKO -> failwith "Not a valid Coq nat."
+      else fail "Not a valid Coq nat."
+    with destKO -> fail "Not a valid Coq nat."
 
 
 
@@ -178,7 +188,7 @@ let num_10 = Int 10
 
 (** Constructs a Coq positive from an OCaml num. *)
 let rec cpos_of_onum (n : num) : Constr.t =
-  if n </ num_0 then failwith "Not a positive number."
+  if n </ num_0 then fail "Not a positive number."
   else if n =/ num_1 then Lazy.force CoqBinNums._xH
   else if mod_num n num_2 =/ num_0 then Constr.mkApp (Lazy.force CoqBinNums._xO, [| cpos_of_onum (quo_num n num_2) |])
   else Constr.mkApp (Lazy.force CoqBinNums._xI, [| cpos_of_onum (quo_num n num_2) |])
@@ -191,8 +201,8 @@ let rec onum_of_cpos (n : Constr.t) : num =
       let (constructor, args) = Term.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._xI) then num_1 +/ (onum_of_cpos args.(0) */ num_2)
       else if Constr.equal constructor (Lazy.force CoqBinNums._xO) then num_0 +/ (onum_of_cpos args.(0) */ num_2)
-      else failwith "Not a valid Coq positive."
-    with destKO -> failwith "Not a valid Coq positive."
+      else fail "Not a valid Coq positive."
+    with destKO -> fail "Not a valid Coq positive."
 
 (** Constructs a Coq N from an OCaml num. *)
 let rec cn_of_onum (n : num) : Constr.t =
@@ -207,8 +217,8 @@ let onum_of_cn (n : Constr.t) : num =
     try
       let (constructor, args) = Term.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._Npos) then onum_of_cpos args.(0)
-      else failwith "Not a valid Coq N."
-    with destKO -> failwith "Not a valid Coq N."
+      else fail "Not a valid Coq N."
+    with destKO -> fail "Not a valid Coq N."
 
 (** Constructs a Coq Z from an OCaml num. *)
 let rec cz_of_onum (n : num) : Constr.t =
@@ -224,8 +234,8 @@ let onum_of_cz (n : Constr.t) : num =
       let (constructor, args) = Term.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._Zpos) then onum_of_cpos args.(0)
       else if Constr.equal constructor (Lazy.force CoqBinNums._Zneg) then minus_num (onum_of_cpos args.(0))
-      else failwith "Not a valid Coq Z."
-    with destKO -> failwith "Not a valid Coq Z."
+      else fail "Not a valid Coq Z."
+    with destKO -> fail "Not a valid Coq Z."
 
 (** Constructs a Coq positive from a number string in OCaml. *)
 let cpos_of_ostring (str : string) : Constr.t =
@@ -329,7 +339,7 @@ let rec ovar_of_cvar v =
   let _ = Lazy.force CoqDatatypes._pair in
   if Term.isConst v then
     match Global.body_of_constant (Univ.out_punivs (Term.destConst v)) with
-      None -> failwith "Failed to find the definition of constant."
+      None -> fail "Failed to find the definition of constant."
     | Some v' -> ovar_of_cvar v'
   else
     try
@@ -341,7 +351,7 @@ let rec ovar_of_cvar v =
 let rec oexp_of_cexp e =
   if Term.isConst e then
     match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
-      None -> failwith "Failed to find the definition of constant."
+      None -> fail "Failed to find the definition of constant."
     | Some e' -> oexp_of_cexp e'
   else
     try
@@ -371,7 +381,7 @@ let rec oexp_of_cexp e =
 let rec obexp_of_cbexp e =
   if Term.isConst e then
     match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
-      None -> failwith "Failed to find the definition of constant."
+      None -> fail "Failed to find the definition of constant."
     | Some e' -> obexp_of_cbexp e'
   else if Constr.equal e (Lazy.force CoqQFBV._sbvTrue) then True
   else
@@ -393,7 +403,7 @@ let rec obexp_of_cbexp e =
 let rec oimp_of_cimp e =
   if Term.isConst e then
     match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
-      None -> failwith "Failed to find the definition of constant."
+      None -> fail "Failed to find the definition of constant."
     | Some e' -> oimp_of_cimp e'
   else if Constr.equal e (Lazy.force CoqQFBV._sbvNil) then []
   else
@@ -607,16 +617,6 @@ let rec bin_of_num w n =
     let r = mod_num n num_2 in
     bin_of_num (w - 1) q ^ (string_of_num r)
 
-let smtlib2_declare_vars vars =
-  let decls = VM.fold (
-                  fun v w res ->
-                  ("(declare-fun "
-                   ^ string_of_var v
-                   ^ " () (_ BitVec "
-                   ^ string_of_int w
-                   ^ "))")::res) vars [] in
-  String.concat "\n" decls
-
 let bvnot e = "(bvnot " ^ e ^ ")"
 let bvand e1 e2 = "(bvand " ^ e1 ^ " " ^ e2 ^ ")"
 let bvor e1 e2 = "(bvor " ^ e1 ^ " " ^ e2 ^ ")"
@@ -645,6 +645,190 @@ let bvaddo w e1 e2 = bveq (bvhigh w 1 (bvadd (zero_extend 1 e1) (zero_extend 1 e
 let bvsubo w e1 e2 = bveq (bvhigh w 1 (bvsub (zero_extend 1 e1) (zero_extend 1 e2))) "#b1"
 let bvmulo w e1 e2 = bvneq (bvhigh w w (bvmul (zero_extend w e1) (zero_extend w e2))) ("(_ bv0 " ^ string_of_int w ^ ")")
 
+(** Returns the log of n (base 2) as an integer. *)
+let logi n = int_of_float (log (float_of_int n) /. log 2.0)
+
+module WN : OrderedType with type t = (int * num) =
+  struct
+    type t = (int * num)
+    let compare (w1, n1) (w2, n2) =
+      if w1 < w2 then -1
+      else if w1 > w2 then 1
+      else compare_num n1 n2
+  end
+
+module WNMap : Map.S with type key = (int * num) = Map.Make(WN)
+
+class btor_manager (wordsize : int) =
+object(self)
+  (** the ID of the next Btor variable *)
+  val mutable v = 0
+
+  (** a map from a variable to the corresponding Btor variable *)
+  val mutable vmap : int VM.t = VM.empty
+
+  (** a map from a bit-width and an integer to the corresponding Btor variable *)
+  val mutable cmap : int WNMap.t = WNMap.empty
+
+  val mutable stmts : string list = []
+
+  (** Returns a new ID. *)
+  method newvar =
+    let _ = v <- v + 1 in
+    v
+
+  (** Sets the corresponding Btor variable of a variable. *)
+  method setvar v bv = vmap <- VM.add v bv vmap
+
+  method addstmt stmt = stmts <- stmt::stmts
+
+  method getstmts = List.rev stmts
+
+  method mkvar v =
+    try
+      VM.find v vmap
+    with Not_found ->
+      let bv = self#newvar in
+      let _ = self#addstmt ("; " ^ string_of_var v) in
+      let _ = self#addstmt (Printf.sprintf "%d var %d" bv wordsize) in
+      let _ = self#setvar v bv in
+      bv
+
+  method mkconstd w n =
+    try
+      WNMap.find (w, n) cmap
+    with Not_found ->
+      let bv = self#newvar in
+      let _ = self#addstmt (Printf.sprintf "%d constd %d" bv w ^ " " ^ string_of_num n) in
+      let _ = cmap <- WNMap.add (w, n) bv cmap in
+      bv
+    | e ->
+      fail (Printexc.to_string e)
+
+  method mknot w e =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d not %d %d" bv w e) in
+    bv
+
+  method mkand w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d and %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkor w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d or %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkxor w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d xor %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkneg w e =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d neg %d %d" bv w e) in
+    bv
+
+  method mkadd w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d add %d %d %d" bv w e1 e2) in
+    bv
+
+  method mksub w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d sub %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkmul w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d mul %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkmod w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d urem %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkshl w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d sll %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkshr w e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d srl %d %d %d" bv w e1 e2) in
+    bv
+
+  method mkconcat w1 w2 e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d concat %d %d %d" bv (w1 + w2) e1 e2) in
+    bv
+
+  method mkextract w i j e =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d slice %d %d %d %d" bv (i - j + 1) e i j) in
+    bv
+
+  method mkslice w1 w2 w3 e = self#mkextract (w1 + w2 + w3) (w1 + w2 - 1) w1 e
+
+  method mkhigh lo hi e = self#mkextract (lo + hi) (lo + hi - 1) lo e
+
+  method mklow lo hi e = self#mkextract (lo + hi) (lo - 1) 0 e
+
+  method mkzeroextend w i e =
+    let bv = self#newvar in
+    let c = self#mkconstd i num_0 in
+    let _ = self#addstmt (Printf.sprintf "%d concat %d %d %d" bv (w + i) c e) in
+    bv
+
+  method mkult e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d ult 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkule e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d ulte 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkugt e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d ugt 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkuge e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d ugte 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkeq e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d eq 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkneq e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d ne 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkaddo e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d uaddo 1 %d %d" bv e1 e2) in
+    bv
+
+  method mksubo e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d usubo 1 %d %d" bv e1 e2) in
+    bv
+
+  method mkmulo e1 e2 =
+    let bv = self#newvar in
+    let _ = self#addstmt (Printf.sprintf "%d umulo 1 %d %d" bv e1 e2) in
+    bv
+
+end
+
 let smtlib2_of_const w n =
   if w / 4 * 4 = w then "#x" ^ hex_of_num (w / 4) n
   else "#b" ^ bin_of_num w n
@@ -672,6 +856,31 @@ let rec smtlib2_of_exp e =
   | ZeroExtend (w, i, e) -> zero_extend i (smtlib2_of_exp e)
   | SignExtend (w, i, e) -> sign_extend i (smtlib2_of_exp e)
 
+let rec btor_of_exp m e =
+  match e with
+  | Var (w, v) -> m#mkvar v
+  | Const (w, n) -> m#mkconstd w n
+  | Not (w, e) -> m#mknot w (btor_of_exp m e)
+  | And (w, e1, e2) -> m#mkand w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Or (w, e1, e2) -> m#mkor w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Xor (w, e1, e2) -> m#mkxor w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Neg (w, e) -> m#mkneg w (btor_of_exp m e)
+  | Add (w, e1, e2) -> m#mkadd w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Sub (w, e1, e2) -> m#mksub w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Mul (w, e1, e2) -> m#mkmul w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Mod (w, e1, e2) -> m#mkmod w (btor_of_exp m e1) (btor_of_exp m e2)
+  | Shl (w, e1, Const (_, e2)) -> m#mkshl w (btor_of_exp m e1) (m#mkconstd (logi w) e2)
+  | Shl _ -> fail "Shl (_, n) with non-constant n is not supported"
+  | Shr (w, e1, Const (_, e2)) -> m#mkshr w (btor_of_exp m e1) (m#mkconstd (logi w) e2)
+  | Shr _ -> fail "Shr (_, n) with non-constant n is not supported"
+  | Concat (w1, w2, e1, e2) -> m#mkconcat w1 w2 (btor_of_exp m e1) (btor_of_exp m e2)
+  | Extract (w, i, j, e) -> m#mkextract w i j (btor_of_exp m e)
+  | Slice (w1, w2, w3, e) -> m#mkslice w1 w2 w3 (btor_of_exp m e)
+  | High (lo, hi, e) -> m#mkhigh lo hi (btor_of_exp m e)
+  | Low (lo, hi, e) -> m#mklow lo hi (btor_of_exp m e)
+  | ZeroExtend (w, i, e) -> m#mkzeroextend w i (btor_of_exp m e)
+  | SignExtend (w, i, e) -> fail "SignExtend is not supported"
+
 let rec smtlib2_of_bexp e =
   match e with
   | True -> "true"
@@ -686,6 +895,20 @@ let rec smtlib2_of_bexp e =
   | Lneg e -> "(not " ^ smtlib2_of_bexp e ^ ")"
   | Conj (e1, e2) -> "(and " ^ smtlib2_of_bexp e1 ^ " " ^ smtlib2_of_bexp e2 ^ ")"
 
+let rec btor_of_bexp m e =
+  match e with
+  | True -> m#mkconstd 1 num_1
+  | Ult (w, e1, e2) -> m#mkult (btor_of_exp m e1) (btor_of_exp m e2)
+  | Ule (w, e1, e2) -> m#mkule (btor_of_exp m e1) (btor_of_exp m e2)
+  | Ugt (w, e1, e2) -> m#mkugt (btor_of_exp m e1) (btor_of_exp m e2)
+  | Uge (w, e1, e2) -> m#mkuge (btor_of_exp m e1) (btor_of_exp m e2)
+  | Eq (w, e1, e2) -> m#mkeq (btor_of_exp m e1) (btor_of_exp m e2)
+  | Addo (w, e1, e2) -> m#mkaddo (btor_of_exp m e1) (btor_of_exp m e2)
+  | Subo (w, e1, e2) -> m#mksubo (btor_of_exp m e1) (btor_of_exp m e2)
+  | Mulo (w, e1, e2) -> m#mkmulo (btor_of_exp m e1) (btor_of_exp m e2)
+  | Lneg e -> m#mknot 1 (btor_of_bexp m e)
+  | Conj (e1, e2) -> m#mkand 1 (btor_of_bexp m e1) (btor_of_bexp m e2)
+
 let rec smtlib2_of_imp es =
   let (premises, goal) =
     match List.rev es with
@@ -694,6 +917,36 @@ let rec smtlib2_of_imp es =
   String.concat "\n" (List.map (fun e -> "(assert " ^ smtlib2_of_bexp e ^ ")") premises)
   ^ "\n"
   ^ "(assert (not " ^ smtlib2_of_bexp goal ^ "))"
+
+let rec btor_of_imp m es =
+  let rec mkconj es =
+    match es with
+    | [] -> m#mkconstd 1 num_1
+    | e1::e2::[] -> m#mkand 1 e1 e2
+    | hd::tl -> m#mkand 1 hd (mkconj tl) in
+  let (premises, goal) =
+    match List.rev es with
+    | g::ps -> (List.rev ps, g)
+    | _ -> fail "imp is empty" in
+  let f = mkconj (List.map (btor_of_bexp m) premises) in
+  let g = btor_of_bexp m goal in
+  let not_g = m#newvar in
+  let r = m#newvar in
+  let _ = m#addstmt (Printf.sprintf "%d not 1 %d" not_g g) in
+  let _ = m#addstmt (Printf.sprintf "%d and 1 %d %d" r f not_g) in
+  r
+
+let smtlib2_declare_vars vars =
+  let decls = VM.fold (
+                  fun v w res ->
+                  ("(declare-fun "
+                   ^ string_of_var v
+                   ^ " () (_ BitVec "
+                   ^ string_of_int w
+                   ^ "))")::res) vars [] in
+  String.concat "\n" decls
+
+let btor_declare_vars m vars = VM.iter (fun v w -> ignore(m#mkvar v)) vars
 
 let smtlib2_imp_check_sat es =
   "(set-logic QF_BV)\n"
@@ -705,11 +958,29 @@ let smtlib2_imp_check_sat es =
   ^ "(check-sat)\n"
   ^ "(exit)\n"
 
+let btor_imp_check_sat m es =
+  let _ = btor_declare_vars m (vars_imp es) in
+  let bv = btor_of_imp m es in
+  let r = m#newvar in
+  (String.concat "\n" m#getstmts)
+  ^ "\n"
+  ^ (Printf.sprintf "%d root 1 %d" r bv)
+  ^ "\n"
+
 let smtlib2_write_input file es =
   let input_text = smtlib2_imp_check_sat es in
   let ch = open_out file in
   let _ = output_string ch input_text; close_out ch in
   trace "INPUT IN SMTLIB2 FORMAT:";
+  unix ("cat " ^ file ^ " >>  " ^ dbgdir ^ "/log_qfbv");
+  trace ""
+
+let btor_write_input file es =
+  let m = new btor_manager !wordsize in
+  let input_text = btor_imp_check_sat m es in
+  let ch = open_out file in
+  let _ = output_string ch input_text; close_out ch in
+  trace "INPUT IN BTOR FORMAT:";
   unix ("cat " ^ file ^ " >>  " ^ dbgdir ^ "/log_qfbv");
   trace ""
 
@@ -722,9 +993,18 @@ let run_z3 ifile ofile =
   unix ("cat " ^ ofile ^ " >>  " ^ dbgdir ^ "/log_qfbv");
   trace ""
 
+let string_of_sat_engine e =
+  match e with
+  | Lingeling -> "lingeling"
+  | Minisat -> "minisat"
+
 let run_boolector ifile ofile =
   let t1 = Unix.gettimeofday() in
-  unix (boolector_path ^ " --smt2 " ^ ifile ^ " 1> " ^ ofile ^ " 2>/dev/null");
+  let _ =
+    if !use_btor then
+      unix (boolector_path ^ " -SE " ^ string_of_sat_engine !sat_engine ^ " " ^ ifile ^ " 1> " ^ ofile ^ " 2>/dev/null")
+    else
+      unix (boolector_path ^ " --smt2 -SE " ^ string_of_sat_engine !sat_engine ^ " " ^ ifile ^ " 1> " ^ ofile ^ " 2>/dev/null") in
   let t2 = Unix.gettimeofday() in
   trace ("Execution time of Boolector: "
          ^ string_of_float (t2 -. t1) ^ " seconds");
@@ -740,7 +1020,7 @@ let read_output file =
     try
 	  line := input_line ch
     with _ ->
-      failwith "Failed to read the output file" in
+      fail "Failed to read the output file" in
   let _ = close_in ch in
   (* parse the output *)
   String.trim !line = "unsat"
@@ -760,7 +1040,8 @@ let solve_simp ?solver:solver f =
        let _ = run_z3 ifile ofile in
        read_output ofile
     | Boolector ->
-       let _ = smtlib2_write_input ifile g in
+       let _ =
+         if !use_btor then btor_write_input ifile g else smtlib2_write_input ifile g in
        let _ = run_boolector ifile ofile in
        read_output ofile in
   cbool_of_obool res
