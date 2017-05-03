@@ -160,81 +160,25 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma toPosZ_addB1 w (bv1 bv2 : BITS w) :
-  ~~ carry_addB bv1 bv2 ->
-  toPosZ (bv1 + bv2) = (toPosZ bv1 + toPosZ bv2)%Z.
-Proof.
-  move=> Hc.
-  rewrite {1}toPosZ_toNat (toNat_addB_bounded Hc).
-  rewrite Nat2Z.inj_add -!toPosZ_toNat. reflexivity.
-Qed.
-
 Lemma toPosZ_addB2' w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
   toPosZ (@fromNat (1 + (w - 1)) (carry_addB bv1 bv2)) = q.
 Proof.
-  rewrite !toPosZ_toNat addB_zeroExtend1_high_ext toNat_zeroExtend.
-  rewrite addB_zeroExtend1_high /adcB toNat_splitmsb1 toNat_adcBmain add0n.
-  set n1 := toNat bv1; set n2 := toNat bv2.
-  move=> Hediv.
-  have: (2 ^ Z.of_nat w > 0)%Z.
-  { apply: Z.lt_gt. apply: Z.pow_pos_nonneg; first by done.
-    exact: Nat2Z.is_nonneg. }
-  move=> H2wz.
-  move: (Z_div_mod (Z.of_nat n1 + Z.of_nat n2) (2 ^ Z.of_nat w) H2wz).
-  rewrite -Hediv -Nat2Z.inj_add.
-  move=> [Hqr Hr].
-  move: (Zdiv_unique _ _ _ _ Hr Hqr) => Hq.
-
-  have: (0 <= q)%Z.
-  { move: (Zdiv_eucl_q_ge0 (Z.of_nat n1 + Z.of_nat n2) (2 ^ Z.of_nat w)).
-    rewrite -Hediv. apply; last exact: (Z.lt_le_incl _ _ (Z.gt_lt _ _ H2wz)).
-    rewrite -Nat2Z.inj_add. exact: Nat2Z.is_nonneg. }
-  move=> {Hediv H2wz} H0leq.
-
-  have: 0 < 2 ^ w.
-  { by rewrite expn_gt0. }
-  move=> H2wn.
-
-  have: Z.to_nat r < 2 ^ w.
-  { apply/ltP. apply: (proj2 (Nat2Z.inj_lt (Z.to_nat r) (2 ^ w))).
-    rewrite (Z2Nat.id _ (proj1 Hr)) expn_pow Nat2Z_inj_pow.
-    exact: (proj2 Hr). }
-  move=> Hrw.
-
-  have: (2^Z.of_nat w * q + r)%Z = Z.of_nat (2 ^ w * Z.to_nat q + Z.to_nat r).
-  { rewrite Nat2Z.inj_add Nat2Z.inj_mul expn_pow Nat2Z_inj_pow
-            (Z2Nat.id _ H0leq) (Z2Nat.id r (proj1 Hr)) /=.
-    reflexivity. }
-  move=> Heq; rewrite Heq in Hqr => {Heq H0leq Hr}.
-  move: (Nat2Z.inj _ _ Hqr) => {Hqr} Hqr.
-  rewrite addn_add Hqr mulnC (divnMDl _ _ H2wn) (divn_small Hrw) addn0.
-  rewrite Nat2Z.inj_add in Hq.
-  move=> {H2wn Hrw Hqr}.
-
-  case: (ltn_ltn_addn_divn (Zof_nat_toNat_bounded bv1)
-                           (Zof_nat_toNat_bounded bv2)).
-  - rewrite -{1}Hq => ->. reflexivity.
-  - rewrite -{1}Hq => ->. reflexivity.
+  rewrite !toPosZ_toNat -addB_zeroExtend1_high_ext toNat_zeroExtend.
+  rewrite addB_zeroExtend1_high singleBit_fromNat.
+  have H: carry_addB bv1 bv2 < 2 ^ 1.
+  { by case: (carry_addB bv1 bv2). }
+  rewrite (fromNatK H). rewrite carry_addB_divn.
+  exact: (bounded_div_eucl1 (toNatBounded bv1) (toNatBounded bv2)).
 Qed.
-
-Lemma toPosZ_addB2 w q r (bv1 bv2 : BITS w) :
-  (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
-  toPosZ (high w (zeroExtend w bv1 + zeroExtend w bv2)) = q.
-Proof.
-Admitted.
 
 Lemma toPosZ_addB3' w q r (bv1 bv2 : BITS w) :
   (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
   toPosZ (bv1 + bv2) = r.
 Proof.
-Admitted.
-
-Lemma toPosZ_addB3 w q r (bv1 bv2 : BITS w) :
-  (q, r) = Z.div_eucl (toPosZ bv1 + toPosZ bv2) (2 ^ Z.of_nat w) ->
-  toPosZ (low w (zeroExtend w bv1 + zeroExtend w bv2)) = r.
-Proof.
-Admitted.
+  rewrite -addB_zeroExtend_low.
+  exact: toPosZ_low_ext.
+Qed.
 
 Lemma toPosZ_adcB1 w (bv1 bv2 bv3 : BITS w) :
   toPosZ (low w ((zeroExtend w bv1 + zeroExtend w bv2) + zeroExtend w bv3))%bits =
@@ -326,7 +270,7 @@ Proof.
     move=> v a1 a2 Hsafe.
     apply: (bvz_eq_upd _ Heq).
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
-    exact: toPosZ_addB1.
+    exact: toPosZ_addB.
   - (* bvAddC *)
     move=> vh vl a1 a2 _ x.
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq).
@@ -338,8 +282,8 @@ Proof.
                      (2 ^ Z.of_nat wordsize) by reflexivity.
     destruct tmp as [q r] => Hqr.
     apply: (bvz_eq_upd2 _ _ Heq).
-    + exact: (toPosZ_addB2 Hqr).
-    + exact: (toPosZ_addB3 Hqr).
+    + exact: (toPosZ_high_ext Hqr).
+    + exact: (toPosZ_low_ext Hqr).
   - (* bvAdc *)
     move=> v a1 a2 c Hsafe. apply: (bvz_eq_upd _ Heq).
     rewrite -(bvz_eq_eval_atomic a1 Heq) -(bvz_eq_eval_atomic a2 Heq) -(Heq c).
@@ -542,7 +486,7 @@ Lemma bvz_eq_eval_binop w op (bv1 bv2 : BITS w) :
   zDSL.eval_binop (bv2z_binop op) (toPosZ bv1) (toPosZ bv2).
 Proof.
   case: op => /= Hsafe.
-  - exact: toPosZ_addB1.
+  - exact: toPosZ_addB.
   - exact: toPosZ_subB1.
   - exact: toPosZ_mulB.
 Qed.

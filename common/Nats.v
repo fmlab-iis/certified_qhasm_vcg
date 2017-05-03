@@ -228,23 +228,40 @@ Section NatLemmas.
     apply/eqP. rewrite eq_sym. assumption.
   Qed.
 
+  Lemma divn01 x n :
+    x < n.*2 -> x %/ n = 0 \/ x %/ n = 1.
+  Proof.
+    move=> Hx.
+    have Hn: n > 0.
+    { case: n Hx; first by move=> H; inversion H. move=> n _.
+      exact: ltn0Sn. }
+    case Hxn: (x < n).
+    - rewrite (divn_small Hxn). left; reflexivity.
+    - rewrite ltnNge in Hxn. move/negPn: Hxn => Hxn. right.
+      rewrite -add1n in Hx. move: (leq_sub2r 1 Hx).
+      rewrite addKn => {Hx} Hx.
+      move: (leq_div2r n Hx) (leq_div2r n Hxn).
+      rewrite divnn Hn /= (divn_muln2_subn1 Hn) => {Hx Hxn} Hx Hxn.
+      apply/eqP; rewrite eqn_leq. by rewrite Hx Hxn.
+  Qed.
+
+  Lemma odd_divn x n :
+    x < n.*2 -> nat_of_bool (odd (x %/ n)) = x %/ n.
+  Proof.
+    move=> Hx. by case: (divn01 Hx) => ->.
+  Qed.
+
+  Lemma odd_divn_eucl x n :
+    x < n.*2 ->
+    x = odd (x %/ n) * n + x %% n.
+  Proof.
+    move=> H. rewrite (odd_divn H) -(divn_eq x n). reflexivity.
+  Qed.
+
   Lemma ltn_ltn_addn_divn x y n :
     x < n -> y < n -> (x + y) %/ n = 0 \/ (x + y) %/ n = 1.
   Proof.
-    move=> Hx Hy.
-    have: n > 0.
-    { case: n Hx Hy; first by move=> H; inversion H. move=> n _ _.
-      exact: ltn0Sn. }
-    move=> Hn.
-    move: (ltn_addn Hx Hy) => Hxy1.
-    case Hxy2: ((x + y) < n).
-    - rewrite (divn_small Hxy2). left; reflexivity.
-    - rewrite ltnNge in Hxy2. move/negPn: Hxy2 => Hxy2. right.
-      rewrite -add1n in Hxy1. move: (leq_sub2r 1 Hxy1).
-      rewrite addKn addnn => {Hxy1} Hxy1.
-      move: (leq_div2r n Hxy1) (leq_div2r n Hxy2).
-      rewrite divnn Hn /= (divn_muln2_subn1 Hn) => {Hxy1 Hxy2} Hxy1 Hxy2.
-      apply/eqP; rewrite eqn_leq. by rewrite Hxy1 Hxy2.
+    move=> Hx Hy. apply: divn01. rewrite -addnn. exact: (ltn_addn Hx Hy).
   Qed.
 
   Lemma divn_eq0 n m :
@@ -266,6 +283,12 @@ Section NatLemmas.
     case: (divn_eq0 Hdivn).
     - move=> H; rewrite {}H in Hm *. by inversion Hm.
     - by apply.
+  Qed.
+
+  Lemma ltn_1_2expnS n :
+    1 < 2 ^ n.+1.
+  Proof.
+    rewrite expnS. apply: leq_pmulr. rewrite expn_gt0. done.
   Qed.
 
 End NatLemmas.
