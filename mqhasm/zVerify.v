@@ -397,7 +397,7 @@ Ltac rewrite_assign2_with o :=
   match goal with
   | x : Z |- _ =>
     match goal with
-    | H : ?x = _ |- _ => ( try rewrite -> H in * ); clear H; try clear x
+    | H : x = _ |- _ => ( try rewrite -> H in * ); clear H; try clear x
     end
   end.
 
