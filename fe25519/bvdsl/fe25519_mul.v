@@ -536,21 +536,21 @@ let            y1 :=   6 in
 let            y2 :=   7 in
 let            y3 :=   8 in
 let            y4 :=   9 in
-bvands
+bvrands
   [::
-     bvult (bvvar x0) (bvposz (2^52)%Z);
-     bvult (bvvar x1) (bvposz (2^52)%Z);
-     bvult (bvvar x2) (bvposz (2^52)%Z);
-     bvult (bvvar x3) (bvposz (2^52)%Z);
-     bvult (bvvar x4) (bvposz (2^52)%Z);
-     bvult (bvvar y0) (bvposz (2^52)%Z);
-     bvult (bvvar y1) (bvposz (2^52)%Z);
-     bvult (bvvar y2) (bvposz (2^52)%Z);
-     bvult (bvvar y3) (bvposz (2^52)%Z);
-     bvult (bvvar y4) (bvposz (2^52)%Z)
+     (bvrvar x0) <r (bvposz (2^52)%Z);
+     (bvrvar x1) <r (bvposz (2^52)%Z);
+     (bvrvar x2) <r (bvposz (2^52)%Z);
+     (bvrvar x3) <r (bvposz (2^52)%Z);
+     (bvrvar x4) <r (bvposz (2^52)%Z);
+     (bvrvar y0) <r (bvposz (2^52)%Z);
+     (bvrvar y1) <r (bvposz (2^52)%Z);
+     (bvrvar y2) <r (bvposz (2^52)%Z);
+     (bvrvar y3) <r (bvposz (2^52)%Z);
+     (bvrvar y4) <r (bvposz (2^52)%Z)
   ].
 
-Definition radix51 := @limbs 51 520.
+Definition radix51 := @limbs 51.
 
 Definition fe25519_mul_post : bexp :=
 let            x0 :=   0 in
@@ -569,21 +569,24 @@ let            r2 :=  22 in
 let            r3 :=  23 in
 let            r4 :=  24 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
-bvands [::
-          bvEqMod
-          (
-            (radix51 [:: bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
-            @*
-            (radix51 [:: bvvar y0; bvvar y1; bvvar y2; bvvar y3; bvvar y4])
-          )
-          (radix51 [:: bvvar r0; bvvar r1; bvvar r2; bvvar r3; bvvar r4])
-          (bvposz n25519);
-          bvult (bvvar r0) (bvposz (2^52)%Z);
-          bvult (bvvar r1) (bvposz (2^52)%Z);
-          bvult (bvvar r2) (bvposz (2^52)%Z);
-          bvult (bvvar r3) (bvposz (2^52)%Z);
-          bvult (bvvar r4) (bvposz (2^52)%Z)
-       ].
+bvands2
+  [::
+     bveEqMod
+     (
+       (radix51 [:: bvevar x0; bvevar x1; bvevar x2; bvevar x3; bvevar x4])
+       *e
+       (radix51 [:: bvevar y0; bvevar y1; bvevar y2; bvevar y3; bvevar y4])
+     )
+     (radix51 [:: bvevar r0; bvevar r1; bvevar r2; bvevar r3; bvevar r4])
+     (bvconst n25519)
+  ]
+  [::
+     (bvrvar r0) <r (bvposz (2^52)%Z);
+     (bvrvar r1) <r (bvposz (2^52)%Z);
+     (bvrvar r2) <r (bvposz (2^52)%Z);
+     (bvrvar r3) <r (bvposz (2^52)%Z);
+     (bvrvar r4) <r (bvposz (2^52)%Z)
+  ].
 
 Definition fe25519_mul_spec :=
   {| spre := fe25519_mul_pre;

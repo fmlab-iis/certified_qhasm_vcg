@@ -698,76 +698,181 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   | bvUgtOp
   | bvUgeOp.
 
-  Inductive exp : nat -> Type :=
-  | bvVarE : var -> exp A.wordsize
-  | bvConstE : forall n : nat, BITS n -> exp n
-(*  | bvUnop : forall n : nat, unop -> exp n -> exp n *)
-  | bvBinop : forall n : nat, binop -> exp n -> exp n -> exp n
-  | bvExt : forall n : nat, exp n -> forall m : nat, exp (n + m).
+  Inductive eexp : Type :=
+  | bveVar : var -> eexp
+  | bveConst : Z -> eexp
+  | bveUnop : unop -> eexp -> eexp
+  | bveBinop : binop -> eexp -> eexp -> eexp.
 
-  Definition bvvar v := bvVarE v.
-  Definition bvposz {w} n := bvConstE (@fromPosZ w n).
-  Definition bvadd w (e1 e2 : exp w) := bvBinop bvAddOp e1 e2.
-  Definition bvsub w (e1 e2 : exp w) := bvBinop bvSubOp e1 e2.
-  Definition bvmul w (e1 e2 : exp w) := bvBinop bvMulOp e1 e2.
-  Definition bvsq w (e : exp w) := bvBinop bvMulOp e e.
-  Fixpoint bvadds w (es : seq (exp w)) : exp w :=
+  Definition bvevar v := bveVar v.
+  Definition bveconst n := bveConst n.
+  Definition bvconst n := bveconst n.
+  Definition bveneg (e : eexp) := bveUnop bvNegOp e.
+  Definition bveadd (e1 e2 : eexp) := bveBinop bvAddOp e1 e2.
+  Definition bvesub (e1 e2 : eexp) := bveBinop bvSubOp e1 e2.
+  Definition bvemul (e1 e2 : eexp) := bveBinop bvMulOp e1 e2.
+  Definition bvesq (e : eexp) := bveBinop bvMulOp e e.
+  Fixpoint bveadds (es : seq eexp) : eexp :=
     match es with
-    | [::] => bvposz 0
+    | [::] => bveconst 0
     | e::[::] => e
-    | hd::tl => bvadd hd (bvadds tl)
+    | hd::tl => bveadd hd (bveadds tl)
     end.
-  Fixpoint bvmuls w (es : seq (exp w)) : exp w :=
+  Fixpoint bvemuls (es : seq eexp) : eexp :=
     match es with
-    | [::] => bvposz 0
+    | [::] => bveconst 0
     | e::[::] => e
-    | hd::tl => bvmul hd (bvmuls tl)
+    | hd::tl => bvemul hd (bvemuls tl)
+    end.
+  Definition bve2pow n := Zpower_nat 2 n.
+
+  Inductive rexp : nat -> Type :=
+  | bvrVar : var -> rexp A.wordsize
+  | bvrConst : forall n : nat, BITS n -> rexp n
+  | bvrBinop : forall n : nat, binop -> rexp n -> rexp n -> rexp n
+  | bvrExt : forall n : nat, rexp n -> forall m : nat, rexp (n + m).
+
+  Definition bvrvar v := bvrVar v.
+  Definition bvrposz {w} n := bvrConst (@fromPosZ w n).
+  Definition bvposz {w} n := @bvrposz w n.
+  Definition bvradd w (e1 e2 : rexp w) := bvrBinop bvAddOp e1 e2.
+  Definition bvrsub w (e1 e2 : rexp w) := bvrBinop bvSubOp e1 e2.
+  Definition bvrmul w (e1 e2 : rexp w) := bvrBinop bvMulOp e1 e2.
+  Definition bvrsq w (e : rexp w) := bvrBinop bvMulOp e e.
+  Fixpoint bvradds w (es : seq (rexp w)) : rexp w :=
+    match es with
+    | [::] => bvrposz 0
+    | e::[::] => e
+    | hd::tl => bvradd hd (bvradds tl)
+    end.
+  Fixpoint bvrmuls w (es : seq (rexp w)) : rexp w :=
+    match es with
+    | [::] => bvrposz 0
+    | e::[::] => e
+    | hd::tl => bvrmul hd (bvrmuls tl)
     end.
 
-  Inductive bexp : Type :=
-  | bvTrue : bexp
-  | bvEq : forall n : nat, exp n -> exp n -> bexp
-  | bvEqMod : forall n : nat, exp n -> exp n -> exp n -> bexp
-  | bvCmp : forall n : nat, cmpop -> exp n -> exp n -> bexp
-  | bvAnd : bexp -> bexp -> bexp.
+  Inductive ebexp :=
+  | bveTrue : ebexp
+  | bveEq : eexp -> eexp -> ebexp
+  | bveEqMod : eexp -> eexp -> eexp -> ebexp
+  | bveAnd : ebexp -> ebexp -> ebexp.
 
-  Definition bvult w (e1 e2 : exp w) := bvCmp bvUltOp e1 e2.
-  Definition bvule w (e1 e2 : exp w) := bvCmp bvUleOp e1 e2.
-  Definition bvugt w (e1 e2 : exp w) := bvCmp bvUgtOp e1 e2.
-  Definition bvuge w (e1 e2 : exp w) := bvCmp bvUgeOp e1 e2.
+  Definition bveand e1 e2 : ebexp :=
+    match e1, e2 with
+    | bveTrue, _ => e2
+    | _, bveTrue => e1
+    | _, _ => bveAnd e1 e2
+    end.
+
+  Fixpoint bveands es : ebexp :=
+    match es with
+    | [::] => bveTrue
+    | hd::[::] => hd
+    | hd::tl => bveand hd (bveands tl)
+    end.
+
+  Inductive rbexp :=
+  | bvrTrue : rbexp
+  | bvrCmp : forall n : nat, cmpop -> rexp n -> rexp n -> rbexp
+  | bvrAnd : rbexp -> rbexp -> rbexp.
+
+  Definition bvult w (e1 e2 : rexp w) := bvrCmp bvUltOp e1 e2.
+  Definition bvule w (e1 e2 : rexp w) := bvrCmp bvUleOp e1 e2.
+  Definition bvugt w (e1 e2 : rexp w) := bvrCmp bvUgtOp e1 e2.
+  Definition bvuge w (e1 e2 : rexp w) := bvrCmp bvUgeOp e1 e2.
+
+  Definition bvrand e1 e2 : rbexp :=
+    match e1, e2 with
+    | bvrTrue, _ => e2
+    | _, bvrTrue => e1
+    | _, _ => bvrAnd e1 e2
+    end.
+
+  Fixpoint bvrands es : rbexp :=
+    match es with
+    | [::] => bvrTrue
+    | hd::[::] => hd
+    | hd::tl => bvrand hd (bvrands tl)
+    end.
+
+  Definition bexp : Type := (ebexp * rbexp).
+
+  Definition bvTrue : bexp := (bveTrue, bvrTrue).
+
+  Definition eqn_bexp (e : bexp) : ebexp := fst e.
+  Definition rng_bexp (e : bexp) : rbexp := snd e.
+
+  Coercion singleton_ebexp e : bexp := (e, bvrTrue).
+  Coercion singleton_rbexp e : bexp := (bveTrue, e).
+
+  Fixpoint bvand e1 e2 : bexp :=
+    match e1, e2 with
+    | (ee1, re1), (ee2, re2) => (bveand ee1 ee2, bvrand re1 re2)
+    end.
 
   Fixpoint bvands es : bexp :=
     match es with
-    | [::] => bvTrue
+    | [::] => (bveTrue, bvrTrue)
     | hd::[::] => hd
-    | hd::tl => bvAnd hd (bvands tl)
+    | hd::tl => bvand hd (bvands tl)
     end.
 
-  Fixpoint vars_exp (n : nat) (e : exp n) : VS.t :=
+  Definition bvands2 es rs : bexp := (bveands es, bvrands rs).
+
+  Fixpoint vars_eexp (e : eexp) : VS.t :=
     match e with
-    | bvVarE x => VS.singleton x
-    | bvConstE _ _ => VS.empty
-(*    | bvUnop _ _ e => vars_exp e *)
-    | bvBinop _ _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | bvExt _ e _ => vars_exp e
+    | bveVar x => VS.singleton x
+    | bveConst _ => VS.empty
+    | bveUnop _ e => vars_eexp e
+    | bveBinop _ e1 e2 => VS.union (vars_eexp e1) (vars_eexp e2)
     end.
 
-  Fixpoint vars_bexp (e : bexp) : VS.t :=
+  Fixpoint vars_rexp (n : nat) (e : rexp n) : VS.t :=
     match e with
-    | bvTrue => VS.empty
-    | bvEq _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | bvEqMod _ e1 e2 p => VS.union (vars_exp e1)
-                                    (VS.union (vars_exp e2) (vars_exp p))
-    | bvCmp _ _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
-    | bvAnd e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
+    | bvrVar x => VS.singleton x
+    | bvrConst _ _ => VS.empty
+    | bvrBinop _ _ e1 e2 => VS.union (vars_rexp e1) (vars_rexp e2)
+    | bvrExt _ e _ => vars_rexp e
     end.
 
-  Definition eval_unop (n : nat) (op : unop) (v : BITS n) : BITS n :=
+  Fixpoint vars_ebexp (e : ebexp) : VS.t :=
+    match e with
+    | bveTrue => VS.empty
+    | bveEq e1 e2 => VS.union (vars_eexp e1) (vars_eexp e2)
+    | bveEqMod e1 e2 p => VS.union (vars_eexp e1)
+                                  (VS.union (vars_eexp e2) (vars_eexp p))
+    | bveAnd e1 e2 => VS.union (vars_ebexp e1) (vars_ebexp e2)
+    end.
+
+  Fixpoint vars_rbexp (e : rbexp) : VS.t :=
+    match e with
+    | bvrTrue => VS.empty
+    | bvrCmp _ _ e1 e2 => VS.union (vars_rexp e1) (vars_rexp e2)
+    | bvrAnd e1 e2 => VS.union (vars_rbexp e1) (vars_rbexp e2)
+    end.
+
+  Definition vars_bexp (e : bexp) : VS.t :=
+    VS.union (vars_ebexp (eqn_bexp e)) (vars_rbexp (rng_bexp e)).
+
+  Definition eval_eunop (op : unop) (v : Z) : Z :=
+    match op with
+    | bvNegOp => - v
+    end.
+
+  Definition eval_ebinop (op : binop) (v1 v2 : Z) : Z :=
+    match op with
+    | bvAddOp => v1 + v2
+    | bvSubOp => v1 - v2
+    | bvMulOp => v1 * v2
+    end.
+
+  Definition eval_runop (n : nat) (op : unop) (v : BITS n) : BITS n :=
     match op with
     | bvNegOp => negB v
     end.
 
-  Definition eval_binop (n : nat) (op : binop) (v1 v2 : BITS n) : BITS n :=
+  Definition eval_rbinop (n : nat) (op : binop) (v1 v2 : BITS n) : BITS n :=
     match op with
     | bvAddOp => addB v1 v2
     | bvSubOp => subB v1 v2
@@ -782,23 +887,39 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvUgeOp => ~~ (ltB v1 v2)
     end.
 
-  Fixpoint eval_exp (n : nat) (e : exp n) (s : State.t) : BITS n :=
+  Fixpoint eval_eexp (e : eexp) (s : State.t) : Z :=
     match e with
-    | bvVarE x => State.acc x s
-    | bvConstE _ n => n
-(*    | bvUnop _ op e => eval_unop op (eval_exp e s) *)
-    | bvBinop _ op e1 e2 => eval_binop op (eval_exp e1 s) (eval_exp e2 s)
-    | bvExt _ e m => zeroExtend m (eval_exp e s)
+    | bveVar x => toPosZ (State.acc x s)
+    | bveConst n => n
+    | bveUnop op e => eval_eunop op (eval_eexp e s)
+    | bveBinop op e1 e2 => eval_ebinop op (eval_eexp e1 s) (eval_eexp e2 s)
     end.
 
-  Fixpoint eval_bexp (e : bexp) (s : State.t) : Prop :=
+  Fixpoint eval_rexp (n : nat) (e : rexp n) (s : State.t) : BITS n :=
     match e with
-    | bvTrue => True
-    | bvEq _ e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | bvEqMod _ e1 e2 p => modulo (toPosZ (eval_exp e1 s)) (toPosZ (eval_exp e2 s)) (toPosZ (eval_exp p s))
-    | bvCmp _ op e1 e2 => eval_cmpop op (eval_exp e1 s) (eval_exp e2 s)
-    | bvAnd e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
+    | bvrVar x => State.acc x s
+    | bvrConst _ n => n
+    | bvrBinop _ op e1 e2 => eval_rbinop op (eval_rexp e1 s) (eval_rexp e2 s)
+    | bvrExt _ e m => zeroExtend m (eval_rexp e s)
     end.
+
+  Fixpoint eval_ebexp (e : ebexp) (s : State.t) : Prop :=
+    match e with
+    | bveTrue => True
+    | bveEq e1 e2 => eval_eexp e1 s = eval_eexp e2 s
+    | bveEqMod e1 e2 p => modulo (eval_eexp e1 s) (eval_eexp e2 s) (eval_eexp p s)
+    | bveAnd e1 e2 => eval_ebexp e1 s /\ eval_ebexp e2 s
+    end.
+
+  Fixpoint eval_rbexp (e : rbexp) (s : State.t) : Prop :=
+    match e with
+    | bvrTrue => True
+    | bvrCmp _ op e1 e2 => eval_cmpop op (eval_rexp e1 s) (eval_rexp e2 s)
+    | bvrAnd e1 e2 => eval_rbexp e1 s /\ eval_rbexp e2 s
+    end.
+
+  Definition eval_bexp (e : bexp) (s : State.t) : Prop :=
+    eval_ebexp (eqn_bexp e) s /\ eval_rbexp (rng_bexp e) s.
 
   Definition valid (f : bexp) : Prop :=
     forall s : State.t, eval_bexp f s.
@@ -807,16 +928,43 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     forall s : State.t,
       eval_bexp f s -> eval_bexp g s.
 
-  Record spec : Type :=
-    mkSpec { spre : bexp;
-             sprog : program;
-             spost : bexp }.
+  Record spec : Type := mkSpec { spre : bexp; sprog : program; spost : bexp }.
+
+  Record espec : Type := mkeSpec { espre : ebexp;
+                                   esprog : program;
+                                   espost : ebexp }.
+
+  Record rspec : Type := mkrSpec { rspre : rbexp;
+                                   rsprog : program;
+                                   rspost : rbexp }.
+
+  Coercion spec_of_espec rs :=
+    {| spre := (espre rs, bvrTrue);
+       sprog := esprog rs;
+       spost := (espost rs, bvrTrue) |}.
+
+  Coercion spec_of_rspec rs :=
+    {| spre := (bveTrue, rspre rs);
+       sprog := rsprog rs;
+       spost := (bveTrue, rspost rs) |}.
 
   Definition valid_spec (s : spec) : Prop :=
     forall s1 s2,
       eval_bexp (spre s) s1 ->
       eval_program s1 (sprog s) = s2 ->
       eval_bexp (spost s) s2.
+
+  Definition valid_espec (s : espec) : Prop :=
+    forall s1 s2,
+      eval_ebexp (espre s) s1 ->
+      eval_program s1 (esprog s) = s2 ->
+      eval_ebexp (espost s) s2.
+
+  Definition valid_rspec (s : rspec) : Prop :=
+    forall s1 s2,
+      eval_rbexp (rspre s) s1 ->
+      eval_program s1 (rsprog s) = s2 ->
+      eval_rbexp (rspost s) s2.
 
   Local Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity).
   Local Notation "f ===> g" := (entails f g) (at level 82, no associativity).
@@ -828,6 +976,112 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     eval_bexp (spre sp) s /\
     exists s' : State.t,
       eval_program s (sprog sp) = s' /\ (~ eval_bexp (spost sp) s').
+
+  Lemma vars_ebexp_subset e :
+    VS.subset (vars_ebexp (eqn_bexp e)) (vars_bexp e).
+  Proof.
+    apply: VSLemmas.subset_union1. exact: VSLemmas.subset_refl.
+  Qed.
+
+  Lemma vars_rbexp_subset e :
+    VS.subset (vars_rbexp (rng_bexp e)) (vars_bexp e).
+  Proof.
+    apply: VSLemmas.subset_union2. exact: VSLemmas.subset_refl.
+  Qed.
+
+  Lemma eval_bexp_eqn e s :
+    eval_bexp e s -> eval_ebexp (eqn_bexp e) s.
+  Proof.
+    move=> H; exact: (proj1 H).
+  Qed.
+
+  Lemma eval_bexp_rng e s :
+    eval_bexp e s -> eval_rbexp (rng_bexp e) s.
+  Proof.
+    move=> H; exact: (proj2 H).
+  Qed.
+
+  Lemma eval_bveand e1 e2 s :
+    (eval_ebexp e1 s /\ eval_ebexp e2 s) <-> (eval_ebexp (bveand e1 e2) s).
+  Proof.
+    case: e1; case: e2 => /=; tauto.
+  Qed.
+
+  Lemma eval_bveand1 e1 e2 s :
+    eval_ebexp e1 s -> eval_ebexp e2 s -> eval_ebexp (bveand e1 e2) s.
+  Proof.
+    move=> H1 H2; exact: ((proj1 (eval_bveand e1 e2 s)) (conj H1 H2)).
+  Qed.
+
+  Lemma eval_bveand2 e1 e2 s :
+    eval_ebexp (bveand e1 e2) s ->
+    eval_ebexp e1 s /\ eval_ebexp e2 s.
+  Proof.
+    move=> H; exact: ((proj2 (eval_bveand e1 e2 s)) H).
+  Qed.
+
+  Lemma eval_bvrand e1 e2 s :
+    (eval_rbexp e1 s /\ eval_rbexp e2 s) <-> (eval_rbexp (bvrand e1 e2) s).
+  Proof.
+    case: e1; case: e2 => /=; tauto.
+  Qed.
+
+  Lemma eval_bvrand1 e1 e2 s :
+    eval_rbexp e1 s -> eval_rbexp e2 s -> eval_rbexp (bvrand e1 e2) s.
+  Proof.
+    move=> H1 H2; exact: ((proj1 (eval_bvrand e1 e2 s)) (conj H1 H2)).
+  Qed.
+
+  Lemma eval_bvrand2 e1 e2 s :
+    eval_rbexp (bvrand e1 e2) s ->
+    eval_rbexp e1 s /\ eval_rbexp e2 s.
+  Proof.
+    move=> H; exact: ((proj2 (eval_bvrand e1 e2 s)) H).
+  Qed.
+
+  Lemma eval_bvand_eqn_distr e1 e2 s :
+    (eval_ebexp (eqn_bexp e1) s /\ eval_ebexp (eqn_bexp e2) s) <->
+    eval_ebexp (eqn_bexp (bvand e1 e2)) s.
+  Proof.
+    destruct e1 as [ee1 er1]; destruct e2 as [ee2 er2] => /=.
+    exact: eval_bveand.
+  Qed.
+
+  Lemma eval_bvand_eqn_distr1 e1 e2 s :
+    eval_ebexp (eqn_bexp e1) s -> eval_ebexp (eqn_bexp e2) s ->
+    eval_ebexp (eqn_bexp (bvand e1 e2)) s.
+  Proof.
+    move=> H1 H2; exact: ((proj1 (eval_bvand_eqn_distr e1 e2 s)) (conj H1 H2)).
+  Qed.
+
+  Lemma eval_bvand_eqn_distr2 e1 e2 s :
+    eval_ebexp (eqn_bexp (bvand e1 e2)) s ->
+    eval_ebexp (eqn_bexp e1) s /\ eval_ebexp (eqn_bexp e2) s.
+  Proof.
+    move=> H; exact: ((proj2 (eval_bvand_eqn_distr e1 e2 s)) H).
+  Qed.
+
+  Lemma eval_bvand_rng_distr e1 e2 s :
+    (eval_rbexp (rng_bexp e1) s /\ eval_rbexp (rng_bexp e2) s) <->
+    eval_rbexp (rng_bexp (bvand e1 e2)) s.
+  Proof.
+    destruct e1 as [ee1 er1]; destruct e2 as [ee2 er2] => /=.
+    exact: eval_bvrand.
+  Qed.
+
+  Lemma eval_bvand_rng_distr1 e1 e2 s :
+    eval_rbexp (rng_bexp e1) s -> eval_rbexp (rng_bexp e2) s ->
+    eval_rbexp (rng_bexp (bvand e1 e2)) s.
+  Proof.
+    move=> H1 H2; exact: ((proj1 (eval_bvand_rng_distr e1 e2 s)) (conj H1 H2)).
+  Qed.
+
+  Lemma eval_bvand_rng_distr2 e1 e2 s :
+    eval_rbexp (rng_bexp (bvand e1 e2)) s ->
+    eval_rbexp (rng_bexp e1) s /\ eval_rbexp (rng_bexp e2) s.
+  Proof.
+    move=> H; exact: ((proj2 (eval_bvand_rng_distr e1 e2 s)) H).
+  Qed.
 
   Lemma spec_empty :
     forall f g,
@@ -884,12 +1138,14 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     forall f g1 g2 p,
       |= {{ f }} p {{ g1 }} ->
       |= {{ f }} p {{ g2 }} ->
-      |= {{ f }} p {{ bvAnd g1 g2 }}.
+      |= {{ f }} p {{ bvand g1 g2 }}.
   Proof.
     move=> f g1 g2 p Hg1 Hg2 s1 s2 /= Hf Hp.
-    move: (Hg1 s1 s2 Hf Hp) => /= {Hg1} Hg1.
-    move: (Hg2 s1 s2 Hf Hp) => /= {Hg2} Hg2.
-    exact: (conj Hg1 Hg2).
+    move: (Hg1 s1 s2 Hf Hp) => /= {Hg1} [Hge1 Hgr1].
+    move: (Hg2 s1 s2 Hf Hp) => /= {Hg2} [Hge2 Hgr2].
+    split.
+    - exact: (eval_bvand_eqn_distr1 Hge1 Hge2).
+    - exact: (eval_bvand_rng_distr1 Hgr1 Hgr2).
   Qed.
 
 
@@ -1372,24 +1628,19 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
     Variable w : nat.
 
-    Fixpoint limbs_rec i ew (vs : seq (exp ew)) (n : nat) : exp (ew + (i - ew)) :=
+    Fixpoint limbs_rec vs (n : nat) : eexp :=
       match vs with
-      | [::] => bvConstE (@fromNat (ew + (i - ew)) 0)
-      | hd::[::] => if n == 0 then bvExt hd (i - ew)
-                    else bvBinop bvMulOp
-                                 (bvExt hd (i - ew))
-                                 (bvConstE (fromPosZ (Zpower_nat 2 n)))
+      | [::] => bveConst 0
+      | hd::[::] => if n == 0 then hd
+                    else bvemul hd (bveConst (bve2pow n))
       | hd::tl =>
         let m := (n + w) in
-        if n == 0 then bvBinop bvAddOp (bvExt hd (i - ew)) (limbs_rec i tl m)
-        else bvBinop bvAddOp
-                     (bvBinop bvMulOp (bvExt hd (i - ew))
-                              (bvConstE (fromPosZ (Zpower_nat 2 n))))
-                     (limbs_rec i tl m)
+        if n == 0 then bveadd hd (limbs_rec tl m)
+        else bveadd (bvemul hd (bveConst (bve2pow n))) (limbs_rec tl m)
       end.
 
-    Definition limbs i ew (vs : seq (exp ew)) : exp (ew + (i - ew)) :=
-      limbs_rec i vs 0.
+    Definition limbs (vs : seq eexp) : eexp :=
+      limbs_rec vs 0.
 
   End BigIntegers.
 
@@ -2595,16 +2846,29 @@ Module bv64DSL := MakeBVDSL AMD64 VarOrder.
 Export bv64DSL.
 Arguments bv64DSL.bvVar v%N.
 
-(*Notation "@- x" := (bvNeg x) (at level 35, right associativity) : bvdsl_scope.*)
-Notation "x @+ y" := (bvBinop bvAddOp x y) (at level 50, left associativity) : bvdsl_scope.
-Notation "x @- y" := (bvBinop bvSubOp x y)  (at level 50, left associativity) : bvdsl_scope.
-Notation "x @* y" := (bvBinop bvMulOp x y)  (at level 40, left associativity) : bvdsl_scope.
+Notation "'-e' x" := (bveneg x) (at level 35, right associativity) : bvdsl_scope.
+Notation "x '+e' y" := (bveadd x y) (at level 50, left associativity) : bvdsl_scope.
+Notation "x '-e' y" := (bvesub x y)  (at level 50, left associativity) : bvdsl_scope.
+Notation "x '*e' y" := (bvemul x y)  (at level 40, left associativity) : bvdsl_scope.
 Notation "x @:= y" := (bvAssign x%N y) (at level 70, no associativity) : bvdsl_scope.
-Notation "x @= y" := (bvEq x y) (at level 70, no associativity) : bvdsl_scope.
-Notation "x @= y 'mod' z" := (bvEqMod x y z) (at level 70, y at next level, no associativity) : bvdsl_scope.
-Notation "x @&& y" := (bvAnd x y) (at level 70, no associativity) : bvdsl_scope.
+Notation "x '=e' y" := (bveEq x y) (at level 70, no associativity) : bvdsl_scope.
+Notation "x '=e' y 'mod' z" := (bveEqMod x y z) (at level 70, y at next level, no associativity) : bvdsl_scope.
+Notation "x '&&e' y" := (bveand x y) (at level 70, no associativity) : bvdsl_scope.
+
+Notation "x '+r' y" := (bvradd x y) (at level 50, left associativity) : bvdsl_scope.
+Notation "x '-r' y" := (bvrsub x y)  (at level 50, left associativity) : bvdsl_scope.
+Notation "x '*r' y" := (bvrmul x y)  (at level 40, left associativity) : bvdsl_scope.
+Notation "x '&&r' y" := (bvrand x y) (at level 70, no associativity) : bvdsl_scope.
+Notation "x '<r' y" := (bvult x y)  (at level 40, left associativity) : bvdsl_scope.
+Notation "x '<=r' y" := (bvule x y)  (at level 40, left associativity) : bvdsl_scope.
+Notation "x '>r' y" := (bvugt x y)  (at level 40, left associativity) : bvdsl_scope.
+Notation "x '>=r' y" := (bvuge x y)  (at level 40, left associativity) : bvdsl_scope.
 
 Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity) : bvdsl_scope.
+Notation "s '|=e' f" := (eval_ebexp f true s) (at level 74, no associativity) : bvdsl_scope.
+Notation "s '|=r' f" := (eval_rbexp f true s) (at level 74, no associativity) : bvdsl_scope.
 Notation "f ===> g" := (entails f g) (at level 82, no associativity) : bvdsl_scope.
 Notation "{{ f }} p {{ g }}" := ({| spre := f; sprog := p; spost := g |}) (at level 82, no associativity) : bvdsl_scope.
 Notation "|= s" := (valid_spec s) (at level 83, no associativity) : bvdsl_scope.
+Notation "'|=e' s" := (valid_espec s) (at level 83, no associativity) : bvdsl_scope.
+Notation "'|=r' s" := (valid_rspec s) (at level 83, no associativity) : bvdsl_scope.

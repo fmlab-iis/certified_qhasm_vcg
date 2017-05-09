@@ -382,6 +382,11 @@ Qed.
 
 (** Convert specifications. *)
 
+Definition bv2z_unop (op : unop) : zSSA.unop :=
+  match op with
+  | bvNegOp => zSSA.zNeg
+  end.
+
 Definition bv2z_binop (op : binop) : zSSA.binop :=
   match op with
   | bvAddOp => zSSA.zAdd
@@ -389,178 +394,107 @@ Definition bv2z_binop (op : binop) : zSSA.binop :=
   | bvMulOp => zSSA.zMul
   end.
 
-Fixpoint bv2z_exp n (e : exp n) : zSSA.exp :=
+Fixpoint bv2z_eexp (e : eexp) : zSSA.exp :=
   match e with
-  | bvVarE v => zVar v
-  | bvConstE _ c => zConst (toPosZ c)
-  | bvBinop _ op e1 e2 => zBinop (bv2z_binop op) (bv2z_exp e1) (bv2z_exp e2)
-  | bvExt _ e _ => bv2z_exp e
-  end.
-
-Inductive ebexp :=
-  | bvETrue : ebexp
-  | bvEEq : forall n : nat, exp n -> exp n -> ebexp
-  | bvEEqMod : forall n : nat, exp n -> exp n -> exp n -> ebexp
-  | bvEAnd : ebexp -> ebexp -> ebexp.
-
-Inductive cbexp :=
-  | bvCTrue : cbexp
-  | bvCCmp : forall n : nat, cmpop -> exp n -> exp n -> cbexp
-  | bvCAnd : cbexp -> cbexp -> cbexp.
-
-Fixpoint split_bexp (e : bexp) : ebexp * cbexp :=
-  match e with
-  | bvTrue => (bvETrue, bvCTrue)
-  | bvEq _ e1 e2 => (bvEEq e1 e2, bvCTrue)
-  | bvEqMod _ e1 e2 p => (bvEEqMod e1 e2 p, bvCTrue)
-  | bvCmp _ op e1 e2 => (bvETrue, bvCCmp op e1 e2)
-  | bvAnd e1 e2 =>
-    (bvEAnd (fst (split_bexp e1)) (fst (split_bexp e2)),
-     bvCAnd (snd (split_bexp e1)) (snd (split_bexp e2)))
+  | bveVar v => zVar v
+  | bveConst c => zConst c
+  | bveUnop op e => zUnop (bv2z_unop op) (bv2z_eexp e)
+  | bveBinop op e1 e2 => zBinop (bv2z_binop op) (bv2z_eexp e1) (bv2z_eexp e2)
   end.
 
 Fixpoint bv2z_ebexp e : zSSA.bexp :=
   match e with
-  | bvETrue => zSSA.zTrue
-  | bvEEq _ e1 e2 => zSSA.zEq (bv2z_exp e1) (bv2z_exp e2)
-  | bvEEqMod _ e1 e2 p =>
-    zSSA.zEqMod (bv2z_exp e1) (bv2z_exp e2) (bv2z_exp p)
-  | bvEAnd e1 e2 => zSSA.zAnd (bv2z_ebexp e1) (bv2z_ebexp e2)
+  | bveTrue => zSSA.zTrue
+  | bveEq e1 e2 => zSSA.zEq (bv2z_eexp e1) (bv2z_eexp e2)
+  | bveEqMod e1 e2 p => zSSA.zEqMod (bv2z_eexp e1) (bv2z_eexp e2) (bv2z_eexp p)
+  | bveAnd e1 e2 => zSSA.zAnd (bv2z_ebexp e1) (bv2z_ebexp e2)
   end.
 
-Fixpoint bexp_of_cbexp e : bexp :=
-  match e with
-  | bvCTrue => bvTrue
-  | bvCCmp _ op e1 e2 => bvCmp op e1 e2
-  | bvCAnd e1 e2 => bvAnd (bexp_of_cbexp e1) (bexp_of_cbexp e2)
-  end.
+Definition bv2z_spec_rng s : rspec :=
+  {| rspre := rng_bexp (spre s);
+     rsprog := sprog s;
+     rspost := rng_bexp (spost s) |}.
 
-Definition bv2z_binop_safe w op (bv1 bv2 : BITS w) : bool :=
-  match op with
-  | bvAddOp => addB_safe bv1 bv2
-  | bvSubOp => subB_safe bv1 bv2
-  | bvMulOp => mulB_safe bv1 bv2
-  end.
-
-Fixpoint bv2z_exp_safe_at n (e : exp n) s : bool :=
-  match e with
-  | bvVarE _
-  | bvConstE _ _ => true
-  | bvBinop _ op e1 e2 =>
-    bv2z_exp_safe_at e1 s &&
-    bv2z_exp_safe_at e2 s &&
-    bv2z_binop_safe op (eval_exp e1 s) (eval_exp e2 s)
-  | bvExt _ e _ => bv2z_exp_safe_at e s
-  end.
-
-Fixpoint bv2z_bexp_safe_at (e : bexp) s : bool :=
-  match e with
-  | bvTrue => true
-  | bvEq _ e1 e2 => bv2z_exp_safe_at e1 s && bv2z_exp_safe_at e2 s
-  | bvEqMod _ e1 e2 p => bv2z_exp_safe_at e1 s
-                                          && bv2z_exp_safe_at e2 s
-                                          && bv2z_exp_safe_at p s
-  | bvCmp _ op e1 e2 => bv2z_exp_safe_at e1 s && bv2z_exp_safe_at e2 s
-  | bvAnd e1 e2 => bv2z_bexp_safe_at e1 s && bv2z_bexp_safe_at e2 s
-  end.
-
-Definition bv2z_spec_rng s : spec :=
-  {| spre := spre s;
-     sprog := sprog s;
-     spost := bexp_of_cbexp (snd (split_bexp (spost s))) |}.
-
-Definition bv2z_spec_poly s : zSSA.spec :=
-  {| zSSA.spre := bv2z_ebexp (fst (split_bexp (spre s)));
+Definition bv2z_spec_eqn s : zSSA.spec :=
+  {| zSSA.spre := bv2z_ebexp (eqn_bexp (spre s));
      zSSA.sprog := bv2z_program (sprog s);
-     zSSA.spost := bv2z_ebexp (fst (split_bexp (spost s))) |}.
-
-Definition bv2z_spre_safe f : Prop :=
-  forall s, eval_bexp f s -> bv2z_bexp_safe_at f s.
-
-Definition bv2z_sprog_safe f p : Prop :=
-  forall s, eval_bexp f s -> bv2z_program_safe_at p s.
-
-Definition bv2z_spost_safe f p g : Prop :=
-  forall s1 s2, eval_bexp f s1 -> eval_program s1 p = s2 ->
-                bv2z_bexp_safe_at g s2.
+     zSSA.spost := bv2z_ebexp (eqn_bexp (spost s)) |}.
 
 Definition bv2z_spec_safe sp :=
-  bv2z_spre_safe (spre sp) /\
-  bv2z_sprog_safe (spre sp) (sprog sp) /\
-  bv2z_spost_safe (spre sp) (sprog sp) (spost sp).
+  forall s, eval_rbexp (rng_bexp (spre sp)) s ->
+            bv2z_program_safe_at (sprog sp) s.
 
 
 
 (** Properties of specification conversion. *)
 
-Lemma bvz_eq_eval_binop w op (bv1 bv2 : BITS w) :
-  bv2z_binop_safe op bv1 bv2 ->
-  toPosZ (eval_binop op bv1 bv2) =
-  zSSA.eval_binop (bv2z_binop op) (toPosZ bv1) (toPosZ bv2).
+Lemma bvz_eq_eval_eunop op (v : Z) :
+  eval_eunop op v =
+  zSSA.eval_unop (bv2z_unop op) v.
 Proof.
-  case: op => /= Hsafe.
-  - exact: toPosZ_addB.
-  - exact: toPosZ_subB1.
-  - exact: toPosZ_mulB.
+  case: op; reflexivity.
 Qed.
 
-Lemma bvz_eq_eval_exp w (e : exp w) bs zs :
-  bv2z_exp_safe_at e bs ->
-  bvz_eq bs zs ->
-  toPosZ (eval_exp e bs) = zSSA.eval_exp (bv2z_exp e) zs.
+Lemma bvz_eq_eval_ebinop op (v1 v2 : Z) :
+  eval_ebinop op v1 v2 =
+  zSSA.eval_binop (bv2z_binop op) v1 v2.
 Proof.
-  elim: e => {w} /=.
-  - move=> a _ Heq. exact: Heq.
+  case: op; reflexivity.
+Qed.
+
+Lemma bvz_eq_eval_eexp (e : eexp) bs zs :
+  bvz_eq bs zs ->
+  eval_eexp e bs = zSSA.eval_exp (bv2z_eexp e) zs.
+Proof.
+  elim: e => /=.
+  - move=> a Heq. exact: Heq.
   - reflexivity.
-  - move=> w op e1 IH1 e2 IH2 /andP [/andP [Hsafe1 Hsafe2] Hsafeop] Heq.
-    rewrite -(IH1 Hsafe1 Heq) -(IH2 Hsafe2 Heq).
-    exact: bvz_eq_eval_binop.
-  - move=> w e IH m Hsafe Heq.
-    rewrite -(IH Hsafe Heq).
-    exact: toPosZ_zeroExtend.
+  - move=> op e IH Heq. rewrite -(IH Heq). exact: bvz_eq_eval_eunop.
+  - move=> op e1 IH1 e2 IH2 Heq. rewrite -(IH1 Heq) -(IH2 Heq).
+    exact: bvz_eq_eval_ebinop.
 Qed.
 
-Lemma bvz_eq_eval_bexp e bs zs :
-  bv2z_bexp_safe_at e bs ->
+Lemma bvz_eq_eval_ebexp1 e bs zs :
   bvz_eq bs zs ->
-  eval_bexp e bs ->
-  zSSA.eval_bexp (bv2z_ebexp (fst (split_bexp e))) zs.
+  eval_ebexp e bs ->
+  zSSA.eval_bexp (bv2z_ebexp e) zs.
 Proof.
   elim: e => /=.
   - done.
-  - move=> w e1 e2 /andP [Hsafe1 Hsafe2] Heq Heval.
-    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq).
-    rewrite Heval; reflexivity.
-  - move=> w e1 e2 p /andP [/andP [Hsafe1 Hsafe2] Hsafep] Heq Heval.
-    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq)
-            -(bvz_eq_eval_exp Hsafep Heq).
-    exact: Heval.
-  - done.
-  - move=> e1 IH1 e2 IH2 /andP [Hsafe1 Hsafe2] Heq [Heval1 Heval2].
-    split; [exact: (IH1 Hsafe1 Heq Heval1) | exact: (IH2 Hsafe2 Heq Heval2)].
+  - move=> e1 e2 Heq Heval.
+    rewrite -(bvz_eq_eval_eexp e1 Heq) -(bvz_eq_eval_eexp e2 Heq). exact: Heval.
+  - move=> e1 e2 p Heq Heval.
+    rewrite -(bvz_eq_eval_eexp e1 Heq) -(bvz_eq_eval_eexp e2 Heq)
+            -(bvz_eq_eval_eexp p Heq). exact: Heval.
+  - move=> e1 IH1 e2 IH2 Heq [Heval1 Heval2].
+    split; [exact: (IH1 Heq Heval1) | exact: (IH2 Heq Heval2)].
 Qed.
 
-Lemma split_bexp_combine e bs zs :
-  bv2z_bexp_safe_at e bs ->
+Lemma bvz_eq_eval_ebexp2 e bs zs :
   bvz_eq bs zs ->
-  eval_bexp (bexp_of_cbexp (snd (split_bexp e))) bs ->
-  zSSA.eval_bexp (bv2z_ebexp (fst (split_bexp e))) zs ->
+  zSSA.eval_bexp (bv2z_ebexp e) zs ->
+  eval_ebexp e bs.
+Proof.
+  elim: e => /=.
+  - done.
+  - move=> e1 e2 Heq Heval.
+    rewrite (bvz_eq_eval_eexp e1 Heq) (bvz_eq_eval_eexp e2 Heq). exact: Heval.
+  - move=> e1 e2 p Heq Heval.
+    rewrite (bvz_eq_eval_eexp e1 Heq) (bvz_eq_eval_eexp e2 Heq)
+            (bvz_eq_eval_eexp p Heq). exact: Heval.
+  - move=> e1 IH1 e2 IH2 Heq [Heval1 Heval2].
+    split; [exact: (IH1 Heq Heval1) | exact: (IH2 Heq Heval2)].
+Qed.
+
+Lemma eval_bexp_combine e bs zs :
+  bvz_eq bs zs ->
+  eval_rbexp (rng_bexp e) bs ->
+  zSSA.eval_bexp (bv2z_ebexp (eqn_bexp e)) zs ->
   eval_bexp e bs.
 Proof.
-  elim: e => /=.
-  - done.
-  - move=> w e1 e2 /andP [Hsafe1 Hsafe2] Heq _ Heval.
-    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq) in Heval.
-    exact: (toPosZ_inj Heval).
-  - move=> w e1 e2 p /andP [/andP [Hsafe1 Hsafe2] Hsafep] Heq _ Heval.
-    rewrite -(bvz_eq_eval_exp Hsafe1 Heq) -(bvz_eq_eval_exp Hsafe2 Heq)
-            -(bvz_eq_eval_exp Hsafep Heq) in Heval.
-    exact: Heval.
-  - move=> w op e1 e2 /andP [Hsafe1 Hsafe2] Heq Heval _.
-    exact: Heval.
-  - move=> e1 IH1 e2 IH2 /andP [Hsafe1 Hsafe2] Heq [Hsnd1 Hsnd2] [Hfst1 Hfst2].
-    split; [ exact: (IH1 Hsafe1 Heq Hsnd1 Hfst1) |
-             exact: (IH2 Hsafe2 Heq Hsnd2 Hfst2) ].
+  move=> Heq Her Hee. split.
+  - exact: (bvz_eq_eval_ebexp2 Heq Hee).
+  - exact: Her.
 Qed.
 
 
@@ -750,24 +684,23 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma bv2z_exp_vars w (e : exp w) :
-  zSSA.VS.Equal (zSSA.vars_exp (bv2z_exp e)) (bv2z_vars (vars_exp e)).
+Lemma bv2z_eexp_vars (e : eexp) :
+  zSSA.VS.Equal (zSSA.vars_exp (bv2z_eexp e)) (bv2z_vars (vars_eexp e)).
 Proof.
-  elim: e => {w} /=.
+  elim: e => /=.
   - move=> a. exact: bv2z_vars_singleton.
   - reflexivity.
-  - move=> w _ e1 IH1 e2 IH2.
-    rewrite IH1 IH2 bv2z_vars_union.
-    reflexivity.
-  - move=> w e IH _.
-    assumption.
+  - move=> _ e IH. rewrite IH. reflexivity.
+  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2 bv2z_vars_union. reflexivity.
 Qed.
 
-Lemma split_bexp_vars_subset1 f :
-  zSSA.VS.subset (zSSA.vars_bexp (bv2z_ebexp (fst (split_bexp f))))
+Lemma eqn_bexp_vars_subset f :
+  zSSA.VS.subset (zSSA.vars_bexp (bv2z_ebexp (eqn_bexp f)))
                  (bv2z_vars (vars_bexp f)).
 Proof.
-  elim: f => /=; intros;
+  case: f => e r /=. rewrite bv2z_vars_union /=.
+  apply: zSSA.VSLemmas.subset_union1 => {r}.
+  elim: e => /=; intros;
   (let rec tac :=
        match goal with
        | |- is_true (zSSA.VS.subset zSSA.VS.empty _) =>
@@ -777,19 +710,19 @@ Proof.
          repeat (apply: zSSA.VSLemmas.subset_union3);
          tac
        | |- is_true (zSSA.VS.subset
-                       (zSSA.vars_exp (bv2z_exp ?e))
-                       (zSSA.VS.union (bv2z_vars (vars_exp ?e)) _)) =>
+                       (zSSA.vars_exp (bv2z_eexp ?e))
+                       (zSSA.VS.union (bv2z_vars (vars_eexp ?e)) _)) =>
          apply: zSSA.VSLemmas.subset_union1;
-         rewrite bv2z_exp_vars;
+         rewrite bv2z_eexp_vars;
          exact: zSSA.VSLemmas.subset_refl
        | |- is_true (zSSA.VS.subset
-                       (zSSA.vars_exp (bv2z_exp ?e))
-                       (zSSA.VS.union _ (bv2z_vars (vars_exp ?e)))) =>
+                       (zSSA.vars_exp (bv2z_eexp ?e))
+                       (zSSA.VS.union _ (bv2z_vars (vars_eexp ?e)))) =>
          apply: zSSA.VSLemmas.subset_union2;
-         rewrite bv2z_exp_vars;
+         rewrite bv2z_eexp_vars;
          exact: zSSA.VSLemmas.subset_refl
        | |- is_true (zSSA.VS.subset
-                       (zSSA.vars_exp (bv2z_exp ?e))
+                       (zSSA.vars_exp (bv2z_eexp ?e))
                        (zSSA.VS.union _ (zSSA.VS.union _ _))) =>
          apply: zSSA.VSLemmas.subset_union2; tac
        | H : is_true (zSSA.VS.subset ?vs1 ?vs2) |-
@@ -800,39 +733,9 @@ Proof.
          is_true (zSSA.VS.subset ?vs1 (zSSA.VS.union _ ?vs2)) =>
          apply: zSSA.VSLemmas.subset_union2;
          assumption
-       | |- is_true (zSSA.VS.subset
-                       (zSSA.VS.union
-                          (zSSA.vars_exp (bv2z_exp ?e1))
-                          (zSSA.vars_exp (bv2z_exp ?e2)))
-                       (bv2z_vars (VS.union (vars_exp ?e1)
-                                            (vars_exp ?e2)))) =>
-         rewrite bv2z_vars_union;
-         apply: zSSA.VSLemmas.subset_union3;
-         [ apply: zSSA.VSLemmas.subset_union1;
-           rewrite bv2z_exp_vars;
-           exact: zSSA.VSLemmas.subset_refl
-         | apply: zSSA.VSLemmas.subset_union2;
-           rewrite bv2z_exp_vars;
-           exact: zSSA.VSLemmas.subset_refl ]
        | |- _ => idtac
        end in
   tac).
-Qed.
-
-Lemma split_bexp_vars_subset2 f :
-  VS.subset (vars_bexp (bexp_of_cbexp (snd (split_bexp f))))
-            (vars_bexp f).
-Proof.
-  elim: f => /=.
-  - exact: VSLemmas.subset_empty.
-  - move=> w e1 e2; exact: VSLemmas.subset_empty.
-  - move=> w e1 e2 p; exact: VSLemmas.subset_empty.
-  - move=> w _ e1 e2.
-    exact: VSLemmas.subset_refl.
-  - move=> e1 IH1 e2 IH2.
-    apply: VSLemmas.subset_union3.
-    + apply: VSLemmas.subset_union1; assumption.
-    + apply: VSLemmas.subset_union2; assumption.
 Qed.
 
 Lemma bv2z_instr_well_formed vs i :
@@ -948,38 +851,38 @@ Lemma bv2z_spec_rng_well_formed vs sp :
   well_formed_spec vs sp ->
   well_formed_spec vs (bv2z_spec_rng sp).
 Proof.
-  destruct sp as [f p g].
-  move=> /andP /= [/andP [Hf Hp] Hg].
-  rewrite /well_formed_spec /=.
-  rewrite Hf Hp /=.
-  apply: (VSLemmas.subset_trans _ Hg).
-  exact: split_bexp_vars_subset2.
+  destruct sp as [f p g]. move=> /andP /= [/andP [Hf Hp] Hg].
+  rewrite /well_formed_spec /=. rewrite /vars_bexp /=.
+  rewrite 2!VSLemmas.union_emptyl Hp.
+  rewrite (VSLemmas.subset_trans (vars_rbexp_subset f) Hf).
+  rewrite (VSLemmas.subset_trans (vars_rbexp_subset g) Hg).
+  done.
 Qed.
 
-Lemma bv2z_spec_poly_well_formed vs sp :
+Lemma bv2z_spec_eqn_well_formed vs sp :
   well_formed_spec vs sp ->
-  zSSA.well_formed_spec (bv2z_vars vs) (bv2z_spec_poly sp).
+  zSSA.well_formed_spec (bv2z_vars vs) (bv2z_spec_eqn sp).
 Proof.
   destruct sp as [f p g].
   move=> /andP /= [/andP [Hf Hp] Hg].
   apply/andP => /=; split; first (apply/andP; split).
   - apply: (@zSSA.VSLemmas.subset_trans _ (bv2z_vars (vars_bexp f))).
-    + exact: split_bexp_vars_subset1.
+    + exact: eqn_bexp_vars_subset.
     + rewrite bv2z_vars_subset; assumption.
   - exact: bv2z_program_well_formed.
-  - apply: (zSSA.VSLemmas.subset_trans (split_bexp_vars_subset1 g)).
+  - apply: (zSSA.VSLemmas.subset_trans (eqn_bexp_vars_subset g)).
     rewrite vars_bv2z_program -bv2z_vars_union bv2z_vars_subset.
     assumption.
 Qed.
 
-Theorem bv2z_spec_poly_well_formed_ssa vs sp :
+Theorem bv2z_spec_eqn_well_formed_ssa vs sp :
   well_formed_ssa_spec vs sp ->
-  zSSA.well_formed_ssa_spec (bv2z_vars vs) (bv2z_spec_poly sp).
+  zSSA.well_formed_ssa_spec (bv2z_vars vs) (bv2z_spec_eqn sp).
 Proof.
   destruct sp as [f p g].
   move=> /andP /= [/andP [Hf Hp] Hg].
   apply/andP => /=; split; first (apply/andP; split).
-  - exact: bv2z_spec_poly_well_formed.
+  - exact: bv2z_spec_eqn_well_formed.
   - exact: bv2z_vars_unchanged_program.
   - exact: bv2z_program_single_assignment.
 Qed.
@@ -990,19 +893,18 @@ Qed.
 
 Theorem bv2z_spec_sound sp :
   bv2z_spec_safe sp ->
-  valid_spec (bv2z_spec_rng sp) ->
-  zSSA.valid_spec (bv2z_spec_poly sp) ->
+  valid_rspec (bv2z_spec_rng sp) ->
+  zSSA.valid_spec (bv2z_spec_eqn sp) ->
   valid_spec sp.
 Proof.
   destruct sp as [f p g] => /=.
-  move=> [/= Hsafef [Hsafep Hsafeg]] Hrng Heqn bs1 bs2 /= Hbf Hbp.
-  move: (Hrng bs1 bs2 Hbf Hbp) => {Hrng} /= Hrng.
+  move=> Hsafe Hrng Heqn bs1 bs2 /= Hbf Hbp.
+  move: (Hrng bs1 bs2 (eval_bexp_rng Hbf) Hbp) => {Hrng} /= Hrng.
   set zs1 := bv2z_state bs1.
   set zs2 := zSSA.eval_program zs1 (bv2z_program p).
   move: (Heqn zs1 zs2
-              (bvz_eq_eval_bexp (Hsafef bs1 Hbf) (bv2z_state_eq bs1) Hbf)
+              (bvz_eq_eval_ebexp1 (bv2z_state_eq bs1) (eval_bexp_eqn Hbf))
               (Logic.eq_refl zs2)) => {Heqn} /= Heqn.
-  apply: (@split_bexp_combine g bs2 zs2 (Hsafeg bs1 bs2 Hbf Hbp) _ Hrng Heqn).
-  rewrite -Hbp.
-  exact: (bvz_eq_eval_program (bv2z_state_eq bs1) (Hsafep _ Hbf)).
+  apply: (@eval_bexp_combine g bs2 zs2 _ Hrng Heqn). rewrite -Hbp.
+  exact: (bvz_eq_eval_program (bv2z_state_eq bs1) (Hsafe _ (eval_bexp_rng Hbf))).
 Qed.

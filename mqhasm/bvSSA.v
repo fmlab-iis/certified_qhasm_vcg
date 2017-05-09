@@ -24,19 +24,32 @@ Module bv64SSA := MakeBVSSA AMD64 VarOrder NOrder.
 
 Arguments bv64SSA.bvVar v%N.
 
-(*Notation "@- x" := (bv64SSA.bvNeg x) (at level 35, right associativity) : bvssa_scope.*)
-Notation "x @+ y" := (bv64SSA.bvBinop bv64SSA.bvAddOp x y) (at level 50, left associativity) : bvssa_scope.
-Notation "x @- y" := (bv64SSA.bvBinop bv64SSA.bvSubOp x y)  (at level 50, left associativity) : bvssa_scope.
-Notation "x @* y" := (bv64SSA.bvBinop bv64SSA.bvMulOp x y)  (at level 40, left associativity) : bvssa_scope.
+Notation "'-e' x" := (bv64SSA.bveneg x) (at level 35, right associativity) : bvssa_scope.
+Notation "x '+e' y" := (bv64SSA.bveadd x y) (at level 50, left associativity) : bvssa_scope.
+Notation "x '-e' y" := (bv64SSA.bvesub x y)  (at level 50, left associativity) : bvssa_scope.
+Notation "x '*e' y" := (bv64SSA.bvemul x y)  (at level 40, left associativity) : bvssa_scope.
 Notation "x @:= y" := (bv64SSA.bvAssign x%N y) (at level 70, no associativity) : bvssa_scope.
-Notation "x @= y" := (bv64SSA.bvEq x y) (at level 70, no associativity) : bvssa_scope.
-Notation "x @= y 'mod' z" := (bv64SSA.bvEqMod x y z) (at level 70, y at next level, no associativity) : bvssa_scope.
-Notation "x @&& y" := (bv64SSA.bvAnd x y) (at level 70, no associativity) : bvssa_scope.
+Notation "x '=e' y" := (bv64SSA.bveEq x y) (at level 70, no associativity) : bvssa_scope.
+Notation "x '=e' y 'mod' z" := (bv64SSA.bveEqMod x y z) (at level 70, y at next level, no associativity) : bvssa_scope.
+Notation "x '&&e' y" := (bv64SSA.bveand x y) (at level 70, no associativity) : bvssa_scope.
+
+Notation "x '+r' y" := (bv64SSA.bvradd x y) (at level 50, left associativity) : bvssa_scope.
+Notation "x '-r' y" := (bv64SSA.bvrsub x y)  (at level 50, left associativity) : bvssa_scope.
+Notation "x '*r' y" := (bv64SSA.bvrmul x y)  (at level 40, left associativity) : bvssa_scope.
+Notation "x '&&r' y" := (bv64SSA.bvrand x y) (at level 70, no associativity) : bvssa_scope.
+Notation "x '<r' y" := (bv64SSA.bvult x y)  (at level 40, left associativity) : bvssa_scope.
+Notation "x '<=r' y" := (bv64SSA.bvule x y)  (at level 40, left associativity) : bvssa_scope.
+Notation "x '>r' y" := (bv64SSA.bvugt x y)  (at level 40, left associativity) : bvssa_scope.
+Notation "x '>=r' y" := (bv64SSA.bvuge x y)  (at level 40, left associativity) : bvssa_scope.
 
 Notation "s |= f" := (bv64SSA.eval_bexp f true s) (at level 74, no associativity) : bvssa_scope.
+Notation "s '|=e' f" := (bv64SSA.eval_ebexp f true s) (at level 74, no associativity) : bvssa_scope.
+Notation "s '|=r' f" := (bv64SSA.eval_rbexp f true s) (at level 74, no associativity) : bvssa_scope.
 Notation "f ===> g" := (bv64SSA.entails f g) (at level 82, no associativity) : bvssa_scope.
 Notation "{{ f }} p {{ g }}" := ({| bv64SSA.spre := f; bv64SSA.sprog := p; bv64SSA.spost := g |}) (at level 82, no associativity) : bvssa_scope.
 Notation "|= s" := (bv64SSA.valid_spec s) (at level 83, no associativity) : bvssa_scope.
+Notation "'|=e' s" := (bv64SSA.valid_espec s) (at level 83, no associativity) : bvssa_scope.
+Notation "'|=r' s" := (bv64SSA.valid_rspec s) (at level 83, no associativity) : bvssa_scope.
 
 Definition svar (x : bv64SSA.V.t) := fst x.
 Definition sidx (x : bv64SSA.V.t) := snd x.
@@ -205,24 +218,40 @@ Fixpoint ssa_program (m : vmap) (p : program) : (vmap * bv64SSA.program) :=
     (m, hd::tl)
   end.
 
-Fixpoint ssa_exp (n : nat) (m : vmap) (e : exp n) : bv64SSA.exp n :=
+Fixpoint ssa_eexp (m : vmap) (e : eexp) : bv64SSA.eexp :=
   match e with
-  | bvVarE v => bv64SSA.bvVarE (ssa_var m v)
-  | bvConstE w c => @bv64SSA.bvConstE w c
-(*  | bvUnop _ op e => bv64SSA.bvUnop (ssa_unop op) (ssa_exp m e) *)
-  | bvBinop _ op e1 e2 => bv64SSA.bvBinop (ssa_binop op) (ssa_exp m e1) (ssa_exp m e2)
-  | bvExt _ e i => bv64SSA.bvExt (ssa_exp m e) i
+  | bveVar v => bv64SSA.bveVar (ssa_var m v)
+  | bveConst c => @bv64SSA.bveConst c
+  | bveUnop op e => bv64SSA.bveUnop (ssa_unop op) (ssa_eexp m e)
+  | bveBinop op e1 e2 => bv64SSA.bveBinop (ssa_binop op) (ssa_eexp m e1) (ssa_eexp m e2)
   end.
 
-Fixpoint ssa_bexp (m : vmap) (e : bexp) : bv64SSA.bexp :=
+Fixpoint ssa_rexp (n : nat) (m : vmap) (e : rexp n) : bv64SSA.rexp n :=
   match e with
-  | bvTrue => bv64SSA.bvTrue
-  | bvEq _ e1 e2 => bv64SSA.bvEq (ssa_exp m e1) (ssa_exp m e2)
-  | bvEqMod _ e1 e2 p => bv64SSA.bvEqMod (ssa_exp m e1) (ssa_exp m e2)
-                                         (ssa_exp m p)
-  | bvCmp _ op e1 e2 => bv64SSA.bvCmp (ssa_cmpop op) (ssa_exp m e1) (ssa_exp m e2)
-  | bvAnd e1 e2 => bv64SSA.bvAnd (ssa_bexp m e1) (ssa_bexp m e2)
+  | bvrVar v => bv64SSA.bvrVar (ssa_var m v)
+  | bvrConst w c => @bv64SSA.bvrConst w c
+  | bvrBinop _ op e1 e2 => bv64SSA.bvrBinop (ssa_binop op) (ssa_rexp m e1) (ssa_rexp m e2)
+  | bvrExt _ e i => bv64SSA.bvrExt (ssa_rexp m e) i
   end.
+
+Fixpoint ssa_ebexp (m : vmap) (e : ebexp) : bv64SSA.ebexp :=
+  match e with
+  | bveTrue => bv64SSA.bveTrue
+  | bveEq e1 e2 => bv64SSA.bveEq (ssa_eexp m e1) (ssa_eexp m e2)
+  | bveEqMod e1 e2 p => bv64SSA.bveEqMod (ssa_eexp m e1) (ssa_eexp m e2)
+                                         (ssa_eexp m p)
+  | bveAnd e1 e2 => bv64SSA.bveAnd (ssa_ebexp m e1) (ssa_ebexp m e2)
+  end.
+
+Fixpoint ssa_rbexp (m : vmap) (e : rbexp) : bv64SSA.rbexp :=
+  match e with
+  | bvrTrue => bv64SSA.bvrTrue
+  | bvrCmp _ op e1 e2 => bv64SSA.bvrCmp (ssa_cmpop op) (ssa_rexp m e1) (ssa_rexp m e2)
+  | bvrAnd e1 e2 => bv64SSA.bvrAnd (ssa_rbexp m e1) (ssa_rbexp m e2)
+  end.
+
+Definition ssa_bexp (m : vmap) (e : bexp) : bv64SSA.bexp :=
+  (ssa_ebexp m (eqn_bexp e), ssa_rbexp m (rng_bexp e)).
 
 Definition ssa_spec (s : spec) : bv64SSA.spec :=
   let m := empty_vmap in
@@ -238,6 +267,7 @@ Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
 Qed.
+
 (*
 Lemma ssa_bvneg m1 m2 v e si :
   ssa_instr m1 (bvNeg v e) = (m2, si) ->
@@ -247,6 +277,7 @@ Proof.
   by rewrite -Hm.
 Qed.
 *)
+
 Lemma ssa_bvadd m1 m2 v e1 e2 si :
   ssa_instr m1 (bvAdd v e1 e2) = (m2, si) ->
   m2 = upd_index v m1 /\
@@ -289,6 +320,7 @@ Proof.
   move=> [Hm Hsi].
   by rewrite -Hm.
 Qed.
+
 (*
 Lemma ssa_bvsubc m1 m2 c v e1 e2 si :
   ssa_instr m1 (bvSubC c v e1 e2) = (m2, si) ->
@@ -299,6 +331,7 @@ Proof.
   by rewrite -Hm.
 Qed.
 *)
+
 Lemma ssa_bvmul m1 m2 v e1 e2 si :
   ssa_instr m1 (bvMul v e1 e2) = (m2, si) ->
   m2 = upd_index v m1 /\
@@ -528,16 +561,30 @@ Proof.
     exact: (Nleq_trans Hle1 Hle2).
 Qed.
 
-Lemma ssa_eval_unop :
-  forall (op : unop) (w : nat) (v : BITS w),
-    bv64SSA.eval_unop (ssa_unop op) v = eval_unop op v.
+Lemma ssa_eval_eunop :
+  forall (op : unop) (v : Z),
+    bv64SSA.eval_eunop (ssa_unop op) v = eval_eunop op v.
 Proof.
   by case.
 Qed.
 
-Lemma ssa_eval_binop :
+Lemma ssa_eval_runop :
+  forall (op : unop) (w : nat) (v : BITS w),
+    bv64SSA.eval_runop (ssa_unop op) v = eval_runop op v.
+Proof.
+  by case.
+Qed.
+
+Lemma ssa_eval_ebinop :
+  forall (op : binop) (v1 v2 : Z),
+    bv64SSA.eval_ebinop (ssa_binop op) v1 v2 = eval_ebinop op v1 v2.
+Proof.
+  by case.
+Qed.
+
+Lemma ssa_eval_rbinop :
   forall (op : binop) (w : nat) (v1 v2 : BITS w),
-    bv64SSA.eval_binop (ssa_binop op) v1 v2 = eval_binop op v1 v2.
+    bv64SSA.eval_rbinop (ssa_binop op) v1 v2 = eval_rbinop op v1 v2.
 Proof.
   by case.
 Qed.
@@ -710,14 +757,26 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ssa_vars_exp_comm w m (e : exp w) :
-  bv64SSA.VS.Equal (ssa_vars m (vars_exp e))
-                   (bv64SSA.vars_exp (ssa_exp m e)).
+Lemma ssa_vars_eexp_comm m (e : eexp) :
+  bv64SSA.VS.Equal (ssa_vars m (vars_eexp e))
+                   (bv64SSA.vars_eexp (ssa_eexp m e)).
+Proof.
+  elim: e => /=.
+  - exact: ssa_vars_singleton.
+  - reflexivity.
+  - move=> op e IH.
+    assumption.
+  - move=> op e1 IH1 e2 IH2.
+    rewrite -IH1 -IH2 ssa_vars_union.
+    reflexivity.
+Qed.
+
+Lemma ssa_vars_rexp_comm w m (e : rexp w) :
+  bv64SSA.VS.Equal (ssa_vars m (vars_rexp e))
+                   (bv64SSA.vars_rexp (ssa_rexp m e)).
 Proof.
   elim: e => {w} /=.
   - exact: ssa_vars_singleton.
-(*  - move=> w op e IH.
-    assumption. *)
   - reflexivity.
   - move=> w op e1 IH1 e2 IH2.
     rewrite -IH1 -IH2 ssa_vars_union.
@@ -726,12 +785,21 @@ Proof.
     assumption.
 Qed.
 
-Lemma ssa_vars_exp_union w m (e1 e2 : exp w) :
- bv64SSA.VS.Equal (ssa_vars m (VS.union (vars_exp e1) (vars_exp e2)))
-                  (bv64SSA.VS.union (bv64SSA.vars_exp (ssa_exp m e1))
-                                    (bv64SSA.vars_exp (ssa_exp m e2))).
+Lemma ssa_vars_eexp_union m (e1 e2 : eexp) :
+ bv64SSA.VS.Equal (ssa_vars m (VS.union (vars_eexp e1) (vars_eexp e2)))
+                  (bv64SSA.VS.union (bv64SSA.vars_eexp (ssa_eexp m e1))
+                                    (bv64SSA.vars_eexp (ssa_eexp m e2))).
 Proof.
-  rewrite ssa_vars_union -2!ssa_vars_exp_comm.
+  rewrite ssa_vars_union -2!ssa_vars_eexp_comm.
+  reflexivity.
+Qed.
+
+Lemma ssa_vars_rexp_union w m (e1 e2 : rexp w) :
+ bv64SSA.VS.Equal (ssa_vars m (VS.union (vars_rexp e1) (vars_rexp e2)))
+                  (bv64SSA.VS.union (bv64SSA.vars_rexp (ssa_rexp m e1))
+                                    (bv64SSA.vars_rexp (ssa_rexp m e2))).
+Proof.
+  rewrite ssa_vars_union -2!ssa_vars_rexp_comm.
   reflexivity.
 Qed.
 
@@ -752,40 +820,53 @@ Proof.
     exact: (bv64SSA.VSLemmas.mem_subset Hmem H).
 Qed.
 
+Lemma ssa_vars_ebexp_comm m e :
+  bv64SSA.VS.Equal (ssa_vars m (vars_ebexp e))
+                   (bv64SSA.vars_ebexp (ssa_ebexp m e)).
+Proof.
+  elim: e => /=.
+  - reflexivity.
+  - move=> e1 e2. rewrite ssa_vars_eexp_union; reflexivity.
+  - move=> e1 e2 e3. rewrite ssa_vars_union ssa_vars_eexp_union
+                             ssa_vars_eexp_comm. reflexivity.
+  - move=> e1 IH1 e2 IH2. rewrite -IH1 -IH2 ssa_vars_union; reflexivity.
+Qed.
+
+Lemma ssa_vars_rbexp_comm m e :
+  bv64SSA.VS.Equal (ssa_vars m (vars_rbexp e))
+                   (bv64SSA.vars_rbexp (ssa_rbexp m e)).
+Proof.
+  elim: e => /=.
+  - reflexivity.
+  - move=> w op e1 e2. rewrite ssa_vars_rexp_union; reflexivity.
+  - move=> e1 IH1 e2 IH2. rewrite -IH1 -IH2 ssa_vars_union; reflexivity.
+Qed.
+
 Lemma ssa_vars_bexp_comm m e :
   bv64SSA.VS.Equal (ssa_vars m (vars_bexp e))
                    (bv64SSA.vars_bexp (ssa_bexp m e)).
 Proof.
-  elim: e => /=; intros;
-  (match goal with
-   | |- bv64SSA.VS.Equal (ssa_vars m VS.empty) bv64SSA.VS.empty =>
-     reflexivity
-   | |- bv64SSA.VS.Equal
-          (ssa_vars ?m (VS.union (vars_exp ?e1) (vars_exp ?e2)))
-          (bv64SSA.VS.union (bv64SSA.vars_exp (ssa_exp ?m ?e1))
-                            (bv64SSA.vars_exp (ssa_exp ?m ?e2))) =>
-     rewrite ssa_vars_exp_union;
-     reflexivity
-   | |- bv64SSA.VS.Equal
-          (ssa_vars ?m (VS.union (vars_exp ?e1)
-                                 (VS.union (vars_exp ?e2) (vars_exp ?e3))))
-          (bv64SSA.VS.union (bv64SSA.vars_exp (ssa_exp ?m ?e1))
-                            (bv64SSA.VS.union
-                               (bv64SSA.vars_exp (ssa_exp ?m ?e2))
-                               (bv64SSA.vars_exp (ssa_exp ?m ?e3)))) =>
-     rewrite ssa_vars_union ssa_vars_exp_union ssa_vars_exp_comm;
-     reflexivity
-   | H1: bv64SSA.VS.Equal (ssa_vars ?m (vars_bexp ?e1))
-                          (bv64SSA.vars_bexp (ssa_bexp ?m ?e1)),
-     H2: bv64SSA.VS.Equal (ssa_vars ?m (vars_bexp ?e2))
-                          (bv64SSA.vars_bexp (ssa_bexp ?m ?e2)) |-
-     bv64SSA.VS.Equal (ssa_vars ?m (VS.union (vars_bexp ?e1) (vars_bexp ?e2)))
-                      (bv64SSA.VS.union (bv64SSA.vars_bexp (ssa_bexp ?m ?e1))
-                                        (bv64SSA.vars_bexp (ssa_bexp ?m ?e2))) =>
-     rewrite -H1 -H2 ssa_vars_union;
-     reflexivity
-   | |- _ => idtac
-   end).
+  rewrite /ssa_bexp /vars_bexp /bv64SSA.vars_bexp /=.
+  rewrite ssa_vars_union ssa_vars_ebexp_comm ssa_vars_rbexp_comm.
+  reflexivity.
+Qed.
+
+Lemma ssa_vars_ebexp_union m e1 e2 :
+  bv64SSA.VS.Equal (ssa_vars m (VS.union (vars_ebexp e1) (vars_ebexp e2)))
+                   (bv64SSA.VS.union (bv64SSA.vars_ebexp (ssa_ebexp m e1))
+                                     (bv64SSA.vars_ebexp (ssa_ebexp m e2))).
+Proof.
+  rewrite ssa_vars_union -2!ssa_vars_ebexp_comm.
+  reflexivity.
+Qed.
+
+Lemma ssa_vars_rbexp_union m e1 e2 :
+  bv64SSA.VS.Equal (ssa_vars m (VS.union (vars_rbexp e1) (vars_rbexp e2)))
+                   (bv64SSA.VS.union (bv64SSA.vars_rbexp (ssa_rbexp m e1))
+                                     (bv64SSA.vars_rbexp (ssa_rbexp m e2))).
+Proof.
+  rewrite ssa_vars_union -2!ssa_vars_rbexp_comm.
+  reflexivity.
 Qed.
 
 Lemma ssa_vars_bexp_union m e1 e2 :
@@ -811,13 +892,13 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma ssa_vars_exp_subset w m (e : exp w) vs :
-  bv64SSA.VS.subset (bv64SSA.vars_exp (ssa_exp m e)) (ssa_vars m vs) =
-  VS.subset (vars_exp e) vs.
+Lemma ssa_vars_eexp_subset m (e : eexp) vs :
+  bv64SSA.VS.subset (bv64SSA.vars_eexp (ssa_eexp m e)) (ssa_vars m vs) =
+  VS.subset (vars_eexp e) vs.
 Proof.
-  case Hsub: (VS.subset (vars_exp e) vs).
+  case Hsub: (VS.subset (vars_eexp e) vs).
   - apply: bv64SSA.VS.subset_1 => x.
-    rewrite -ssa_vars_exp_comm => /bv64SSA.VSLemmas.memP Hx.
+    rewrite -ssa_vars_eexp_comm => /bv64SSA.VSLemmas.memP Hx.
     move: (ssa_vars_mem2 Hx) => [v [Hv Hmemv]].
     apply/bv64SSA.VSLemmas.memP.
     rewrite Hv ssa_vars_mem1.
@@ -826,7 +907,73 @@ Proof.
     apply/negP => Hsub; apply: H.
     apply/VS.subset_1 => x /VSLemmas.memP Hx.
     move: Hx.
-    rewrite -(ssa_vars_mem1 m) ssa_vars_exp_comm => Hx.
+    rewrite -(ssa_vars_mem1 m) ssa_vars_eexp_comm => Hx.
+    apply/VSLemmas.memP.
+    move: (bv64SSA.VSLemmas.mem_subset Hx Hsub) => Hmem.
+    rewrite ssa_vars_mem1 in Hmem.
+    assumption.
+Qed.
+
+Lemma ssa_vars_rexp_subset w m (e : rexp w) vs :
+  bv64SSA.VS.subset (bv64SSA.vars_rexp (ssa_rexp m e)) (ssa_vars m vs) =
+  VS.subset (vars_rexp e) vs.
+Proof.
+  case Hsub: (VS.subset (vars_rexp e) vs).
+  - apply: bv64SSA.VS.subset_1 => x.
+    rewrite -ssa_vars_rexp_comm => /bv64SSA.VSLemmas.memP Hx.
+    move: (ssa_vars_mem2 Hx) => [v [Hv Hmemv]].
+    apply/bv64SSA.VSLemmas.memP.
+    rewrite Hv ssa_vars_mem1.
+    exact: (VSLemmas.mem_subset Hmemv Hsub).
+  - move/negP : Hsub => H.
+    apply/negP => Hsub; apply: H.
+    apply/VS.subset_1 => x /VSLemmas.memP Hx.
+    move: Hx.
+    rewrite -(ssa_vars_mem1 m) ssa_vars_rexp_comm => Hx.
+    apply/VSLemmas.memP.
+    move: (bv64SSA.VSLemmas.mem_subset Hx Hsub) => Hmem.
+    rewrite ssa_vars_mem1 in Hmem.
+    assumption.
+Qed.
+
+Lemma ssa_vars_ebexp_subset m e vs :
+  bv64SSA.VS.subset (bv64SSA.vars_ebexp (ssa_ebexp m e)) (ssa_vars m vs) =
+  VS.subset (vars_ebexp e) vs.
+Proof.
+  case Hsub: (VS.subset (vars_ebexp e) vs).
+  - apply: bv64SSA.VS.subset_1 => x.
+    rewrite -ssa_vars_ebexp_comm => /bv64SSA.VSLemmas.memP Hx.
+    move: (ssa_vars_mem2 Hx) => [v [Hv Hmemv]].
+    apply/bv64SSA.VSLemmas.memP.
+    rewrite Hv ssa_vars_mem1.
+    exact: (VSLemmas.mem_subset Hmemv Hsub).
+  - move/negP : Hsub => H.
+    apply/negP => Hsub; apply: H.
+    apply/VS.subset_1 => x /VSLemmas.memP Hx.
+    move: Hx.
+    rewrite -(ssa_vars_mem1 m) ssa_vars_ebexp_comm => Hx.
+    apply/VSLemmas.memP.
+    move: (bv64SSA.VSLemmas.mem_subset Hx Hsub) => Hmem.
+    rewrite ssa_vars_mem1 in Hmem.
+    assumption.
+Qed.
+
+Lemma ssa_vars_rbexp_subset m e vs :
+  bv64SSA.VS.subset (bv64SSA.vars_rbexp (ssa_rbexp m e)) (ssa_vars m vs) =
+  VS.subset (vars_rbexp e) vs.
+Proof.
+  case Hsub: (VS.subset (vars_rbexp e) vs).
+  - apply: bv64SSA.VS.subset_1 => x.
+    rewrite -ssa_vars_rbexp_comm => /bv64SSA.VSLemmas.memP Hx.
+    move: (ssa_vars_mem2 Hx) => [v [Hv Hmemv]].
+    apply/bv64SSA.VSLemmas.memP.
+    rewrite Hv ssa_vars_mem1.
+    exact: (VSLemmas.mem_subset Hmemv Hsub).
+  - move/negP : Hsub => H.
+    apply/negP => Hsub; apply: H.
+    apply/VS.subset_1 => x /VSLemmas.memP Hx.
+    move: Hx.
+    rewrite -(ssa_vars_mem1 m) ssa_vars_rbexp_comm => Hx.
     apply/VSLemmas.memP.
     move: (bv64SSA.VSLemmas.mem_subset Hx Hsub) => Hmem.
     rewrite ssa_vars_mem1 in Hmem.
@@ -1415,42 +1562,92 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ssa_eval_exp w m s ss (e : exp w) :
+Lemma ssa_eval_eexp m s ss (e : eexp) :
   state_equiv m s ss ->
-  bv64SSA.eval_exp (ssa_exp m e) ss = eval_exp e s.
+  bv64SSA.eval_eexp (ssa_eexp m e) ss = eval_eexp e s.
+Proof.
+  move=> Heq; elim: e => /=.
+  - move=> v. rewrite (Heq v). reflexivity.
+  - reflexivity.
+  - move=> op e IH. rewrite ssa_eval_eunop IH. reflexivity.
+  - move=> op e1 IH1 e2 IH2. rewrite ssa_eval_ebinop IH1 IH2. reflexivity.
+Qed.
+
+Lemma ssa_eval_rexp w m s ss (e : rexp w) :
+  state_equiv m s ss ->
+  bv64SSA.eval_rexp (ssa_rexp m e) ss = eval_rexp e s.
 Proof.
   move=> Heq; elim: e => {w} /=.
-  - move=> v.
-    exact: (Logic.eq_sym (Heq v)).
+  - move=> v. exact: (Logic.eq_sym (Heq v)).
   - reflexivity.
-(*  - move=> w op e IH.
-    rewrite ssa_eval_unop IH.
-    reflexivity. *)
-  - move=> w op e1 IH1 e2 IH2.
-    rewrite ssa_eval_binop IH1 IH2.
-    reflexivity.
-  - move=> w e IH p.
-    rewrite IH.
-    reflexivity.
+  - move=> w op e1 IH1 e2 IH2. rewrite ssa_eval_rbinop IH1 IH2. reflexivity.
+  - move=> w e IH p. rewrite IH. reflexivity.
+Qed.
+
+Lemma ssa_eval_ebexp m s ss e :
+  state_equiv m s ss ->
+  bv64SSA.eval_ebexp (ssa_ebexp m e) ss <-> eval_ebexp e s.
+Proof.
+  move=> Heq; elim: e => /=.
+  - done.
+  - move=> e1 e2. rewrite 2!(ssa_eval_eexp _ Heq). done.
+  - move=> e1 e2 p. rewrite 3!(ssa_eval_eexp _ Heq). done.
+  - move=> e1 [IH11 IH12] e2 [IH21 IH22]. tauto.
+Qed.
+
+Lemma ssa_eval_ebexp1 m s ss e :
+  state_equiv m s ss ->
+  bv64SSA.eval_ebexp (ssa_ebexp m e) ss -> eval_ebexp e s.
+Proof.
+  move=> Heq He.
+  move: (ssa_eval_ebexp e Heq) => [H1 H2].
+  exact: (H1 He).
+Qed.
+
+Lemma ssa_eval_ebexp2 m s ss e :
+  state_equiv m s ss ->
+  eval_ebexp e s -> bv64SSA.eval_ebexp (ssa_ebexp m e) ss.
+Proof.
+  move=> Heq He.
+  move: (ssa_eval_ebexp e Heq) => [H1 H2].
+  exact: (H2 He).
+Qed.
+
+Lemma ssa_eval_rbexp m s ss e :
+  state_equiv m s ss ->
+  bv64SSA.eval_rbexp (ssa_rbexp m e) ss <-> eval_rbexp e s.
+Proof.
+  move=> Heq; elim: e => /=.
+  - done.
+  - move=> w op e1 e2. rewrite 2!(ssa_eval_rexp _ Heq) ssa_eval_cmpop. done.
+  - move=> e1 [IH11 IH12] e2 [IH21 IH22]. tauto.
+Qed.
+
+Lemma ssa_eval_rbexp1 m s ss e :
+  state_equiv m s ss ->
+  bv64SSA.eval_rbexp (ssa_rbexp m e) ss -> eval_rbexp e s.
+Proof.
+  move=> Heq He.
+  move: (ssa_eval_rbexp e Heq) => [H1 H2].
+  exact: (H1 He).
+Qed.
+
+Lemma ssa_eval_rbexp2 m s ss e :
+  state_equiv m s ss ->
+  eval_rbexp e s -> bv64SSA.eval_rbexp (ssa_rbexp m e) ss.
+Proof.
+  move=> Heq He.
+  move: (ssa_eval_rbexp e Heq) => [H1 H2].
+  exact: (H2 He).
 Qed.
 
 Lemma ssa_eval_bexp m s ss e :
   state_equiv m s ss ->
   bv64SSA.eval_bexp (ssa_bexp m e) ss <-> eval_bexp e s.
 Proof.
-  move=> Heq; elim: e => /=.
-  - done.
-  - move=> w e1 e2.
-    rewrite 2!(ssa_eval_exp _ Heq).
-    done.
-  - move=> w e1 e2 p.
-    rewrite 3!(ssa_eval_exp _ Heq).
-    done.
-  - move=> w op e1 e2.
-    rewrite 2!(ssa_eval_exp _ Heq) ssa_eval_cmpop.
-    done.
-  - move=> e1 [IH11 IH12] e2 [IH21 IH22].
-    tauto.
+  move=> Heq. split; move=> [H1 H2].
+  - exact: (conj (ssa_eval_ebexp1 Heq H1) (ssa_eval_rbexp1 Heq H2)).
+  - exact: (conj (ssa_eval_ebexp2 Heq H1) (ssa_eval_rbexp2 Heq H2)).
 Qed.
 
 Lemma ssa_eval_bexp1 m s ss e :
@@ -2319,22 +2516,33 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ssa_unchanged_instr_eval_exp w (e : bv64SSA.exp w) s1 s2 i :
-  ssa_vars_unchanged_instr (bv64SSA.vars_exp e) i ->
+Lemma ssa_unchanged_instr_eval_eexp (e : bv64SSA.eexp) s1 s2 i :
+  ssa_vars_unchanged_instr (bv64SSA.vars_eexp e) i ->
   bv64SSA.eval_instr s1 i = s2 ->
-  bv64SSA.eval_exp e s1 = bv64SSA.eval_exp e s2.
+  bv64SSA.eval_eexp e s1 = bv64SSA.eval_eexp e s2.
+Proof.
+  elim: e => /=.
+  - move=> a Hun Hei. rewrite (ssa_unchanged_instr_eval_singleton Hun Hei).
+    reflexivity.
+  - reflexivity.
+  - move=> op e IH Hun Hei. rewrite (IH Hun Hei); reflexivity.
+  - move=> op e1 IH1 e2 IH2 Hun Hei.
+    move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (IH1 Hun1 Hei) (IH2 Hun2 Hei); reflexivity.
+Qed.
+
+Lemma ssa_unchanged_instr_eval_rexp w (e : bv64SSA.rexp w) s1 s2 i :
+  ssa_vars_unchanged_instr (bv64SSA.vars_rexp e) i ->
+  bv64SSA.eval_instr s1 i = s2 ->
+  bv64SSA.eval_rexp e s1 = bv64SSA.eval_rexp e s2.
 Proof.
   elim: e => {w} /=.
-  - move=> a.
-    exact: ssa_unchanged_instr_eval_singleton.
+  - move=> a. exact: ssa_unchanged_instr_eval_singleton.
   - reflexivity.
-  (*  - move=> w op e IH Hun Hei.
-    rewrite (IH Hun Hei); reflexivity. *)
   - move=> w op e1 IH1 e2 IH2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (IH1 Hun1 Hei) (IH2 Hun2 Hei); reflexivity.
-  - move=> w e IH n Hun Hei.
-    rewrite (IH Hun Hei); reflexivity.
+  - move=> w e IH n Hun Hei. rewrite (IH Hun Hei); reflexivity.
 Qed.
 
 Lemma ssa_unchanged_program_eval_singleton v s1 s2 p :
@@ -2357,17 +2565,30 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma ssa_unchanged_program_eval_exp w (e : bv64SSA.exp w) s1 s2 p :
-  ssa_vars_unchanged_program (bv64SSA.vars_exp e) p ->
+Lemma ssa_unchanged_program_eval_eexp (e : bv64SSA.eexp) s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_eexp e) p ->
   bv64SSA.eval_program s1 p = s2 ->
-  bv64SSA.eval_exp e s1 = bv64SSA.eval_exp e s2.
+  bv64SSA.eval_eexp e s1 = bv64SSA.eval_eexp e s2.
+Proof.
+  elim: e => /=.
+  - move=> a Hun Hep. rewrite (ssa_unchanged_program_eval_singleton Hun Hep).
+    reflexivity.
+  - reflexivity.
+  - move=> op e IH Hun Hep. rewrite (IH Hun Hep); reflexivity.
+  - move=> op e1 IH1 e2 IH2 Hun Hep.
+    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (IH1 Hun1 Hep) (IH2 Hun2 Hep); reflexivity.
+Qed.
+
+Lemma ssa_unchanged_program_eval_rexp w (e : bv64SSA.rexp w) s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_rexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_rexp e s1 = bv64SSA.eval_rexp e s2.
 Proof.
   elim: e => {w} /=.
   - move=> a Hun Hep.
     exact: (ssa_unchanged_program_eval_singleton Hun Hep).
   - reflexivity.
-(*  - move=> w op e IH Hun Hep.
-    rewrite (IH Hun Hep); reflexivity. *)
   - move=> w op e1 IH1 e2 IH2 Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (IH1 Hun1 Hep) (IH2 Hun2 Hep); reflexivity.
@@ -2375,29 +2596,24 @@ Proof.
     rewrite (IH Hun Hep); reflexivity.
 Qed.
 
-Lemma ssa_unchanged_instr_eval_bexp e s1 s2 i :
-  ssa_vars_unchanged_instr (bv64SSA.vars_bexp e) i ->
+Lemma ssa_unchanged_instr_eval_ebexp e s1 s2 i :
+  ssa_vars_unchanged_instr (bv64SSA.vars_ebexp e) i ->
   bv64SSA.eval_instr s1 i = s2 ->
-  bv64SSA.eval_bexp e s1 <-> bv64SSA.eval_bexp e s2.
+  bv64SSA.eval_ebexp e s1 <-> bv64SSA.eval_ebexp e s2.
 Proof.
   elim: e => /=.
   - done.
-  - move=> w e1 e2 Hun Hei.
+  - move=> e1 e2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
-    rewrite (ssa_unchanged_instr_eval_exp Hun1 Hei)
-            (ssa_unchanged_instr_eval_exp Hun2 Hei).
+    rewrite (ssa_unchanged_instr_eval_eexp Hun1 Hei)
+            (ssa_unchanged_instr_eval_eexp Hun2 Hei).
     done.
-  - move=> w e1 e2 p Hun Hei.
+  - move=> e1 e2 p Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
     move: (ssa_unchanged_instr_union1 Hun2) => {Hun2} [Hun2 Hunp].
-    rewrite (ssa_unchanged_instr_eval_exp Hun1 Hei)
-            (ssa_unchanged_instr_eval_exp Hun2 Hei)
-            (ssa_unchanged_instr_eval_exp Hunp Hei).
-    done.
-  - move=> w op e1 e2 Hun Hei.
-    move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
-    rewrite (ssa_unchanged_instr_eval_exp Hun1 Hei)
-            (ssa_unchanged_instr_eval_exp Hun2 Hei).
+    rewrite (ssa_unchanged_instr_eval_eexp Hun1 Hei)
+            (ssa_unchanged_instr_eval_eexp Hun2 Hei)
+            (ssa_unchanged_instr_eval_eexp Hunp Hei).
     done.
   - move=> e1 IH1 e2 IH2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -2405,34 +2621,127 @@ Proof.
     done.
 Qed.
 
-Lemma ssa_unchanged_program_eval_bexp e s1 s2 p :
-  ssa_vars_unchanged_program (bv64SSA.vars_bexp e) p ->
-  bv64SSA.eval_program s1 p = s2 ->
-  bv64SSA.eval_bexp e s1 <-> bv64SSA.eval_bexp e s2.
+Lemma ssa_unchanged_instr_eval_rbexp e s1 s2 i :
+  ssa_vars_unchanged_instr (bv64SSA.vars_rbexp e) i ->
+  bv64SSA.eval_instr s1 i = s2 ->
+  bv64SSA.eval_rbexp e s1 <-> bv64SSA.eval_rbexp e s2.
 Proof.
   elim: e => /=.
   - done.
-  - move=> w e1 e2 Hun Hep.
-    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
-    rewrite (ssa_unchanged_program_eval_exp Hun1 Hep)
-            (ssa_unchanged_program_eval_exp Hun2 Hep).
+  - move=> w op e1 e2 Hun Hei.
+    move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (ssa_unchanged_instr_eval_rexp Hun1 Hei)
+            (ssa_unchanged_instr_eval_rexp Hun2 Hei).
     done.
-  - move=> w e1 e2 n Hun Hep.
+  - move=> e1 IH1 e2 IH2 Hun Hei.
+    move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (IH1 Hun1 Hei) (IH2 Hun2 Hei).
+    done.
+Qed.
+
+Lemma ssa_unchanged_instr_eval_bexp e s1 s2 i :
+  ssa_vars_unchanged_instr (bv64SSA.vars_bexp e) i ->
+  bv64SSA.eval_instr s1 i = s2 ->
+  bv64SSA.eval_bexp e s1 <-> bv64SSA.eval_bexp e s2.
+Proof.
+  move=> Hun Hei. move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+  split; move => [H1 H2].
+  - exact: (conj (proj1 (ssa_unchanged_instr_eval_ebexp Hun1 Hei) H1)
+                 (proj1 (ssa_unchanged_instr_eval_rbexp Hun2 Hei) H2)).
+  - exact: (conj (proj2 (ssa_unchanged_instr_eval_ebexp Hun1 Hei) H1)
+                 (proj2 (ssa_unchanged_instr_eval_rbexp Hun2 Hei) H2)).
+Qed.
+
+Lemma ssa_unchanged_program_eval_ebexp e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_ebexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_ebexp e s1 <-> bv64SSA.eval_ebexp e s2.
+Proof.
+  elim: e => /=.
+  - done.
+  - move=> e1 e2 Hun Hep.
+    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (ssa_unchanged_program_eval_eexp Hun1 Hep)
+            (ssa_unchanged_program_eval_eexp Hun2 Hep).
+    done.
+  - move=> e1 e2 n Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
     move: (ssa_unchanged_program_union1 Hun2) => {Hun2} [Hun2 Hunp].
-    rewrite (ssa_unchanged_program_eval_exp Hun1 Hep)
-            (ssa_unchanged_program_eval_exp Hun2 Hep)
-            (ssa_unchanged_program_eval_exp Hunp Hep).
-    done.
-  - move=> w op e1 e2 Hun Hep.
-    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
-    rewrite (ssa_unchanged_program_eval_exp Hun1 Hep)
-            (ssa_unchanged_program_eval_exp Hun2 Hep).
+    rewrite (ssa_unchanged_program_eval_eexp Hun1 Hep)
+            (ssa_unchanged_program_eval_eexp Hun2 Hep)
+            (ssa_unchanged_program_eval_eexp Hunp Hep).
     done.
   - move=> e1 IH1 e2 IH2 Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (IH1 Hun1 Hep) (IH2 Hun2 Hep).
     done.
+Qed.
+
+Lemma ssa_unchanged_program_eval_ebexp1 e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_ebexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_ebexp e s1 -> bv64SSA.eval_ebexp e s2.
+Proof.
+  move=> Hun Hep He.
+  exact: (proj1 (ssa_unchanged_program_eval_ebexp Hun Hep) He).
+Qed.
+
+Lemma ssa_unchanged_program_eval_ebexp2 e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_ebexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_ebexp e s2 -> bv64SSA.eval_ebexp e s1.
+Proof.
+  move=> Hun Hep He.
+  exact: (proj2 (ssa_unchanged_program_eval_ebexp Hun Hep) He).
+Qed.
+
+Lemma ssa_unchanged_program_eval_rbexp e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_rbexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_rbexp e s1 <-> bv64SSA.eval_rbexp e s2.
+Proof.
+  elim: e => /=.
+  - done.
+  - move=> w op e1 e2 Hun Hep.
+    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (ssa_unchanged_program_eval_rexp Hun1 Hep)
+            (ssa_unchanged_program_eval_rexp Hun2 Hep).
+    done.
+  - move=> e1 IH1 e2 IH2 Hun Hep.
+    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (IH1 Hun1 Hep) (IH2 Hun2 Hep).
+    done.
+Qed.
+
+Lemma ssa_unchanged_program_eval_rbexp1 e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_rbexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_rbexp e s1 -> bv64SSA.eval_rbexp e s2.
+Proof.
+  move=> Hun Hep He.
+  exact: (proj1 (ssa_unchanged_program_eval_rbexp Hun Hep) He).
+Qed.
+
+Lemma ssa_unchanged_program_eval_rbexp2 e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_rbexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_rbexp e s2 -> bv64SSA.eval_rbexp e s1.
+Proof.
+  move=> Hun Hep He.
+  exact: (proj2 (ssa_unchanged_program_eval_rbexp Hun Hep) He).
+Qed.
+
+Lemma ssa_unchanged_program_eval_bexp e s1 s2 p :
+  ssa_vars_unchanged_program (bv64SSA.vars_bexp e) p ->
+  bv64SSA.eval_program s1 p = s2 ->
+  bv64SSA.eval_bexp e s1 <-> bv64SSA.eval_bexp e s2.
+Proof.
+  move=> Hun Hep. move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+  split; move=> [H1 H2].
+  - exact: (conj (proj1 (ssa_unchanged_program_eval_ebexp Hun1 Hep) H1)
+                 (proj1 (ssa_unchanged_program_eval_rbexp Hun2 Hep) H2)).
+  - exact: (conj (proj2 (ssa_unchanged_program_eval_ebexp Hun1 Hep) H1)
+                 (proj2 (ssa_unchanged_program_eval_rbexp Hun2 Hep) H2)).
 Qed.
 
 Lemma ssa_unchanged_program_eval_bexp1 e s1 s2 p :
@@ -3244,50 +3553,81 @@ Proof.
     discriminate.
 Qed.
 
-Lemma ssa_exp_var_index w m (e : exp w) v i :
-  bv64SSA.VS.mem (v, i) (bv64SSA.vars_exp (ssa_exp m e)) ->
+Lemma ssa_eexp_var_index m (e : eexp) v i :
+  bv64SSA.VS.mem (v, i) (bv64SSA.vars_eexp (ssa_eexp m e)) ->
+  get_index v m = i.
+Proof.
+  elim: e m v i => /=.
+  - move=> a m x i Hmem. exact: (ssa_singleton_var_index Hmem).
+  - move=> c m v i H. rewrite bv64SSA.VSLemmas.mem_empty in H. discriminate.
+  - move=> op e IH m v i Hmem. exact: IH.
+  - move=> op e1 IH1 e2 IH2 m v i Hmem.
+    case: (bv64SSA.VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
+    + exact: IH1.
+    + exact: IH2.
+Qed.
+
+Lemma ssa_rexp_var_index w m (e : rexp w) v i :
+  bv64SSA.VS.mem (v, i) (bv64SSA.vars_rexp (ssa_rexp m e)) ->
   get_index v m = i.
 Proof.
   elim: e m v i => {w} /=.
-  - move=> a m x i Hmem.
-    exact: (ssa_singleton_var_index Hmem).
-  - move=> w c m v i H.
-    rewrite bv64SSA.VSLemmas.mem_empty in H.
-    discriminate.
-  (*  - move=> w op e IH m v i Hmem.
-    exact: IH. *)
+  - move=> a m x i Hmem. exact: (ssa_singleton_var_index Hmem).
+  - move=> w c m v i H. rewrite bv64SSA.VSLemmas.mem_empty in H. discriminate.
   - move=> w op e1 IH1 e2 IH2 m v i Hmem.
     case: (bv64SSA.VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
     + exact: IH1.
     + exact: IH2.
-  - move=> w e IH p m v i Hmem.
-    exact: IH.
+  - move=> w e IH p m v i Hmem. exact: IH.
+Qed.
+
+Lemma ssa_ebexp_var_index m e v i :
+  bv64SSA.VS.mem (v, i) (bv64SSA.vars_ebexp (ssa_ebexp m e)) ->
+  get_index v m = i.
+Proof.
+  elim: e m v i => /=.
+  - move=> m v i Hmem.
+    discriminate.
+  - move=> e1 e2 m v i Hmem.
+    rewrite bv64SSA.VSLemmas.union_b in Hmem.
+    move/orP: Hmem; case=> Hmem;
+    apply: (ssa_eexp_var_index Hmem); reflexivity.
+  - move=> e1 e2 p m v i Hmem.
+    rewrite !bv64SSA.VSLemmas.union_b in Hmem.
+    repeat (move/orP: Hmem; case=> Hmem);
+    exact: (ssa_eexp_var_index Hmem).
+  - move=> e1 IH1 e2 IH2 m v i Hmem.
+    rewrite bv64SSA.VSLemmas.union_b in Hmem.
+    move/orP: Hmem; case=> Hmem.
+    + exact: IH1.
+    + exact: IH2.
+Qed.
+
+Lemma ssa_rbexp_var_index m e v i :
+  bv64SSA.VS.mem (v, i) (bv64SSA.vars_rbexp (ssa_rbexp m e)) ->
+  get_index v m = i.
+Proof.
+  elim: e m v i => /=.
+  - move=> m v i Hmem.
+    discriminate.
+  - move=> w op e1 e2 m v i Hmem.
+    rewrite bv64SSA.VSLemmas.union_b in Hmem.
+    move/orP: Hmem; case=> Hmem;
+    apply: (ssa_rexp_var_index Hmem); reflexivity.
+  - move=> e1 IH1 e2 IH2 m v i Hmem.
+    rewrite bv64SSA.VSLemmas.union_b in Hmem.
+    move/orP: Hmem; case=> Hmem.
+    + exact: IH1.
+    + exact: IH2.
 Qed.
 
 Lemma ssa_bexp_var_index m e v i :
   bv64SSA.VS.mem (v, i) (bv64SSA.vars_bexp (ssa_bexp m e)) ->
   get_index v m = i.
 Proof.
-  elim: e m v i => /=.
-  - move=> m v i Hmem.
-    discriminate.
-  - move=> w e1 e2 m v i Hmem.
-    rewrite bv64SSA.VSLemmas.union_b in Hmem.
-    move/orP: Hmem; case=> Hmem;
-    apply: (ssa_exp_var_index Hmem); reflexivity.
-  - move=> w e1 e2 p m v i Hmem.
-    rewrite !bv64SSA.VSLemmas.union_b in Hmem.
-    repeat (move/orP: Hmem; case=> Hmem);
-    exact: (ssa_exp_var_index Hmem).
-  - move=> w op e1 e2 m v i Hmem.
-    rewrite bv64SSA.VSLemmas.union_b in Hmem.
-    move/orP: Hmem; case=> Hmem;
-    apply: (ssa_exp_var_index Hmem); reflexivity.
-  - move=> e1 IH1 e2 IH2 m v i Hmem.
-    rewrite bv64SSA.VSLemmas.union_b in Hmem.
-    move/orP: Hmem; case=> Hmem.
-    + exact: IH1.
-    + exact: IH2.
+  move=> Hmem. case: (bv64SSA.VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
+  - exact: (ssa_ebexp_var_index Hmem).
+  - exact: (ssa_rbexp_var_index Hmem).
 Qed.
 
 Lemma ssa_spec_in_pre_unchanged s v :

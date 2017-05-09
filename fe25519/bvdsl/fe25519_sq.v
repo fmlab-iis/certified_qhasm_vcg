@@ -403,16 +403,16 @@ let            x1 :=   1 in
 let            x2 :=   2 in
 let            x3 :=   3 in
 let            x4 :=   4 in
-bvands
+bvrands
   [::
-     bvult (bvvar x0) (bvposz (2^54)%Z);
-     bvult (bvvar x1) (bvposz (2^54)%Z);
-     bvult (bvvar x2) (bvposz (2^54)%Z);
-     bvult (bvvar x3) (bvposz (2^54)%Z);
-     bvult (bvvar x4) (bvposz (2^54)%Z)
+     (bvrvar x0) <r (bvposz (2^54)%Z);
+     (bvrvar x1) <r (bvposz (2^54)%Z);
+     (bvrvar x2) <r (bvposz (2^54)%Z);
+     (bvrvar x3) <r (bvposz (2^54)%Z);
+     (bvrvar x4) <r (bvposz (2^54)%Z)
   ].
 
-Definition radix51 := @limbs 51 520.
+Definition radix51 := @limbs 51.
 
 Definition fe25519_sq_post : bexp :=
 let            x0 :=   0 in
@@ -426,21 +426,20 @@ let            z2 :=   7 in
 let            z3 :=   8 in
 let            z4 :=   9 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
-bvands [::
-          bvEqMod
-          (
-            (radix51 [::bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
-            @*
-            (radix51 [::bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
-          )
-          (radix51 [::bvvar z0; bvvar z1; bvvar z2; bvvar z3; bvvar z4])
-          (bvposz n25519);
-          bvult (bvvar z0) (bvposz (2^51+2^15)%Z);
-          bvult (bvvar z1) (bvposz (2^51+2^15)%Z);
-          bvult (bvvar z2) (bvposz (2^51+2^15)%Z);
-          bvult (bvvar z3) (bvposz (2^51+2^15)%Z);
-          bvult (bvvar z4) (bvposz (2^51+2^15)%Z)
-       ].
+bvands2
+  [::
+     bveEqMod
+     (bvesq (radix51 [::bvevar x0; bvevar x1; bvevar x2; bvevar x3; bvevar x4]))
+     (radix51 [::bvevar z0; bvevar z1; bvevar z2; bvevar z3; bvevar z4])
+     (bvconst n25519)
+  ]
+  [::
+     (bvrvar z0) <r (bvposz (2^51+2^15)%Z);
+     (bvrvar z1) <r (bvposz (2^51+2^15)%Z);
+     (bvrvar z2) <r (bvposz (2^51+2^15)%Z);
+     (bvrvar z3) <r (bvposz (2^51+2^15)%Z);
+     (bvrvar z4) <r (bvposz (2^51+2^15)%Z)
+  ].
 
 Definition fe25519_sq_spec :=
   {| spre := fe25519_sq_pre;

@@ -77,7 +77,7 @@ VSLemmas.OP.P.of_list [:: x0; x1; x2; x3; x4].
 
 Definition fe25519_mul121666_pre : bexp := bvTrue.
 
-Definition radix51 := @limbs 51 292.
+Definition radix51 := @limbs 51.
 
 Definition fe25519_mul121666_post : bexp :=
 let            x0 :=   0 in
@@ -91,20 +91,23 @@ let            r2 :=  12 in
 let            r3 :=  13 in
 let            r4 :=  14 in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
-bvands [::
-          bvEqMod (
-            (radix51 [::bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4])
-              @*
-              (bvposz 121666%Z)
-          )
-          (radix51 [::bvvar r0; bvvar r1; bvvar r2; bvvar r3; bvvar r4])
-          (bvposz n25519);
-          bvult (bvvar r0) (bvposz (2^52)%Z);
-          bvult (bvvar r1) (bvposz (2^52)%Z);
-          bvult (bvvar r2) (bvposz (2^52)%Z);
-          bvult (bvvar r3) (bvposz (2^52)%Z);
-          bvult (bvvar r4) (bvposz (2^52)%Z)
-       ].
+bvands2
+  [::
+     bveEqMod (
+       (radix51 [::bvevar x0; bvevar x1; bvevar x2; bvevar x3; bvevar x4])
+       *e
+       (bveconst 121666%Z)
+     )
+     (radix51 [::bvevar r0; bvevar r1; bvevar r2; bvevar r3; bvevar r4])
+     (bvconst n25519)
+  ]
+  [::
+     (bvrvar r0) <r (bvposz (2^52)%Z);
+     (bvrvar r1) <r (bvposz (2^52)%Z);
+     (bvrvar r2) <r (bvposz (2^52)%Z);
+     (bvrvar r3) <r (bvposz (2^52)%Z);
+     (bvrvar r4) <r (bvposz (2^52)%Z)
+  ].
 
 Definition fe25519_mul121666_spec :=
   {| spre := fe25519_mul121666_pre;

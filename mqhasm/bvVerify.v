@@ -40,17 +40,6 @@ Ltac verify_qfbv_with o :=
   let a := get_smt_solver o in
   bvsimpl; solve_qfbv_with a.
 
-(* Prove bv2z_bexp_safe_at with SMT solvers. *)
-Ltac verify_bexp_safe_with o :=
-  let a := get_smt_solver o in
-  lazymatch goal with
-  | |- forall s, is_true (bv2z_bexp_safe_at ?e s) =>
-    intro s; verify_bexp_safe_with o
-  | |- is_true (bv2z_bexp_safe_at ?e ?s) =>
-    apply: eval_bexp_bexp_safe1; bvsimpl; solve_qfbv_with a
-  | |- _ => fail 100 "Failed to prove bv2z_bexp_safe_at: goal does not match"
-  end.
-
 (* Prove that program is safe. *)
 Ltac verify_program_safe_with o vs :=
   let b := constr:(opt_profiling o) in
@@ -83,7 +72,7 @@ Ltac verify_spec_rng_with o vs :=
   let b := eval compute in b in
   let tac _ :=
       match goal with
-      | |- bv64SSA.valid_spec ?s =>
+      | |- bv64SSA.valid_rspec ?s =>
         apply: (@bexp_spec_sound_imp (bvSSA.ssa_vars bvSSA.empty_vmap vs));
         [
           (* well_formed_ssa_spec *)
@@ -131,7 +120,7 @@ Ltac bv2zspec_to_poly_with o vs :=
   let b := eval compute in b in
   let tac _ :=
       lazymatch goal with
-      | |- zSSA.valid_spec (bv2z_spec_poly (bvSSA.ssa_spec ?spec)) =>
+      | |- zSSA.valid_spec (bv2z_spec_eqn (bvSSA.ssa_spec ?spec)) =>
         apply: (zPoly.bexp_spec_sound
                   (vs:=zSSA.ssa_vars zSSA.empty_vmap (bvdsl2zdsl_vars vs)));
         [ (* well_formed_ssa_spec *)
@@ -149,9 +138,13 @@ Ltac bv2zspec_to_poly_with o vs :=
 Tactic Notation "bv2zspec_to_poly" constr(vs) :=
   bv2zspec_to_poly_with default_options vs.
 
+(* zVerify does not accept Zpower_nat. *)
+Ltac rewrite_zpower_nat := gen_eqs; rewrite !Zpower_nat_Z; simplZ.
+
 Ltac verify_bv2zssa_with o vs :=
   bv2zspec_to_poly_with o vs; to_assign_with o;
-  rewrite_assign_with o; rewrite_equality_with o; solve_zspec_with o.
+  rewrite_assign_with o; rewrite_equality_with o;
+  rewrite_zpower_nat; solve_zspec_with o.
 
 Tactic Notation "verify_bv2zssa" constr(vs) :=
   verify_bv2zssa_with default_options vs.
@@ -170,26 +163,10 @@ Ltac verify_bvdsl_with o vs :=
         done
       |
         (* bv2z_spec_safe_qfbv *)
-        split; last split;
-        [
-          (* bv2z_spre_safe_qfbv *)
-          (match b with
-           | true => time "bv2z_spre_safe_qfbv" (verify_qfbv_with o)
-           | false => (verify_qfbv_with o)
-           end) || fail 100 "bv2z_spre_safe_qfbv fails"
-        |
-          (* bv2z_sprog_safe_qfbv *)
-          (match b with
-           | true => time "bv2z_sprog_safe_qfbv" (verify_qfbv_with o)
-           | false => (verify_qfbv_with o)
-           end) || fail 100 "bv2z_sprog_safe_qfbv fails"
-        |
-          (* bv2z_spost_safe_qfbv *)
-          (match b with
-           | true => time "bv2z_spost_safe_qfbv" (verify_qfbv_with o)
-           | false => (verify_qfbv_with o)
-           end) || fail 100 "bv2z_spost_safe_qfbv fails"
-        ]
+        (match b with
+         | true => time "bv2z_spec_safe_qfbv" (verify_qfbv_with o)
+         | false => (verify_qfbv_with o)
+         end) || fail 100 "bv2z_spec_safe_qfbv fails"
       ]
     |
       (* valid bv2z_spec_rng *)

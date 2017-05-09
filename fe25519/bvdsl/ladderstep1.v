@@ -12,7 +12,7 @@ Import Prenex Implicits.
 Open Scope N_scope.
 Open Scope bvdsl_scope.
 
-Definition radix51 := @limbs 51 1032.
+Definition radix51 := @limbs 51.
 
 Definition bi : Set := N * N * N * N * N.
 
@@ -22,7 +22,7 @@ Definition bi_list (X : bi) :=
 
 Definition bi_limbs (X : bi) :=
   let '(x0, x1, x2, x3, x4) := X in
-  radix51 [:: bvvar x0; bvvar x1; bvvar x2; bvvar x3; bvvar x4].
+  radix51 [:: bvevar x0; bvevar x1; bvevar x2; bvevar x3; bvevar x4].
 
 Definition fe25519_add (X Y R : bi) : program :=
 let '(x0, x1, x2, x3, x4) := X in
@@ -1112,15 +1112,15 @@ let T9   := (230, 231, 232, 233, 234) in
 VSLemmas.OP.P.of_list (bi_list X1 ++ bi_list X2 ++ bi_list Z2 ++
                                bi_list X3 ++ bi_list Z3).
 
-Definition bi_range (X : bi) max :=
+Definition bi_range (X : bi) max : rbexp :=
   let '(x0, x1, x2, x3, x4) := X in
-  bvands [::
-            bvult (bvvar x0) max;
-            bvult (bvvar x1) max;
-            bvult (bvvar x2) max;
-            bvult (bvvar x3) max;
-            bvult (bvvar x4) max
-         ].
+  bvrands [::
+             (bvrvar x0) <r max;
+             (bvrvar x1) <r max;
+             (bvrvar x2) <r max;
+             (bvrvar x3) <r max;
+             (bvrvar x4) <r max
+          ].
 
 Definition fe25519_ladderstep_pre : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1147,7 +1147,7 @@ let T7   := (210, 211, 212, 213, 214) in
 let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let max  := bvposz (2^51+2^15)%Z in
-bvands [::
+bvrands [::
           bi_range X1 max;
           bi_range X2 max;
           bi_range Z2 max;
@@ -1181,13 +1181,16 @@ let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 let max  := bvposz (2^51+2^15)%Z in
-bvands [::
-          bvEqMod
-          (bi_limbs X2')
-          (bvsq (bvsub (bvsq (bi_limbs X2)) (bvsq (bi_limbs Z2))))
-          (bvposz n25519);
-          bi_range X2' max
-       ].
+bvands2
+  [::
+     bveEqMod
+     (bi_limbs X2')
+     (bvesq (bvesub (bvesq (bi_limbs X2)) (bvesq (bi_limbs Z2))))
+     (bvconst n25519)
+  ]
+  [::
+     bi_range X2' max
+  ].
 
 Definition fe25519_ladderstep_post2 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1215,19 +1218,23 @@ let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 let max  := bvposz (2^51+2^15)%Z in
-bvands [::
-          bvEqMod
-          (bi_limbs Z2')
-          (bvmuls [:: bvposz 4%Z;
-                     bi_limbs X2;
-                     bi_limbs Z2;
-                     bvadds [:: bvsq (bi_limbs X2);
-                               bvmuls [:: bvposz 486662%Z; bi_limbs X2; bi_limbs Z2];
-                               bvsq (bi_limbs Z2)]
-          ])
-          (bvposz n25519);
-          bi_range Z2' max
-       ].
+bvands2
+  [::
+     bveEqMod
+     (bi_limbs Z2')
+     (bvemuls
+        [:: bvconst 4%Z;
+           bi_limbs X2;
+           bi_limbs Z2;
+           bveadds [:: bvesq (bi_limbs X2);
+                      bvemuls [:: bvconst 486662%Z; bi_limbs X2; bi_limbs Z2];
+                      bvesq (bi_limbs Z2)]
+     ])
+     (bvconst n25519)
+  ]
+  [::
+     bi_range Z2' max
+  ].
 
 Definition fe25519_ladderstep_post3 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1255,19 +1262,22 @@ let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 let max  := bvposz (2^51+2^15)%Z in
-bvands [::
-          bvEqMod
-          (bvmul (bi_limbs X3')
-                 (bvmul (bi_limbs X1)
-                        (bvsq (bvsub (bvmul (bi_limbs X3) (bi_limbs Z2))
-                                     (bvmul (bi_limbs X2) (bi_limbs Z3))))))
-          (bvmul (bi_limbs Z3')
-                 (bvsq (bvsub (bvmul (bi_limbs X2) (bi_limbs X3))
-                              (bvmul (bi_limbs Z2) (bi_limbs Z3)))))
-          (bvposz n25519);
-          bi_range X3' max;
-          bi_range Z3' max
-       ].
+bvands2
+  [::
+     bveEqMod
+     (bvemul (bi_limbs X3')
+             (bvemul (bi_limbs X1)
+                     (bvesq (bvesub (bvemul (bi_limbs X3) (bi_limbs Z2))
+                                    (bvemul (bi_limbs X2) (bi_limbs Z3))))))
+     (bvemul (bi_limbs Z3')
+             (bvesq (bvesub (bvemul (bi_limbs X2) (bi_limbs X3))
+                            (bvemul (bi_limbs Z2) (bi_limbs Z3)))))
+     (bvconst n25519)
+  ]
+  [::
+     bi_range X3' max;
+     bi_range Z3' max
+  ].
 
 Definition fe25519_ladderstep_post3_1 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1295,15 +1305,18 @@ let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 let max  := bvposz (2^51+2^15)%Z in
-bvands [::
-          bvEqMod
-          (bi_limbs X3')
-          (bvmul (bvposz 4%Z)
-                 (bvsq (bvsub (bvmul (bi_limbs X2) (bi_limbs X3))
-                              (bvmul (bi_limbs Z2) (bi_limbs Z3)))))
-          (bvposz n25519);
-          bi_range X3' max
-       ].
+bvands2
+  [::
+     bveEqMod
+     (bi_limbs X3')
+     (bvemul (bvconst 4%Z)
+             (bvesq (bvesub (bvemul (bi_limbs X2) (bi_limbs X3))
+                            (bvemul (bi_limbs Z2) (bi_limbs Z3)))))
+     (bvconst n25519)
+  ]
+  [::
+     bi_range X3' max
+  ].
 
 Definition fe25519_ladderstep_post3_2 : bexp :=
 let X1   := (10, 11, 12, 13, 14) in
@@ -1331,16 +1344,19 @@ let T8   := (220, 221, 222, 223, 224) in
 let T9   := (230, 231, 232, 233, 234) in
 let        n25519 := 57896044618658097711785492504343953926634992332820282019728792003956564819949%Z in
 let max  := bvposz (2^51+2^15)%Z in
-bvands [::
-          bvEqMod
-          (bi_limbs Z3')
-          (bvmul (bvposz 4%Z)
-                 (bvmul (bi_limbs X1)
-                        (bvsq (bvsub (bvmul (bi_limbs X3) (bi_limbs Z2))
-                                     (bvmul (bi_limbs X2) (bi_limbs Z3))))))
-          (bvposz n25519);
-          bi_range Z3' max
-       ].
+bvands2
+  [::
+     bveEqMod
+     (bi_limbs Z3')
+     (bvemul (bvconst 4%Z)
+             (bvemul (bi_limbs X1)
+                     (bvesq (bvesub (bvemul (bi_limbs X3) (bi_limbs Z2))
+                                    (bvemul (bi_limbs X2) (bi_limbs Z3))))))
+     (bvconst n25519)
+  ]
+  [::
+     bi_range Z3' max
+  ].
 
 Definition fe25519_ladderstep_post : bexp :=
   bvands [:: fe25519_ladderstep_post1;

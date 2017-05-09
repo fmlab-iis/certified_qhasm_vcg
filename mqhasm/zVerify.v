@@ -64,9 +64,11 @@ Ltac apply_zslice_sound o :=
   | false => idtac
   end.
 
-Ltac lsimplZ :=
+Ltac lsimplZ2 :=
   lazy beta iota zeta delta
   -[Zmult Zplus Zpower Z.pow_pos Zminus Zopp Zdiv Zmod].
+
+Ltac lsimplZ := lsimplZ2; simplZ3.
 
 Ltac simplZ_with o :=
   let c := constr:((opt_lazy o, opt_native o)) in

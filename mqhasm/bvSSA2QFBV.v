@@ -2,7 +2,7 @@
 From Coq Require Import Program ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq eqtype div.
 From Common Require Import Arch Types SsrOrdered Bits Lists FSets Bools Nats ZAriths Var Store.
-From mQhasm Require Import bvSSA QFBV.
+From mQhasm Require Import bvSSA bvSSA2zSSA QFBV.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -128,32 +128,30 @@ Definition bexp_instr (i : instr) : QFBV64.bexp :=
 Definition bexp_program (p : program) : seq QFBV64.bexp :=
   map bexp_instr p.
 
-Fixpoint exp_exp w (e : exp w) : QFBV64.exp w :=
+Fixpoint exp_rexp w (e : rexp w) : QFBV64.exp w :=
   match e with
-  | bvVarE v => QFBV64.bvVar v
-  | bvConstE _ c => QFBV64.bvConst c
-  | bvBinop _ op e1 e2 =>
+  | bvrVar v => QFBV64.bvVar v
+  | bvrConst _ c => QFBV64.bvConst c
+  | bvrBinop _ op e1 e2 =>
     match op with
-    | bvAddOp => QFBV64.bvAdd (exp_exp e1) (exp_exp e2)
-    | bvSubOp => QFBV64.bvSub (exp_exp e1) (exp_exp e2)
-    | bvMulOp => QFBV64.bvMul (exp_exp e1) (exp_exp e2)
+    | bvAddOp => QFBV64.bvAdd (exp_rexp e1) (exp_rexp e2)
+    | bvSubOp => QFBV64.bvSub (exp_rexp e1) (exp_rexp e2)
+    | bvMulOp => QFBV64.bvMul (exp_rexp e1) (exp_rexp e2)
     end
-  | bvExt _ e i => QFBV64.bvZeroExtend i (exp_exp e)
+  | bvrExt _ e i => QFBV64.bvZeroExtend i (exp_rexp e)
   end.
 
-Fixpoint bexp_bexp (e : bexp) : QFBV64.bexp :=
+Fixpoint bexp_rbexp (e : rbexp) : QFBV64.bexp :=
   match e with
-  | bvTrue => QFBV64.bvTrue
-  | bvEq _ e1 e2 => QFBV64.bvEq (exp_exp e1) (exp_exp e2)
-  | bvEqMod _ e1 e2 p => QFBV64.bvEqMod (exp_exp e1) (exp_exp e2) (exp_exp p)
-  | bvCmp _ op e1 e2 =>
+  | bvrTrue => QFBV64.bvTrue
+  | bvrCmp _ op e1 e2 =>
     match op with
-    | bvUltOp => QFBV64.bvUlt (exp_exp e1) (exp_exp e2)
-    | bvUleOp => QFBV64.bvUle (exp_exp e1) (exp_exp e2)
-    | bvUgtOp => QFBV64.bvUgt (exp_exp e1) (exp_exp e2)
-    | bvUgeOp => QFBV64.bvUge (exp_exp e1) (exp_exp e2)
+    | bvUltOp => QFBV64.bvUlt (exp_rexp e1) (exp_rexp e2)
+    | bvUleOp => QFBV64.bvUle (exp_rexp e1) (exp_rexp e2)
+    | bvUgtOp => QFBV64.bvUgt (exp_rexp e1) (exp_rexp e2)
+    | bvUgeOp => QFBV64.bvUge (exp_rexp e1) (exp_rexp e2)
     end
-  | bvAnd e1 e2 => QFBV64.bvConj (bexp_bexp e1) (bexp_bexp e2)
+  | bvrAnd e1 e2 => QFBV64.bvConj (bexp_rbexp e1) (bexp_rbexp e2)
   end.
 
 Record bexp_spec : Type :=
@@ -161,10 +159,10 @@ Record bexp_spec : Type :=
                bprog : seq QFBV64.bexp;
                bpost : QFBV64.bexp }.
 
-Definition bexp_of_spec (s : spec) : bexp_spec :=
-  {| bpre := bexp_bexp (spre s);
-     bprog := bexp_program (sprog s);
-     bpost := bexp_bexp (spost s) |}.
+Definition bexp_of_rspec (s : rspec) : bexp_spec :=
+  {| bpre := bexp_rbexp (rspre s);
+     bprog := bexp_program (rsprog s);
+     bpost := bexp_rbexp (rspost s) |}.
 
 
 
@@ -228,35 +226,29 @@ Proof.
   case: a => /=; reflexivity.
 Qed.
 
-Lemma eval_exp_exp w (e : exp w) s:
-  QFBV64.eval_exp (exp_exp e) s = eval_exp e s.
+Lemma eval_exp_rexp w (e : rexp w) s:
+  QFBV64.eval_exp (exp_rexp e) s = eval_rexp e s.
 Proof.
   elim: e => {w} /=.
   - reflexivity.
   - reflexivity.
-  - move=> w op e1 IH1 e2 IH2.
-    case: op; rewrite /= IH1 IH2; reflexivity.
-  - move=> w e IH m.
-    rewrite IH; reflexivity.
+  - move=> w op e1 IH1 e2 IH2. case: op; rewrite /= IH1 IH2; reflexivity.
+  - move=> w e IH m. rewrite IH; reflexivity.
 Qed.
 
-Lemma eval_bexp_bexp e s:
-  QFBV64.eval_bexp (bexp_bexp e) s <-> eval_bexp e s.
+Lemma eval_bexp_rbexp e s:
+  QFBV64.eval_bexp (bexp_rbexp e) s <-> eval_rbexp e s.
 Proof.
   split; elim: e => /=.
   - done.
-  - move=> w e1 e2; by repeat rewrite eval_exp_exp.
-  - move=> w e1 e2 n; repeat rewrite eval_exp_exp; exact: bv_mod_modulo.
-  - move=> w op e1 e2. case: op; rewrite /= 2!eval_exp_exp.
+  - move=> w op e1 e2. case: op; rewrite /= 2!eval_exp_rexp.
     + done.
     + done.
     + by rewrite ltBNle.
     + by rewrite leBNlt.
   - move=> e1 IH1 e2 IH2 [H1 H2]; exact: (conj (IH1 H1) (IH2 H2)).
   - done.
-  - move=> w e1 e2; by repeat rewrite eval_exp_exp.
-  - move=> w e1 e2 n; repeat rewrite eval_exp_exp; exact: modulo_bv_mod.
-  - move=> w op e1 e2; case: op; rewrite /= 2!eval_exp_exp.
+  - move=> w op e1 e2; case: op; rewrite /= 2!eval_exp_rexp.
     + done.
     + done.
     + by rewrite ltBNle.
@@ -264,18 +256,16 @@ Proof.
   - move=> e1 IH1 e2 IH2 [H1 H2]; exact: (conj (IH1 H1) (IH2 H2)).
 Qed.
 
-Lemma eval_bexp_bexp1 e s:
-  QFBV64.eval_bexp (bexp_bexp e) s -> eval_bexp e s.
+Lemma eval_bexp_rbexp1 e s:
+  QFBV64.eval_bexp (bexp_rbexp e) s -> eval_rbexp e s.
 Proof.
-  move: (eval_bexp_bexp e s) => [H1 H2].
-  exact: H1.
+  move: (eval_bexp_rbexp e s) => [H1 H2]. exact: H1.
 Qed.
 
-Lemma eval_bexp_bexp2 e s:
-  eval_bexp e s -> QFBV64.eval_bexp (bexp_bexp e) s.
+Lemma eval_bexp_rbexp2 e s:
+  eval_rbexp e s -> QFBV64.eval_bexp (bexp_rbexp e) s.
 Proof.
-  move: (eval_bexp_bexp e s) => [H1 H2].
-  exact: H2.
+  move: (eval_bexp_rbexp e s) => [H1 H2]. exact: H2.
 Qed.
 
 Lemma eval_bexp_instr i p s1 s2 :
@@ -467,21 +457,18 @@ Definition valid_bexp_spec_conj (s : bexp_spec) : Prop :=
     eval_bexps_conj (bprog s) st ->
     QFBV64.eval_bexp (bpost s) st.
 
-Lemma bexp_spec_sound_conj (vs : VS.t) (s : spec) :
+Lemma bexp_spec_sound_conj (vs : VS.t) (s : rspec) :
   well_formed_ssa_spec vs s ->
-  valid_bexp_spec_conj (bexp_of_spec s) -> valid_spec s.
+  valid_bexp_spec_conj (bexp_of_rspec s) -> valid_rspec (bv2z_spec_rng s).
 Proof.
   destruct s as [f p g].
-  rewrite /bexp_of_spec /valid_bexp_spec_conj /=.
-  move=> Hwfssa Hvalid s1 s2 /= Hf Hp.
-  apply: eval_bexp_bexp1.
+  rewrite /bexp_of_rspec /valid_bexp_spec_conj /bv2z_spec_rng /=.
+  move=> Hwfssa Hvalid s1 s2 /= Hf Hp. apply: eval_bexp_rbexp1.
   apply: Hvalid.
-  - move: Hwfssa => /andP /= [/andP [Hwf Huc] Hssa].
-    apply: eval_bexp_bexp2.
-    apply: (ssa_unchanged_program_eval_bexp1 _ Hp Hf).
+  - move: Hwfssa => /andP /= [/andP [Hwf Huc] Hssa]. apply: eval_bexp_rbexp2.
+    apply: (proj1 (ssa_unchanged_program_eval_rbexp _ Hp) Hf).
     apply: (ssa_unchanged_program_subset Huc).
-    move/andP: Hwf => /= [/andP [H _] _].
-    exact: H.
+    move/andP: Hwf => /= [/andP [H _] _]. exact: (VSLemmas.subset_union5 H).
   - exact: (bexp_program_eval (well_formed_ssa_spec_program Hwfssa) Hp).
 Qed.
 
@@ -525,9 +512,9 @@ Proof.
     exact: (IH (Hi Hhd) Htl).
 Qed.
 
-Lemma bexp_spec_sound_imp (vs : VS.t) (s : spec) :
+Lemma bexp_spec_sound_imp (vs : VS.t) (s : rspec) :
   well_formed_ssa_spec vs s ->
-  valid_bexp_spec_imp (bexp_of_spec s) -> valid_spec s.
+  valid_bexp_spec_imp (bexp_of_rspec s) -> valid_rspec (bv2z_spec_rng s).
 Proof.
   move=> Hw Hv.
   apply: (bexp_spec_sound_conj Hw).
@@ -540,9 +527,9 @@ Qed.
 
 Definition valid_bexp_spec := valid_bexp_spec_imp.
 
-Theorem bexp_spec_sound (vs : VS.t) (s : spec) :
+Theorem bexp_spec_sound (vs : VS.t) (s : rspec) :
   well_formed_ssa_spec vs s ->
-  valid_bexp_spec (bexp_of_spec s) -> valid_spec s.
+  valid_bexp_spec (bexp_of_rspec s) -> valid_rspec (bv2z_spec_rng s).
 Proof.
   exact: bexp_spec_sound_imp.
 Qed.
@@ -550,8 +537,6 @@ Qed.
 
 
 (* Convert conditions needed for the conversion from bvSSA to zSSA. *)
-
-From mQhasm Require Import bvSSA2zSSA.
 
 Definition bexp_atomic_addB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvAddo (exp_atomic a1) (exp_atomic a2)).
@@ -579,24 +564,6 @@ Definition bexp_atomic_shlBn_safe (a : atomic) (n : bv64SSA.value) : QFBV64.bexp
 Definition bexp_atomic_concatshl_safe (a1 a2 : atomic) (n : bv64SSA.value) : QFBV64.bexp :=
   bexp_atomic_shlBn_safe a1 n.
 
-Definition bexp_exp_addB_safe w (e1 e2 : exp w) : QFBV64.bexp :=
-  QFBV64.bvLneg (QFBV64.bvAddo (exp_exp e1) (exp_exp e2)).
-
-Definition bexp_exp_adcB_safe w (e1 e2 c : exp w) : QFBV64.bexp :=
-  QFBV64.bvEq
-    (@QFBV64.bvHigh _ w
-                    (QFBV64.bvAdd
-                       (QFBV64.bvAdd (QFBV64.bvZeroExtend w (exp_exp e1))
-                                     (QFBV64.bvZeroExtend w (exp_exp e2)))
-                       (QFBV64.bvZeroExtend w (exp_exp c))))
-    (QFBV64.bvConst (fromNat 0)).
-
-Definition bexp_exp_subB_safe w (e1 e2 : exp w) : QFBV64.bexp :=
-  QFBV64.bvLneg (QFBV64.bvSubo (exp_exp e1) (exp_exp e2)).
-
-Definition bexp_exp_mulB_safe w (e1 e2 : exp w) : QFBV64.bexp :=
-  QFBV64.bvLneg (QFBV64.bvMulo (exp_exp e1) (exp_exp e2)).
-
 Definition bexp_instr_safe (i : instr) : QFBV64.bexp :=
   match i with
   | bvAssign _ _ => QFBV64.bvTrue
@@ -616,36 +583,6 @@ Fixpoint bexp_program_safe (p : program) : QFBV64.bexp :=
   match p with
   | [::] => QFBV64.bvTrue
   | hd::tl => QFBV64.bvConj (bexp_instr_safe hd) (bexp_program_safe tl)
-  end.
-
-Definition bexp_binop_safe w (op : binop) (e1 e2 : exp w) : QFBV64.bexp :=
-  match op with
-  | bvAddOp => bexp_exp_addB_safe e1 e2
-  | bvSubOp => bexp_exp_subB_safe e1 e2
-  | bvMulOp => bexp_exp_mulB_safe e1 e2
-  end.
-
-Fixpoint bexp_exp_safe w (e : exp w) : QFBV64.bexp :=
-  match e with
-  | bvVarE _
-  | bvConstE _ _ => QFBV64.bvTrue
-  | bvBinop _ op e1 e2 =>
-    QFBV64.bvConj
-      (bexp_exp_safe e1)
-      (QFBV64.bvConj (bexp_exp_safe e2)
-                     (bexp_binop_safe op e1 e2))
-  | bvExt _ e _ => bexp_exp_safe e
-  end.
-
-Fixpoint bexp_bexp_safe (e : bexp) : QFBV64.bexp :=
-  match e with
-  | bvTrue => QFBV64.bvTrue
-  | bvEq _ e1 e2 => QFBV64.bvConj (bexp_exp_safe e1) (bexp_exp_safe e2)
-  | bvEqMod _ e1 e2 p => QFBV64.bvConj (bexp_exp_safe e1)
-                                       (QFBV64.bvConj (bexp_exp_safe e2)
-                                                      (bexp_exp_safe p))
-  | bvCmp _ op e1 e2 => QFBV64.bvConj (bexp_exp_safe e1) (bexp_exp_safe e2)
-  | bvAnd e1 e2 => QFBV64.bvConj (bexp_bexp_safe e1) (bexp_bexp_safe e2)
   end.
 
 Definition bexp_program_safe_at (p : program) s : Prop :=
@@ -785,149 +722,6 @@ Proof.
   - exact: (eval_bexp_atomic_shlBn_safe2 H).
   - done.
   - exact: (eval_bexp_atomic_concatshl_safe2 H).
-Qed.
-
-Lemma eval_bexp_exp_addB_safe1 w (e1 e2 : exp w) s :
-  QFBV64.eval_bexp (bexp_binop_safe Q.bvAddOp e1 e2) s ->
-  addB_safe (eval_exp e1 s) (eval_exp e2 s).
-Proof.
-  rewrite /addB_safe /=. rewrite !eval_exp_exp. move/negP=> H.
-  exact: H.
-Qed.
-
-Lemma eval_bexp_exp_addB_safe2 w (e1 e2 : exp w) s :
-  addB_safe (eval_exp e1 s) (eval_exp e2 s) ->
-  QFBV64.eval_bexp (bexp_binop_safe Q.bvAddOp e1 e2) s.
-Proof.
-  rewrite /addB_safe /=. rewrite !eval_exp_exp. move/negP=> H.
-  exact: H.
-Qed.
-
-Lemma eval_bexp_exp_subB_safe1 w (e1 e2 : exp w) s :
-  QFBV64.eval_bexp (bexp_binop_safe Q.bvSubOp e1 e2) s ->
-  subB_safe (eval_exp e1 s) (eval_exp e2 s).
-Proof.
-  rewrite /subB_safe /=. rewrite !eval_exp_exp. move/negP=> H.
-  exact: H.
-Qed.
-
-Lemma eval_bexp_exp_subB_safe2 w (e1 e2 : exp w) s :
-  subB_safe (eval_exp e1 s) (eval_exp e2 s) ->
-  QFBV64.eval_bexp (bexp_binop_safe Q.bvSubOp e1 e2) s.
-Proof.
-  rewrite /subB_safe /=. rewrite !eval_exp_exp. move/negP=> H.
-  exact: H.
-Qed.
-
-Lemma eval_bexp_exp_mulB_safe1 w (e1 e2 : exp w) s :
-  QFBV64.eval_bexp (bexp_binop_safe Q.bvMulOp e1 e2) s ->
-  mulB_safe (eval_exp e1 s) (eval_exp e2 s).
-Proof.
-  rewrite /mulB_safe /=. rewrite !eval_exp_exp. move=> H.
-  exact: (nneq_is_eqn H).
-Qed.
-
-Lemma eval_bexp_exp_mulB_safe2 w (e1 e2 : exp w) s :
-  mulB_safe (eval_exp e1 s) (eval_exp e2 s) ->
-  QFBV64.eval_bexp (bexp_binop_safe Q.bvMulOp e1 e2) s.
-Proof.
-  rewrite /mulB_safe /=. rewrite !eval_exp_exp. move=> H Hne.
-  apply: Hne; exact: (eqP H).
-Qed.
-
-Lemma eval_bexp_binop_safe1 w op (e1 e2 : exp w) s :
-  QFBV64.eval_bexp (bexp_binop_safe op e1 e2) s ->
-  bv2z_binop_safe op (eval_exp e1 s) (eval_exp e2 s).
-Proof.
-  elim: op => /=.
-  - exact: eval_bexp_exp_addB_safe1.
-  - exact: eval_bexp_exp_subB_safe1.
-  - exact: eval_bexp_exp_mulB_safe1.
-Qed.
-
-Lemma eval_bexp_binop_safe2 w op (e1 e2 : exp w) s :
-  bv2z_binop_safe op (eval_exp e1 s) (eval_exp e2 s) ->
-  QFBV64.eval_bexp (bexp_binop_safe op e1 e2) s.
-Proof.
-  elim: op => /=.
-  - exact: eval_bexp_exp_addB_safe2.
-  - exact: eval_bexp_exp_subB_safe2.
-  - exact: eval_bexp_exp_mulB_safe2.
-Qed.
-
-Lemma eval_bexp_exp_safe1 w (e : exp w) s :
-  QFBV64.eval_bexp (bexp_exp_safe e) s -> bv2z_exp_safe_at e s.
-Proof.
-  elim: e => {w} /=.
-  - done.
-  - done.
-  - move=> w op e1 IH1 e2 IH2 [He1 [He2 Hop]]. repeat (apply/andP; split).
-    + exact: (IH1 He1).
-    + exact: (IH2 He2).
-    + exact: eval_bexp_binop_safe1.
-  - move=> w e IH _ H. exact: (IH H).
-Qed.
-
-Lemma eval_bexp_exp_safe2 w (e : exp w) s :
-  bv2z_exp_safe_at e s -> QFBV64.eval_bexp (bexp_exp_safe e) s.
-Proof.
-  elim: e => {w} /=.
-  - done.
-  - done.
-  - move=> w op e1 IH1 e2 IH2 /andP [/andP [He1 He2] Hop]. repeat split.
-    + exact: (IH1 He1).
-    + exact: (IH2 He2).
-    + exact: eval_bexp_binop_safe2.
-  - move=> w e IH _ H. exact: (IH H).
-Qed.
-
-Lemma eval_bexp_bexp_safe1 e s :
-  QFBV64.eval_bexp (bexp_bexp_safe e) s -> bv2z_bexp_safe_at e s.
-Proof.
-  elim: e => /=; intros;
-  (let rec tac :=
-       match goal with
-       | |- is_true true => exact: is_true_true
-       | H : _ /\ _ |- _ =>
-         let H1 := fresh in let H2 := fresh in
-         move: H => [H1 H2]; tac
-       | H : QFBV64.eval_bexp (bexp_exp_safe ?e) ?s |-
-         context f [bv2z_exp_safe_at ?e ?s] =>
-         rewrite (eval_bexp_exp_safe1 H) /=; tac
-       | H : is_true (bv2z_bexp_safe_at ?e ?s) |-
-         context f [bv2z_bexp_safe_at ?e ?s] =>
-         rewrite H /=; tac
-       | H1 : QFBV64.eval_bexp (bexp_bexp_safe ?b) ?s ->
-                              is_true (bv2z_bexp_safe_at ?b ?s),
-         H2 : QFBV64.eval_bexp (bexp_bexp_safe ?b) ?s |- _ =>
-         move: (H1 H2) => {H1 H2} H1; tac
-       | |- _ => idtac
-       end in
-   tac).
-Qed.
-
-Lemma eval_bexp_bexp_safe2 e s :
-  bv2z_bexp_safe_at e s -> QFBV64.eval_bexp (bexp_bexp_safe e) s.
-Proof.
-  elim: e => /=; intros;
-  (let rec tac :=
-       lazymatch goal with
-       | |- True => done
-       | H : is_true (_ && _) |- _ =>
-         let H1 := fresh in let H2 := fresh in
-         move/andP: H => [H1 H2]; tac
-       | |- _ /\ _ => split; tac
-       | H : is_true (bv2z_exp_safe_at ?e ?s) |-
-         QFBV64.eval_bexp (bexp_exp_safe ?e) ?s =>
-         exact: (eval_bexp_exp_safe2 H)
-       | H : ?p |- ?p => exact: H
-       | H1 : is_true (bv2z_bexp_safe_at ?b ?s) ->
-              QFBV64.eval_bexp (bexp_bexp_safe ?b) ?s,
-         H2 : is_true (bv2z_bexp_safe_at ?b ?s) |- _ =>
-         move: (H1 H2) => {H1 H2} H1; tac
-       | |- _ => idtac
-       end in
-   tac).
 Qed.
 
 Lemma eval_exp_var_succ v i s :
@@ -1096,17 +890,18 @@ Proof.
 Qed.
 
 Lemma eval_bexp_program_safe1 vs pre p :
-  ssa_vars_unchanged_program (vars_bexp pre) p ->
+  ssa_vars_unchanged_program (vars_rbexp pre) p ->
   well_formed_ssa_program vs p ->
-  (forall s, QFBV64.eval_bexp (bexp_bexp pre) s ->
+  (forall s, QFBV64.eval_bexp (bexp_rbexp pre) s ->
              eval_bexps_conj (bexp_program p) s ->
              QFBV64.eval_bexp (bexp_program_safe p) s) ->
-  (forall s, eval_bexp pre s -> bv2z_program_safe_at p s).
+  (forall s, eval_rbexp pre s ->
+             bv2z_program_safe_at p s).
 Proof.
   move=> Hun Hwell H s Hpre.
   set s' := eval_program s p.
-  move: (eval_bexp_bexp2 (ssa_unchanged_program_eval_bexp1
-                            Hun (Logic.eq_refl s') Hpre)) => Hpre'.
+  move: (eval_bexp_rbexp2 (ssa_unchanged_program_eval_rbexp1
+                             Hun (Logic.eq_refl s') Hpre)) => Hpre'.
   move: (bexp_program_eval Hwell (Logic.eq_refl s')) => Hp'.
   move: (H (eval_program s p) Hpre' Hp') => {Hun H Hpre Hpre' Hp' s' pre}.
   elim: p vs s Hwell => /=.
@@ -1126,10 +921,10 @@ Proof.
 Qed.
 
 Lemma eval_bexp_program_safe2 vs pre p :
-  ssa_vars_unchanged_program (vars_bexp pre) p ->
+  ssa_vars_unchanged_program (vars_rbexp pre) p ->
   well_formed_ssa_program vs p ->
-  (forall s, eval_bexp pre s -> bv2z_program_safe_at p s) ->
-  (forall s, QFBV64.eval_bexp (bexp_bexp pre) s ->
+  (forall s, eval_rbexp pre s -> bv2z_program_safe_at p s) ->
+  (forall s, QFBV64.eval_bexp (bexp_rbexp pre) s ->
              eval_bexps_conj (bexp_program p) s ->
              QFBV64.eval_bexp (bexp_program_safe p) s).
 Proof.
@@ -1138,65 +933,22 @@ Abort.
 
 
 
-Definition bv2z_spre_safe_qfbv f : Prop :=
-  forall s, QFBV64.eval_bexp (bexp_bexp f) s ->
-            QFBV64.eval_bexp (bexp_bexp_safe f) s.
-
-Definition bv2z_sprog_safe_qfbv f p : Prop :=
-  forall s,
-    QFBV64.eval_bexp (bexp_bexp f) s -> eval_bexps_conj (bexp_program p) s ->
-    QFBV64.eval_bexp (bexp_program_safe p) s.
-
-Definition bv2z_spost_safe_qfbv f p g : Prop :=
-  forall s,
-    QFBV64.eval_bexp (bexp_bexp f) s -> eval_bexps_conj (bexp_program p) s ->
-    QFBV64.eval_bexp (bexp_bexp_safe g) s.
-
 Definition bv2z_spec_safe_qfbv sp : Prop :=
-  bv2z_spre_safe_qfbv (spre sp) /\
-  bv2z_sprog_safe_qfbv (spre sp) (sprog sp) /\
-  bv2z_spost_safe_qfbv (spre sp) (sprog sp) (spost sp).
-
-Lemma bv2z_spre_safe_qfbv1 f :
-  bv2z_spre_safe_qfbv f -> bv2z_spre_safe f.
-Proof.
-  move=> H s Hf. apply: eval_bexp_bexp_safe1. apply: H.
-  exact: (eval_bexp_bexp2 Hf).
-Qed.
-
-Corollary bv2z_sprog_safe_qfbv1 vs f p :
-  ssa_vars_unchanged_program (vars_bexp f) p ->
-  well_formed_ssa_program vs p ->
-  bv2z_sprog_safe_qfbv f p -> bv2z_sprog_safe f p.
-Proof.
-  exact: eval_bexp_program_safe1.
-Qed.
-
-Lemma bv2z_spost_safe_qfbv1 vs f p g :
-  ssa_vars_unchanged_program (vars_bexp f) p ->
-  well_formed_ssa_program vs p ->
-  VS.subset (vars_bexp g) (VS.union vs (vars_program p)) ->
-  bv2z_spost_safe_qfbv f p g ->
-  bv2z_spost_safe f p g.
-Proof.
-  move=> Hun Hwell Hsub Hqfbv s1 s2 Hf Hp. apply: eval_bexp_bexp_safe1.
-  apply: Hqfbv.
-  - apply: eval_bexp_bexp2. exact: (ssa_unchanged_program_eval_bexp1 Hun Hp Hf).
-  - exact: (bexp_program_eval Hwell Hp).
-Qed.
+  forall s,
+    QFBV64.eval_bexp (bexp_rbexp (rng_bexp (spre sp))) s ->
+    eval_bexps_conj (bexp_program (sprog sp)) s ->
+    QFBV64.eval_bexp (bexp_program_safe (sprog sp)) s.
 
 Lemma bv2z_spec_safe_qfbv1 vs sp :
   well_formed_ssa_spec vs sp ->
   bv2z_spec_safe_qfbv sp ->
   bv2z_spec_safe sp.
 Proof.
-  destruct sp as [f p g]. move => Hwell [/= Hf [Hp Hg]].
-  split => /=; last split => /=.
-  - exact: (bv2z_spre_safe_qfbv1 Hf).
-  - exact: (bv2z_sprog_safe_qfbv1 (well_formed_ssa_spec_pre_unchanged Hwell)
-                                  (well_formed_ssa_spec_program Hwell) Hp).
-  - exact: (bv2z_spost_safe_qfbv1 (well_formed_ssa_spec_pre_unchanged Hwell)
-                                  (well_formed_ssa_spec_program Hwell)
-                                  (well_formed_ssa_spec_post_subset Hwell)
-                                  Hg).
+  destruct sp as [f p g]. move => Hwell Hsafe.
+  apply: (@eval_bexp_program_safe1 vs).
+  - apply: (ssa_unchanged_program_subset
+              (well_formed_ssa_spec_pre_unchanged Hwell)) => /=.
+    exact: vars_rbexp_subset.
+  - exact: (well_formed_ssa_spec_program Hwell).
+  - move=> /= s Hf Hp. exact: (Hsafe _ Hf Hp).
 Qed.
