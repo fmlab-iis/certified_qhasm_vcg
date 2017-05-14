@@ -112,16 +112,16 @@ let            y3 :=   8 in
 let            y4 :=   9 in
 bvrands
   [::
-     (bvrvar x0) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar x1) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar x2) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar x3) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar x4) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar y0) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar y1) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar y2) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar y3) <r (bvposz (2^51 + 2^15)%Z);
-     (bvrvar y4) <r (bvposz (2^51 + 2^15)%Z)
+     (bvrvar x0) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar x1) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar x2) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar x3) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar x4) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar y0) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar y1) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar y2) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar y3) <=r (bvposz (2^51 + 2^15)%Z);
+     (bvrvar y4) <=r (bvposz (2^51 + 2^15)%Z)
   ].
 
 Definition radix51 := @limbs 51.

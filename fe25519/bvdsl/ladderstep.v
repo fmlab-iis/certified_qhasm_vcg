@@ -1115,11 +1115,11 @@ VSLemmas.OP.P.of_list (bi_list X1 ++ bi_list X2 ++ bi_list Z2 ++
 Definition bi_range (X : bi) max : rbexp :=
   let '(x0, x1, x2, x3, x4) := X in
   bvrands [::
-             (bvrvar x0) <r max;
-             (bvrvar x1) <r max;
-             (bvrvar x2) <r max;
-             (bvrvar x3) <r max;
-             (bvrvar x4) <r max
+             (bvrvar x0) <=r max;
+             (bvrvar x1) <=r max;
+             (bvrvar x2) <=r max;
+             (bvrvar x3) <=r max;
+             (bvrvar x4) <=r max
           ].
 
 Definition fe25519_ladderstep_pre : bexp :=

@@ -102,11 +102,11 @@ bvands2
      (bvconst n25519)
   ]
   [::
-     (bvrvar r0) <r (bvposz (2^52)%Z);
-     (bvrvar r1) <r (bvposz (2^52)%Z);
-     (bvrvar r2) <r (bvposz (2^52)%Z);
-     (bvrvar r3) <r (bvposz (2^52)%Z);
-     (bvrvar r4) <r (bvposz (2^52)%Z)
+     (bvrvar r0) <=r (bvposz (2^52)%Z);
+     (bvrvar r1) <=r (bvposz (2^52)%Z);
+     (bvrvar r2) <=r (bvposz (2^52)%Z);
+     (bvrvar r3) <=r (bvposz (2^52)%Z);
+     (bvrvar r4) <=r (bvposz (2^52)%Z)
   ].
 
 Definition fe25519_mul121666_spec :=

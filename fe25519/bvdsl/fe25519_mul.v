@@ -538,16 +538,16 @@ let            y3 :=   8 in
 let            y4 :=   9 in
 bvrands
   [::
-     (bvrvar x0) <r (bvposz (2^52)%Z);
-     (bvrvar x1) <r (bvposz (2^52)%Z);
-     (bvrvar x2) <r (bvposz (2^52)%Z);
-     (bvrvar x3) <r (bvposz (2^52)%Z);
-     (bvrvar x4) <r (bvposz (2^52)%Z);
-     (bvrvar y0) <r (bvposz (2^52)%Z);
-     (bvrvar y1) <r (bvposz (2^52)%Z);
-     (bvrvar y2) <r (bvposz (2^52)%Z);
-     (bvrvar y3) <r (bvposz (2^52)%Z);
-     (bvrvar y4) <r (bvposz (2^52)%Z)
+     (bvrvar x0) <=r (bvposz (2^52)%Z);
+     (bvrvar x1) <=r (bvposz (2^52)%Z);
+     (bvrvar x2) <=r (bvposz (2^52)%Z);
+     (bvrvar x3) <=r (bvposz (2^52)%Z);
+     (bvrvar x4) <=r (bvposz (2^52)%Z);
+     (bvrvar y0) <=r (bvposz (2^52)%Z);
+     (bvrvar y1) <=r (bvposz (2^52)%Z);
+     (bvrvar y2) <=r (bvposz (2^52)%Z);
+     (bvrvar y3) <=r (bvposz (2^52)%Z);
+     (bvrvar y4) <=r (bvposz (2^52)%Z)
   ].
 
 Definition radix51 := @limbs 51.
@@ -581,11 +581,11 @@ bvands2
      (bvconst n25519)
   ]
   [::
-     (bvrvar r0) <r (bvposz (2^52)%Z);
-     (bvrvar r1) <r (bvposz (2^52)%Z);
-     (bvrvar r2) <r (bvposz (2^52)%Z);
-     (bvrvar r3) <r (bvposz (2^52)%Z);
-     (bvrvar r4) <r (bvposz (2^52)%Z)
+     (bvrvar r0) <=r (bvposz (2^52)%Z);
+     (bvrvar r1) <=r (bvposz (2^52)%Z);
+     (bvrvar r2) <=r (bvposz (2^52)%Z);
+     (bvrvar r3) <=r (bvposz (2^52)%Z);
+     (bvrvar r4) <=r (bvposz (2^52)%Z)
   ].
 
 Definition fe25519_mul_spec :=

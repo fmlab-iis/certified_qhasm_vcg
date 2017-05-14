@@ -434,11 +434,11 @@ bvands2
      (bvconst n25519)
   ]
   [::
-     (bvrvar z0) <r (bvposz (2^51+2^15)%Z);
-     (bvrvar z1) <r (bvposz (2^51+2^15)%Z);
-     (bvrvar z2) <r (bvposz (2^51+2^15)%Z);
-     (bvrvar z3) <r (bvposz (2^51+2^15)%Z);
-     (bvrvar z4) <r (bvposz (2^51+2^15)%Z)
+     (bvrvar z0) <=r (bvposz (2^51+2^15)%Z);
+     (bvrvar z1) <=r (bvposz (2^51+2^15)%Z);
+     (bvrvar z2) <=r (bvposz (2^51+2^15)%Z);
+     (bvrvar z3) <=r (bvposz (2^51+2^15)%Z);
+     (bvrvar z4) <=r (bvposz (2^51+2^15)%Z)
   ].
 
 Definition fe25519_sq_spec :=
