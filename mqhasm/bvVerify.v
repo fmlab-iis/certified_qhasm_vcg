@@ -139,7 +139,7 @@ Tactic Notation "bv2zspec_to_poly" constr(vs) :=
   bv2zspec_to_poly_with default_options vs.
 
 (* zVerify does not accept Zpower_nat. *)
-Ltac rewrite_zpower_nat := gen_eqs; rewrite !Zpower_nat_Z; simplZ.
+Ltac rewrite_zpower_nat := gen_eqs; rewrite !Zpower_nat_Z; simplZ; intros.
 
 Ltac verify_bv2zssa_with o vs :=
   bv2zspec_to_poly_with o vs; to_assign_with o;
