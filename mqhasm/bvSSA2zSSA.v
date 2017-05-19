@@ -97,7 +97,7 @@ Definition bv2z_instr_safe_at (i : instr) (s : bv64SSA.State.t) : bool :=
   | bvShl _ a n => shlBn_safe (eval_atomic a s) (toNat n)
   | bvSplit _ _ _ _ => true
   | bvConcatShl _ _ a1 a2 n =>
-    concatshl_safe (eval_atomic a1 s) (eval_atomic a1 s) (toNat n)
+    concatshl_safe (eval_atomic a1 s) (eval_atomic a2 s) (toNat n)
   end.
 
 Fixpoint bv2z_program_safe_at p s : bool :=
