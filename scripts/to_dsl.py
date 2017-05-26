@@ -36,6 +36,9 @@ def trline(descriptor, line):
     res = res.replace(local_lhs, local_rhs)
   for lhs, rhs in substs.iteritems():
     res = res.replace(lhs, rhs)
+  if subst_comment:
+    (local_lhs, local_rhs) = parse_subst(subst_comment.group(1))
+    res = res.replace(local_lhs, local_rhs)
   for pattern, replacement in rules.iteritems():
     if re.match(pattern, res):
       res = re.sub(pattern, replacement, res)
