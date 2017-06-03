@@ -291,6 +291,23 @@ Section NatLemmas.
     rewrite expnS. apply: leq_pmulr. rewrite expn_gt0. done.
   Qed.
 
+  Lemma modn_muln_modn_l n x y :
+    (n %% (x * y)) %% x = n %% x.
+  Proof.
+    have: (n %% x) = (n %/ (x * y) * (x * y) + n %% (x * y)) %% x.
+    { rewrite -(divn_eq n (x * y)). reflexivity. }
+    rewrite -modnDm.
+    have: (n %/ (x * y) * (x * y)) %% x = 0.
+    { rewrite (mulnC x y) mulnA modnMl. reflexivity. }
+    move=> ->. rewrite add0n. rewrite modn_mod. move=> <-. reflexivity.
+  Qed.
+
+  Lemma modn_muln_modn_r n x y :
+    (n %% (x * y)) %% y = n %% y.
+  Proof.
+    rewrite (mulnC x y). exact: modn_muln_modn_l.
+  Qed.
+
 End NatLemmas.
 
 

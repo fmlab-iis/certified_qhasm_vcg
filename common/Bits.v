@@ -249,7 +249,7 @@ Section BitsLemmas.
     rewrite /fromNat /singleBit. rewrite oddb. reflexivity.
   Qed.
 
- 
+
 
   (* Operations *)
 
@@ -365,6 +365,32 @@ Section BitsLemmas.
       rewrite -{1}(add0n (n.+1)) ltn_add2r. done.
   Qed.
 
+  Lemma zeroExtend_catB n1 n2 (p : BITS n1) :
+    zeroExtend n2 p = (zero n2) ## p.
+  Proof.
+    apply: toNat_inj. rewrite toNat_zeroExtend. reflexivity.
+  Qed.
+
+  Lemma low_addB_distr n1 n2 (p1 p2 : BITS (n1 + n2)) :
+    low n1 (addB p1 p2) = addB (low n1 p1) (low n1 p2).
+  Proof.
+    apply: toNat_inj. rewrite toNat_low toNat_addB expnD modn_muln_modn_l.
+    rewrite toNat_addB 2!toNat_low modnDm. reflexivity.
+  Qed.
+
+  Lemma low_zeroExtend n1 n2 (p : BITS n1) :
+    low n1 (zeroExtend n2 p) = p.
+  Proof.
+    apply: toNat_inj. rewrite toNat_low toNat_zeroExtend -toNat_mod.
+    reflexivity.
+  Qed.
+
+  Lemma high_zeroExtend n1 n2 (p : BITS n1) :
+    high n2 (zeroExtend n2 p) = zero n2.
+  Proof.
+    rewrite zeroExtend_catB high_catB. reflexivity.
+  Qed.
+
   Lemma addB_zeroExtend1_catB n (p1 p2 : BITS n) :
     addB (zeroExtend 1 p1) (zeroExtend 1 p2) =
     (fromNat (carry_addB p1 p2)) ## (addB p1 p2).
@@ -436,6 +462,29 @@ Section BitsLemmas.
     addB p1 p2.
   Proof.
     rewrite addB_zeroExtend_catB low_catB. reflexivity.
+  Qed.
+
+  Lemma addB3_zeroExtend_low n (p1 p2 p3 : BITS n) :
+    low n (addB (addB (zeroExtend n p1) (zeroExtend n p2)) (zeroExtend n p3)) =
+    addB (addB p1 p2) p3.
+  Proof.
+    rewrite 2!low_addB_distr. rewrite 3!low_zeroExtend. reflexivity.
+  Qed.
+
+  Lemma toNat_addB_zeroExtend_bounded n (p1 p2 : BITS n) :
+    high n (addB (zeroExtend n p1) (zeroExtend n p2)) = zero n ->
+    toNat (low n (addB (zeroExtend n p1) (zeroExtend n p2))) =
+    toNat p1 + toNat p2.
+  Proof.
+    rewrite addB_zeroExtend_low. case: n p1 p2.
+    - move=> p1 p2 Hc. rewrite !toNatNil. reflexivity.
+    - move=> n p1 p2. rewrite addB_zeroExtend_high.
+      case Hc: (carry_addB p1 p2) => /=.
+      + move=> H0; have: toNat (@fromNat n.+1 1) = toNat (zero n.+1)
+                 by rewrite H0. rewrite fromNatK.
+        * rewrite toNat_zero. discriminate.
+        * done.
+      + move=> _. move/negP/idP: Hc => Hc. exact: (toNat_addB_bounded Hc).
   Qed.
 
   Lemma carry_subB_ltB :

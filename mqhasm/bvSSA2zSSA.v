@@ -185,6 +185,9 @@ Proof.
 Qed.
 
 Lemma toPosZ_adcB1 w (bv1 bv2 bv3 : BITS w) :
+  high w (addB (addB (zeroExtend w bv1)
+                     (zeroExtend w bv2))
+               (zeroExtend w bv3)) == fromNat 0 ->
   toPosZ (low w ((zeroExtend w bv1 + zeroExtend w bv2) + zeroExtend w bv3))%bits =
   (toPosZ bv1 + toPosZ bv2 + toPosZ bv3)%Z.
 Proof.
