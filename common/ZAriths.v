@@ -40,7 +40,7 @@ Section PositiveEqType.
     move=> n.
     rewrite /pos_unpickle /pos_pickle.
     move: (Pos2Nat.is_succ n) => [m Hm].
-    rewrite Hm (addl_subK m 1).
+    rewrite Hm -ssrnat.addn1 (ssrnat.addnK 1%nat m).
     rewrite (ssrnat.addnC m 1%nat) ssrnat.add1n -Hm.
     rewrite Pos2Nat.id.
     reflexivity.
@@ -508,6 +508,22 @@ Section ZLemmas.
     exact: two_power_nat_gt_zero.
   Qed.
 
+  Lemma two_power_of_nat_gt0 n : 2 ^ Z.of_nat n > 0.
+  Proof.
+    rewrite -two_p_equiv. apply: two_p_gt_ZERO. exact: Nat2Z.is_nonneg.
+  Qed.
+
+  Lemma zero_lt_two_power_of_nat n : 0 < 2 ^ Z.of_nat n.
+  Proof.
+    apply: Z.gt_lt. exact: two_power_of_nat_gt0.
+  Qed.
+
+  Lemma two_power_of_nat_ne0 n : 2 ^ Z.of_nat n <> 0.
+  Proof.
+    move=> H. apply: (Z.lt_neq _ _ (zero_lt_two_power_of_nat n)).
+    symmetry. exact: H.
+  Qed.
+
   Lemma ltn_Sdouble n m : n < m -> 2 * n + 1 < 2 * m.
   Proof.
     move=> Hnm.
@@ -672,6 +688,14 @@ Section ZLemmas.
     - by rewrite -Hb Zdiv_0_r.
   Qed.
 
+  Lemma Zmod_sub (n m : Z) :
+    m <= n -> n mod m = (n - m) mod m.
+  Proof.
+    move=> Hmn. rewrite -(Z_mod_plus_full (n - m) 1).
+    rewrite Z.mul_1_l. rewrite -Z.sub_sub_distr Z.sub_diag Z.sub_0_r.
+    reflexivity.
+  Qed.
+
   Lemma Nat2Z_inj_odd (n : nat) :
     Z.odd (Z.of_nat n) = Nat.odd n.
   Proof.
@@ -690,6 +714,69 @@ Section ZLemmas.
     - move=> n IH m.
       rewrite Nat2Z.inj_mul IH -!Zpower_nat_Z -Zpower_nat_succ_r.
       reflexivity.
+  Qed.
+
+  Import ssrnat div.
+
+  Lemma Nat2Z_inj_modn (n m : nat) :
+    (m != 0)%N ->
+    Z.of_nat (div.modn n m) = (Z.of_nat n) mod (Z.of_nat m).
+  Proof.
+    move=> Hm0. case H: (n < m)%N.
+    - rewrite (modn_small H) Zmod_small; first reflexivity.
+      split; first exact: Nat2Z.is_nonneg. apply: (proj1 (Nat2Z.inj_lt _ _)).
+      apply: ltn_lt. exact: H.
+    - move/negP/idP: H; rewrite -leqNgt => H.
+      move: m H Hm0. induction n using nat_strong_ind.
+      move=> m Hmn Hm0. have HmnZ: Z.of_nat m <= Z.of_nat n.
+      { apply: (proj1 (Nat2Z.inj_le _ _)). apply: leq_le. exact: Hmn. }
+      rewrite (modn_subn Hmn) (Zmod_sub HmnZ).
+      case Hsub: ((n - m) < m)%N.
+      + have HsubZ: Z.of_nat n - Z.of_nat m < Z.of_nat m.
+        { rewrite -(Nat2Z.inj_sub _ _ (leq_le Hmn)).
+          apply: (proj1 (Nat2Z.inj_lt _ _)). apply: ltn_lt. exact: Hsub. }
+        have Hge0: 0 <= Z.of_nat n - Z.of_nat m.
+        { apply: (proj2 (Z.le_0_sub _ _)). apply: (proj1 (Nat2Z.inj_le _ _)).
+          apply: leq_le. exact: Hmn. }
+        rewrite (modn_small Hsub) (Zmod_small _ _ (conj Hge0 HsubZ)).
+        rewrite subn_sub (Nat2Z.inj_sub _ _ (leq_le Hmn)). reflexivity.
+      + move/negP/idP: Hsub; rewrite -leqNgt => Hsub.
+        rewrite -(Nat2Z.inj_sub _ _ (leq_le Hmn)). apply: H.
+        * rewrite -lt0n in Hm0. rewrite -{2}(subn0 n). apply: ltn_sub2l.
+          -- exact: (ltn_leq_trans Hm0 Hmn).
+          -- exact: Hm0.
+        * exact: Hsub.
+        * exact: Hm0.
+  Qed.
+
+  Lemma Nat2Z_inj_divn (n m : nat) :
+    Z.of_nat (div.divn n m) = (Z.of_nat n) / (Z.of_nat m).
+  Proof.
+    case Hm0: (m == 0)%N.
+    - rewrite (eqP Hm0) divn0 Zdiv_0_r. reflexivity.
+    - move/negP/idP: Hm0=> Hm0. have Hne: (m <> 0)%N by move/eqP: Hm0; apply.
+      case Hnm: (n < m)%N.
+      + rewrite (divn_small Hnm) Zdiv_small; first reflexivity.
+        split; first exact: Nat2Z.is_nonneg. apply: (proj1 (Nat2Z.inj_lt _ _)).
+        apply: ltn_lt. exact: Hnm.
+      + move/negP/idP: Hnm; rewrite -leqNgt => Hnm. move: (eq_refl n).
+        rewrite {1}(divn_eq n m). have Hmod: (n %% m <= n)%N.
+        { apply: ltnW. apply: (ltn_leq_trans _ Hnm). rewrite ltn_mod.
+          rewrite lt0n. exact: Hm0. }
+        rewrite (addn_subn _ Hmod). move=> H. have HneZ: Z.of_nat m <> 0.
+        { move=> Heq; apply: Hne. apply: Nat2Z.inj. exact: Heq. }
+        apply: (proj1 (Z.mul_cancel_r (Z.of_nat (n %/ m))
+                                      (Z.of_nat n / Z.of_nat m)
+                                      (Z.of_nat m) HneZ)).
+        rewrite -Nat2Z.inj_mul -muln_mul. rewrite (eqP H).
+        rewrite (Nat2Z.inj_sub _ _ (leq_le Hmod)) (Nat2Z_inj_modn _ Hm0).
+        symmetry.
+        apply: (proj1 (Z.add_move_l (Z.of_nat n mod Z.of_nat m)
+                                    (Z.of_nat n / Z.of_nat m * Z.of_nat m)
+                                    (Z.of_nat n))).
+        rewrite Z.add_comm Z.mul_comm -Z_div_mod_eq; first reflexivity.
+        change 0 with (Z.of_nat 0). apply: (proj1 (Nat2Z.inj_gt _ _)).
+        apply: gtn_gt. rewrite lt0n. exact: Hm0.
   Qed.
 
   Local Close Scope Z_scope.

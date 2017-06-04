@@ -118,8 +118,7 @@ Section HexStrings.
     - apply: (Z.lt_le_trans _ 0).
       + done.
       + exact: toPosZ_min.
-    - rewrite two_p_correct -two_power_nat_equiv.
-      exact: toPosZ_max.
+    - rewrite two_p_correct. exact: toPosZ_max.
   Qed.
 
   Definition byte_of_bits8 (n : BITS 8) : byte :=
