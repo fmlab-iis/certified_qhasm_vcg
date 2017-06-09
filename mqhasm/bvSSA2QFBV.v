@@ -168,20 +168,6 @@ Definition bexp_of_rspec (s : rspec) : bexp_spec :=
 
 (* Properties of the conversion. *)
 
-Lemma bv_mod_modulo w (bv1 bv2 n : BITS w) :
-  @fromPosZ w (toPosZ bv1 mod toPosZ n) =
-  @fromPosZ w (toPosZ bv2 mod toPosZ n) ->
-  modulo (toPosZ bv1) (toPosZ bv2) (toPosZ n).
-Proof.
-Admitted.
-
-Lemma modulo_bv_mod w (bv1 bv2 n : BITS w) :
-  modulo (toPosZ bv1) (toPosZ bv2) (toPosZ n) ->
-  @fromPosZ w (toPosZ bv1 mod toPosZ n) =
-  @fromPosZ w (toPosZ bv2 mod toPosZ n).
-Proof.
-Admitted.
-
 Lemma bv_width_sub_bounded w (bv : BITS w) :
   w - toNat bv < 2 ^ w.
 Proof.
