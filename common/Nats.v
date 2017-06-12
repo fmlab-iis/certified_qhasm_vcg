@@ -11,8 +11,28 @@ Import Prenex Implicits.
 
 Section NatLemmas.
 
+  Theorem nat_strong_ind (P : nat -> Prop) :
+    (forall n : nat, (forall k : nat, k < n -> P k) -> P n) ->
+    forall n : nat, P n.
+  Proof.
+    move=> IH. have H0: P 0.
+    { apply: IH. move=> k H; by inversion H. }
+    have H: forall n m, m <= n -> P m.
+    { move=> n; elim: n.
+      - move=> m Hm. rewrite leqn0 in Hm. rewrite (eqP Hm); exact: H0.
+      - move=> n H m Hmn. apply: IH. move=> k Hkm.
+        apply: H. exact: (leq_trans Hkm Hmn). }
+    move=> n. apply: IH. move=> k Hkn. exact: (H _ _ (ltnW Hkn)).
+  Qed.
+
   Lemma addn_add n m :
     n + m = (n + m)%coq_nat.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma subn_sub n m :
+    n - m = (n - m)%coq_nat.
   Proof.
     reflexivity.
   Qed.
@@ -63,6 +83,53 @@ Section NatLemmas.
     exact: (proj2 (ltn_lt_iff n m)).
   Qed.
 
+  Lemma geq_ge_iff n m : n >= m <-> (n >= m)%coq_nat.
+  Proof.
+    split => H.
+    - exact: (leq_le H).
+    - exact: (le_leq H).
+  Qed.
+
+  Lemma geq_ge n m : n >= m -> (n >= m)%coq_nat.
+  Proof.
+    exact: (proj1 (geq_ge_iff n m)).
+  Qed.
+
+  Lemma ge_geq n m : (n >= m)%coq_nat -> n >= m.
+  Proof.
+    exact: (proj2 (geq_ge_iff n m)).
+  Qed.
+
+  Lemma gtn_gt_iff n m : n > m <-> (n > m)%coq_nat.
+  Proof.
+    split => H.
+    - exact: (ltn_lt H).
+    - exact: (lt_ltn H).
+  Qed.
+
+  Lemma gtn_gt n m : n > m -> (n > m)%coq_nat.
+  Proof.
+    exact: (proj1 (gtn_gt_iff n m)).
+  Qed.
+
+  Lemma gt_gtn n m : (n > m)%coq_nat -> n > m.
+  Proof.
+    exact: (proj2 (gtn_gt_iff n m)).
+  Qed.
+
+  Lemma succn_predn n : n.+1.-1 = n.
+  Proof.
+    done.
+  Qed.
+
+  Lemma ltn_leq_sub n m :
+    n < m -> n <= m - 1.
+  Proof.
+    rewrite leq_eqVlt. move=> /orP. case => H.
+    - rewrite -(eqP H). rewrite subn1 succn_predn. exact: leqnn.
+    - move: (leq_sub2r 1 H). rewrite subn1 succn_predn. exact: ltnW.
+  Qed.
+
   Lemma subn_gtn : forall n m r, n < m - r -> r < m.
   Proof.
     move=> n m r H.
@@ -105,37 +172,17 @@ Section NatLemmas.
     exact: (lt_subr_addl n m 1).
   Qed.
 
-  Lemma addr_subK : forall n m : nat, n + m - m = n.
-  Proof.
-    move=> n; elim: n.
-    - move=> m.
-      rewrite add0n subnn.
-      reflexivity.
-    - move=> n IH m.
-      rewrite -(addnA 1 n m) -addnBA.
-      + rewrite IH.
-        reflexivity.
-      + exact: leq_addl.
-  Qed.
-
-  Lemma addl_subK : forall n m : nat, m + n - m = n.
-  Proof.
-    move=> n m.
-    rewrite addnC.
-    exact: addr_subK.
-  Qed.
-
   Lemma gt0_sub1F :
     forall n : nat, n > 0 -> n = n - 1 -> False.
   Proof.
     move=> n; elim: n.
     - done.
     - move=> n IH Hgt Heq.
-      rewrite -add1n addl_subK add1n in Heq.
+      rewrite -add1n addKn add1n in Heq.
       apply: IH.
       + rewrite -Heq.
         assumption.
-      + rewrite -{2}Heq -add1n addl_subK.
+      + rewrite -{2}Heq -add1n addKn.
         reflexivity.
   Qed.
 
@@ -163,6 +210,35 @@ Section NatLemmas.
     move: (Nat.ltb_lt n m) => [H1 _].
     move: (H1 H) => {H1 H} H.
     auto with arith.
+  Qed.
+
+  Lemma ltn_leq_mul_ltn m1 m2 n1 n2 :
+    0 < m2 ->
+    m1 < n1 -> m2 <= n2 -> m1 * m2 < n1 * n2.
+  Proof.
+    move=> H H1 H2. rewrite leq_eqVlt in H2. move/orP: H2; case => H2.
+    - rewrite -(eqP H2) => {H2}.
+      + rewrite ltn_mul2r H H1. done.
+      + exact: ltn_mul.
+  Qed.
+
+  Lemma ltn_leq_mul_leq m1 m2 n1 n2 :
+    m1 < n1 -> m2 <= n2 -> m1 * m2 <= n1 * n2.
+  Proof.
+    move=> H1 H2. move: (ltnW H1) => {H1} H1. exact: leq_mul.
+  Qed.
+
+  Lemma leq_ltn_mul_ltn m1 m2 n1 n2 :
+    0 < m1 ->
+    m1 <= n1 -> m2 < n2 -> m1 * m2 < n1 * n2.
+  Proof.
+    move=> H H1 H2. rewrite (mulnC m1 m2) (mulnC n1 n2). exact: ltn_leq_mul_ltn.
+  Qed.
+
+  Lemma leq_ltn_mul_leq m1 m2 n1 n2 :
+    m1 <= n1 -> m2 < n2 -> m1 * m2 <= n1 * n2.
+  Proof.
+    move=> H1 H2. move: (ltnW H2) => {H2} H2. exact: leq_mul.
   Qed.
 
   Lemma div2_succ n :
@@ -194,6 +270,16 @@ Section NatLemmas.
     elim: n => /=.
     - reflexivity.
     - move=> n IH. rewrite {}IH Nat.odd_succ Nat.negb_odd. reflexivity.
+  Qed.
+
+  Lemma addn_subn a b c :
+    b <= c ->
+    (a + b == c) = (a == c - b).
+  Proof.
+    move=> Hbc. case H: (a == c - b).
+    - move: H. rewrite -(eqn_add2r b) (subnK Hbc). by apply.
+    - move/negP: H => Hne. apply/negP => H. apply: Hne.
+      rewrite -(eqn_add2r b) (subnK Hbc). exact: H.
   Qed.
 
   Lemma ssrdiv2_succ n :
@@ -289,6 +375,81 @@ Section NatLemmas.
     1 < 2 ^ n.+1.
   Proof.
     rewrite expnS. apply: leq_pmulr. rewrite expn_gt0. done.
+  Qed.
+
+  Lemma modn_muln_modn_l n x y :
+    (n %% (x * y)) %% x = n %% x.
+  Proof.
+    have: (n %% x) = (n %/ (x * y) * (x * y) + n %% (x * y)) %% x.
+    { rewrite -(divn_eq n (x * y)). reflexivity. }
+    rewrite -modnDm.
+    have: (n %/ (x * y) * (x * y)) %% x = 0.
+    { rewrite (mulnC x y) mulnA modnMl. reflexivity. }
+    move=> ->. rewrite add0n. rewrite modn_mod. move=> <-. reflexivity.
+  Qed.
+
+  Lemma modn_muln_modn_r n x y :
+    (n %% (x * y)) %% y = n %% y.
+  Proof.
+    rewrite (mulnC x y). exact: modn_muln_modn_l.
+  Qed.
+
+  Lemma expn2_gt0 n : 0 < 2^n.
+  Proof.
+    by rewrite expn_gt0.
+  Qed.
+
+  Lemma expn2_gt1 n : 1 < 2^n.+1.
+  Proof.
+    rewrite expnS. apply: leq_pmulr. by rewrite expn_gt0.
+  Qed.
+
+  Lemma modn_subn n m : m <= n -> n %% m = (n - m) %% m.
+  Proof.
+    move=> H. apply/eqP. rewrite -(eqn_modDl m).
+    rewrite addnC modnDr. rewrite addnC (subnK H). exact: eqxx.
+  Qed.
+
+  Lemma mod_sub n m :
+    (m <> 0)%coq_nat ->
+    (m <= n)%coq_nat -> ((n mod m) = (n - m) mod m)%coq_nat.
+  Proof.
+    move=> Hm Hmn. rewrite -(Nat.mod_add (n - m) 1 _ Hm).
+    rewrite Nat.mul_1_l (Nat.sub_add _ _ Hmn).
+    reflexivity.
+  Qed.
+
+  Lemma modn_mod (n m : nat) : m != 0 -> n %% m = Nat.modulo n m.
+  Proof.
+    move=> Hm0. case H: (n < m)%N.
+    - rewrite (modn_small H) Nat.mod_small; first reflexivity.
+      exact: (ltn_lt H).
+    - move/negP/idP: H; rewrite -leqNgt => H.
+      move: m H Hm0. induction n using nat_strong_ind.
+      move=> m Hmn Hm0. have Hne: m <> 0 by move/eqP: Hm0; apply.
+      rewrite (modn_subn Hmn) (mod_sub Hne (leq_le Hmn)).
+      case Hsub: ((n - m) < m)%N.
+      + rewrite (modn_small Hsub) (Nat.mod_small _ _ (ltn_lt Hsub)).
+        reflexivity.
+      + move/negP/idP: Hsub; rewrite -leqNgt => Hsub.
+        apply: H.
+        * rewrite -lt0n in Hm0. rewrite -{2}(subn0 n). apply: ltn_sub2l.
+          -- exact: (ltn_leq_trans Hm0 Hmn).
+          -- exact: Hm0.
+        * exact: Hsub.
+        * exact: Hm0.
+  Qed.
+
+  Lemma divn_div (n m : nat) : n %/ m = Nat.div n m.
+  Proof.
+    case Hm: (m == 0).
+    - rewrite (eqP Hm) divn0 /=. reflexivity.
+    - move/negP/idP: Hm => Hm. have Hne: (m <> 0) by move/eqP: Hm; apply.
+      move: (eq_refl n). rewrite {1}(divn_eq n m).
+      rewrite {3}(Nat.div_mod n m Hne).
+      rewrite -(modn_mod _ Hm) -addn_add. rewrite eqn_add2r.
+      rewrite -muln_mul mulnC. rewrite -lt0n in Hm. rewrite (eqn_pmul2l Hm).
+      move/eqP=> H. exact: H.
   Qed.
 
 End NatLemmas.

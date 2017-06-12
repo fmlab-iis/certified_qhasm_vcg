@@ -168,25 +168,6 @@ Definition bexp_of_rspec (s : rspec) : bexp_spec :=
 
 (* Properties of the conversion. *)
 
-Lemma fullmulB_zeroExtend w (bv1 bv2 : BITS w) :
-  (fullmulB bv1 bv2) = mulB (zeroExtend w bv1) (zeroExtend w bv2).
-Proof.
-Admitted.
-
-Lemma bv_mod_modulo w (bv1 bv2 n : BITS w) :
-  @fromPosZ w (toPosZ bv1 mod toPosZ n) =
-  @fromPosZ w (toPosZ bv2 mod toPosZ n) ->
-  modulo (toPosZ bv1) (toPosZ bv2) (toPosZ n).
-Proof.
-Admitted.
-
-Lemma modulo_bv_mod w (bv1 bv2 n : BITS w) :
-  modulo (toPosZ bv1) (toPosZ bv2) (toPosZ n) ->
-  @fromPosZ w (toPosZ bv1 mod toPosZ n) =
-  @fromPosZ w (toPosZ bv2 mod toPosZ n).
-Proof.
-Admitted.
-
 Lemma bv_width_sub_bounded w (bv : BITS w) :
   w - toNat bv < 2 ^ w.
 Proof.
@@ -399,7 +380,7 @@ Proof.
     move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
     repeat qfbv64_store_acc.
-    by rewrite -fullmulB_zeroExtend.
+    by rewrite mulB_zeroExtend_fullmulB.
   - (* bvShl *)
     move=> v a n Hsub Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state.
@@ -542,13 +523,11 @@ Definition bexp_atomic_addB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvAddo (exp_atomic a1) (exp_atomic a2)).
 
 Definition bexp_atomic_adcB_safe (a1 a2 : atomic) (c : var) : QFBV64.bexp :=
-  QFBV64.bvEq
-    (@QFBV64.bvHigh _ wordsize
-                    (QFBV64.bvAdd
-                       (QFBV64.bvAdd (QFBV64.bvZeroExtend wordsize (exp_atomic a1))
-                                     (QFBV64.bvZeroExtend wordsize (exp_atomic a2)))
-                       (QFBV64.bvZeroExtend wordsize (exp_var c))))
-    (QFBV64.bvConst (fromNat 0)).
+  QFBV64.bvConj
+    (QFBV64.bvLneg (QFBV64.bvAddo (exp_atomic a1) (exp_atomic a2)))
+    (QFBV64.bvLneg (QFBV64.bvAddo
+                      (QFBV64.bvAdd (exp_atomic a1) (exp_atomic a2))
+                      (exp_var c))).
 
 Definition bexp_atomic_subB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvSubo (exp_atomic a1) (exp_atomic a2)).
@@ -562,7 +541,9 @@ Definition bexp_atomic_shlBn_safe (a : atomic) (n : bv64SSA.value) : QFBV64.bexp
                              (QFBV64.bvConst (fromNat (wordsize - toNat n)))).
 
 Definition bexp_atomic_concatshl_safe (a1 a2 : atomic) (n : bv64SSA.value) : QFBV64.bexp :=
-  bexp_atomic_shlBn_safe a1 n.
+  QFBV64.bvConj
+    (QFBV64.bvUle (QFBV64.bvConst n) (QFBV64.bvConst (fromNat wordsize)))
+    (bexp_atomic_shlBn_safe a1 n).
 
 Definition bexp_instr_safe (i : instr) : QFBV64.bexp :=
   match i with
@@ -610,7 +591,7 @@ Lemma eval_bexp_atomic_adcB_safe1 a1 a2 c s :
   adcB_safe (eval_atomic a1 s) (eval_atomic a2 s) (State.acc c s).
 Proof.
   rewrite /adcB_safe /= !eval_exp_atomic store_state_acc.
-  move=> ->. exact: eqxx.
+  move=> [/negP H1 /negP H2]. rewrite H1 H2. done.
 Qed.
 
 Lemma eval_bexp_atomic_adcB_safe2 a1 a2 c s :
@@ -618,7 +599,7 @@ Lemma eval_bexp_atomic_adcB_safe2 a1 a2 c s :
   QFBV64.eval_bexp (bexp_atomic_adcB_safe a1 a2 c) s.
 Proof.
   rewrite /adcB_safe /= !eval_exp_atomic store_state_acc.
-  move=> /eqP ->. reflexivity.
+  move=> /andP [H1 H2]. split; apply/negP; assumption.
 Qed.
 
 Lemma eval_bexp_atomic_subB_safe1 a1 a2 s :
@@ -672,7 +653,10 @@ Lemma eval_bexp_atomic_concatshl_safe1 a1 a2 n s :
   concatshl_safe (eval_atomic a1 s) (eval_atomic a2 s) (toNat n).
 Proof.
   rewrite /concatshl_safe /= !eval_exp_atomic => H.
-  rewrite toNat_fromNat subn_modn_expn2 in H. exact: H.
+  rewrite toNat_fromNat subn_modn_expn2 in H. apply/andP.
+  move: H => [H1 H2]. split; last exact: H2.
+  rewrite leB_nat fromNatK in H1; first exact: H1.
+  by apply: ltn_expl.
 Qed.
 
 Lemma eval_bexp_atomic_concatshl_safe2 a1 a2 n s :
@@ -680,7 +664,9 @@ Lemma eval_bexp_atomic_concatshl_safe2 a1 a2 n s :
   QFBV64.eval_bexp (bexp_atomic_concatshl_safe a1 a2 n) s.
 Proof.
   rewrite /concatshl_safe /= !eval_exp_atomic => H.
-  rewrite toNat_fromNat subn_modn_expn2. exact: H.
+  rewrite toNat_fromNat subn_modn_expn2. move/andP: H => [H1 H2].
+  split; last exact: H2. rewrite leB_nat fromNatK; first exact: H1.
+  by apply: ltn_expl.
 Qed.
 
 Lemma eval_bexp_instr_safe1 i s :
