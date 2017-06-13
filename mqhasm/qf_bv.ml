@@ -388,7 +388,7 @@ let rec obexp_of_cbexp e =
     try
       let (constructor, args) = Term.destApp e in
       if Constr.equal constructor (Lazy.force CoqQFBV._sbvUlt) then Ult (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
-      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUle) then Ult (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUle) then Ule (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUgt) then Ugt (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUge) then Uge (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvEq) then Eq (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
