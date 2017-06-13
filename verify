@@ -31,6 +31,7 @@ if [[ -f ${LOG_QFBV} ]]; then
 fi
 
 ${TIME} ${COQC} -q ${PKGS} -I . ${1} &> ${OUTPUT}
+EXITCODE=$?
 
 if [[ -f ${LOG_GB} ]]; then
   echo -e "\n\n\n===== GB Log =====\n" >> ${OUTPUT}
@@ -41,3 +42,5 @@ if [[ -f ${LOG_QFBV} ]]; then
   echo -e "\n\n\n===== QFBV Log =====\n" >> ${OUTPUT}
   cat ${LOG_QFBV} >> ${OUTPUT}
 fi
+
+exit $EXITCODE
