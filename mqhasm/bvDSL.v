@@ -607,12 +607,98 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
                  s
     end.
 
+  Inductive succ_instr (s : State.t) : instr -> State.t -> Prop :=
+  | succAssign v e :
+      succ_instr s (bvAssign v e)
+           (State.upd v (eval_atomic e s) s)
+  | succAdd v e1 e2 :
+      succ_instr s (bvAdd v e1 e2)
+           (State.upd v (addB (eval_atomic e1 s) (eval_atomic e2 s)) s)
+  | succAddC c v e1 e2 :
+      succ_instr s (bvAddC c v e1 e2)
+           (State.upd2
+              c (high A.wordsize
+                      (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                            (zeroExtend A.wordsize (eval_atomic e2 s))))
+              v (low A.wordsize
+                     (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                           (zeroExtend A.wordsize (eval_atomic e2 s))))
+              s)
+  | succAdc v e1 e2 c :
+      succ_instr s (bvAdc v e1 e2 c)
+           (State.upd
+              v (low A.wordsize
+                     (addB
+                        (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                              (zeroExtend A.wordsize (eval_atomic e2 s)))
+                        (zeroExtend A.wordsize (State.acc c s))))
+              s)
+  | succAdcC c v e1 e2 a :
+      succ_instr s (bvAdcC c v e1 e2 a)
+           (State.upd2
+              c (high A.wordsize
+                      (addB
+                         (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                               (zeroExtend A.wordsize (eval_atomic e2 s)))
+                         (zeroExtend A.wordsize (State.acc a s))))
+              v (low A.wordsize
+                     (addB
+                        (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                              (zeroExtend A.wordsize (eval_atomic e2 s)))
+                        (zeroExtend A.wordsize (State.acc a s))))
+              s)
+  | succSub v e1 e2 :
+      succ_instr s (bvSub v e1 e2)
+           (State.upd v (subB (eval_atomic e1 s) (eval_atomic e2 s)) s)
+(*
+  | succSubC c v e1 e2 : 
+      succ_instr s (bvSubC c v e1 e2)
+           (State.upd2 
+              c (if carry_subB (eval_atomic e1 s) (eval_atomic e2 s) then bvone else bvzero)
+              v (subB (eval_atomic e1 s) (eval_atomic e2 s))
+              s)
+*)
+  | succMul v e1 e2 :
+      succ_instr s (bvMul v e1 e2)
+           (State.upd v (mulB (eval_atomic e1 s) (eval_atomic e2 s)) s)
+  | succMulf vh vl e1 e2 :
+      succ_instr s (bvMulf vh vl e1 e2)
+           (State.upd2
+              vh (high A.wordsize (fullmulB (eval_atomic e1 s)
+                                            (eval_atomic e2 s)))
+              vl (low A.wordsize (fullmulB (eval_atomic e1 s)
+                                           (eval_atomic e2 s)))
+              s)
+  | succShl v e p :
+      succ_instr s (bvShl v e p)
+           (State.upd v (shlBn (eval_atomic e s) (toNat p)) s)
+  | succSplit vh vl e p :
+      succ_instr s (bvSplit vh vl e p)
+           (State.upd2
+              vh (fst (split_ext (eval_atomic e s) (toNat p)))
+              vl (snd (split_ext (eval_atomic e s) (toNat p)))
+              s)
+  | succConcatShl vh vl e1 e2 p :
+      succ_instr s (bvConcatShl vh vl e1 e2 p)
+           (State.upd2
+              vh (fst (concat_shl (eval_atomic e1 s)
+                                  (eval_atomic e2 s) (toNat p)))
+              vl (snd (concat_shl (eval_atomic e1 s)
+                                  (eval_atomic e2 s) (toNat p)))
+              s) .
+
+  Fixpoint succ_program (s : State.t) (p: program) (t : State.t) : Prop :=
+    match p with
+      | [::] => s = t
+      | hd::tl => exists r, succ_instr s hd r /\ succ_program r tl t
+    end .
+  
   Fixpoint eval_program (s : State.t) (p : program) : State.t :=
     match p with
     | [::] => s
     | hd::tl => eval_program (eval_instr s hd) tl
     end.
-
+  
   Lemma eval_program_singleton :
     forall (i : instr) (s1 s2 : State.t),
       eval_program s1 ([:: i]) = s2 ->
@@ -620,6 +706,25 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Proof.
     move=> i s1 s2 H; assumption.
   Qed.
+
+  Lemma succ_program_singleton :
+    forall (i : instr) (s1 s2 : State.t),
+      succ_program s1 [:: i] s2 -> succ_instr s1 i s2 .
+  Proof .
+    move=> i s1 s2 H .
+    case: H .
+    simpl .
+    move=> x [] => H0 H1 .
+    by rewrite H1 in H0 .
+  Qed .
+
+  Lemma succ_singleton_program :
+    forall (i : instr) (s1 s2 : State.t),
+      succ_instr s1 i s2 -> succ_program s1 [:: i] s2 .
+  Proof .
+    move=> i s1 s2 H => /= .
+    by exists s2 .
+  Qed .
 
   Lemma eval_program_cons :
     forall (hd : instr) (tl : program) (s1 s2 : State.t),
@@ -633,6 +738,15 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     - assumption.
   Qed.
 
+  Lemma succ_program_cons :
+    forall (hd : instr) (tl : program) (s1 s2 : State.t),
+      succ_program s1 (hd::tl) s2 ->
+      exists s3 : State.t,
+        succ_instr s1 hd s3 /\ succ_program s3 tl s2 .
+  Proof .
+    by [] .
+  Qed .
+    
   Lemma eval_program_concat :
     forall (p1 p2 : program) (s1 s2 s3 : State.t),
       eval_program s1 p1 = s2 ->
@@ -648,6 +762,20 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       rewrite He1; assumption.
   Qed.
 
+  Lemma succ_program_concat :
+    forall (p1 p2 : program) (s1 s2 s3 : State.t),
+      succ_program s1 p1 s2 ->
+      succ_program s2 p2 s3 ->
+      succ_program s1 (p1 ++ p2) s3 .
+  Proof .
+    move => p1; elim p1 => /= .
+    - move => p2 s1 s2 s3 Heq Hsucc .
+      rewrite Heq //= .
+    - move => hd tl Hind p2 s1 s2 s3 [] => x [] => Hsucchd Hsucctl Hsuccp2 .
+      exists x; split => //= .
+      by apply: (Hind p2 x s2 s3) .
+  Qed .
+      
   Lemma eval_program_concat_step :
     forall (p1 p2 : program) (s : State.t),
       eval_program s (p1 ++ p2) =
@@ -680,8 +808,22 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       + exact: He42.
   Qed.
 
-
-
+  Lemma succ_program_split :
+    forall (p1 p2 : program) (s1 s2 : State.t),
+      succ_program s1 (p1 ++ p2) s2 ->
+      exists s3, succ_program s1 p1 s3 /\ succ_program s3 p2 s2 .
+  Proof .
+    move => p1; elim: p1 .
+    - move => p2 s1 s2 Hsucc .
+      exists s1; split => // .
+    - move => hd tl Hind p2 s1 s2 Hsucc .
+      move: (succ_program_cons Hsucc) => {Hsucc} [s3 [Hsucchd Hsucctl]] .
+      move: (Hind _ _ _ Hsucctl) => {Hsucctl} [s4 [Hsucctl Hsuccp2]] .
+      exists s4; split => // .
+      simpl .
+      by exists s3 .
+  Qed .
+  
   (** Specification *)
 
   Inductive unop : Set :=
@@ -954,11 +1096,23 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       eval_program s1 (sprog s) = s2 ->
       eval_bexp (spost s) s2.
 
+  Definition succ_valid_spec (s: spec) : Prop :=
+    forall s1 s2,
+      eval_bexp (spre s) s1 ->
+      succ_program s1 (sprog s) s2 ->
+      eval_bexp (spost s) s2 .
+
   Definition valid_espec (s : espec) : Prop :=
     forall s1 s2,
       eval_ebexp (espre s) s1 ->
       eval_program s1 (esprog s) = s2 ->
       eval_ebexp (espost s) s2.
+
+  Definition succ_valid_espec (s : espec) : Prop :=
+    forall s1 s2,
+      eval_ebexp (espre s) s1 ->
+      succ_program s1 (esprog s) s2 ->
+      eval_ebexp (espost s) s2 .
 
   Definition valid_rspec (s : rspec) : Prop :=
     forall s1 s2,
@@ -966,16 +1120,28 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       eval_program s1 (rsprog s) = s2 ->
       eval_rbexp (rspost s) s2.
 
+  Definition succ_valid_rspec (s : rspec) : Prop :=
+    forall s1 s2,
+      eval_rbexp (rspre s) s1 ->
+      succ_program s1 (rsprog s) s2 ->
+      eval_rbexp (rspost s) s2 .
+
   Local Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity).
   Local Notation "f ===> g" := (entails f g) (at level 82, no associativity).
   Local Notation "{{ f }} p {{ g }}" :=
     ({| spre := f; sprog := p; spost := g |}) (at level 82).
   Local Notation "|= s" := (valid_spec s) (at level 83).
-
+  Local Notation "||= s" := (succ_valid_spec s) (at level 83) .
+  
   Definition counterexample (sp : spec) (s : State.t) : Prop :=
     eval_bexp (spre sp) s /\
     exists s' : State.t,
       eval_program s (sprog sp) = s' /\ (~ eval_bexp (spost sp) s').
+
+  Definition succ_counterexample (sp : spec) (s : State.t) : Prop :=
+    eval_bexp (spre sp) s /\
+    exists s' : State.t,
+      succ_program s (sprog sp) s' /\ (~ eval_bexp (spost sp) s').
 
   Lemma vars_ebexp_subset e :
     VS.subset (vars_ebexp (eqn_bexp e)) (vars_bexp e).
@@ -1092,6 +1258,14 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     reflexivity.
   Qed.
 
+  Lemma succ_spec_empty :
+    forall f g,
+      ||= {{ f }} [::] {{ g }} -> f ===> g .
+  Proof .
+    move => f g He s Hf .
+    by apply: (He s _ Hf) .
+  Qed .
+    
   Lemma spec_strengthing :
     forall f g h p,
       entails f g -> |= {{ g }} p {{ h }} -> |= {{ f }} p {{ h }}.
@@ -1101,9 +1275,27 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     exact: (Hfg _ Hf).
   Qed.
 
+  Lemma succ_spec_strengthing :
+    forall f g h p,
+      entails f g -> ||= {{ g }} p {{ h }} -> ||= {{ f }} p {{ h }}.
+  Proof.
+    move=> f g h p Hfg Hgh s1 s2 Hf Hp.
+    apply: (Hgh _ _ _ Hp).
+    exact: (Hfg _ Hf).
+  Qed.
+
   Lemma spec_weakening :
     forall f g h p,
       |= {{ f }} p {{ g }} -> g ===> h -> |= {{ f }} p {{ h }}.
+  Proof.
+    move=> f g h p Hfg Hgh s1 s2 Hf Hp.
+    apply: Hgh.
+    exact: (Hfg _ _ Hf Hp).
+  Qed.
+
+  Lemma succ_spec_weakening :
+    forall f g h p,
+      ||= {{ f }} p {{ g }} -> g ===> h -> ||= {{ f }} p {{ h }}.
   Proof.
     move=> f g h p Hfg Hgh s1 s2 Hf Hp.
     apply: Hgh.
@@ -1122,6 +1314,17 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     assumption.
   Qed.
 
+  Lemma succ_spec_cons :
+    forall f g h hd tl,
+      ||= {{ f }} [::hd] {{ g }} -> ||= {{ g }} tl {{ h }} ->
+      ||= {{ f }} (hd::tl) {{ h }}.
+  Proof.
+    move=> f g h hd tl Hshd Hstl s1 s2 /= Hf Hp.
+    move: (succ_program_cons Hp) => {Hp} [s3 [Hhd Htl]].
+    apply: (Hstl _ _ _ Htl) => /=.
+    by apply: (Hshd _ _ _ (succ_singleton_program Hhd)) => /=.
+  Qed.
+
   Lemma spec_concat :
     forall f g h p1 p2,
       |= {{ f }} p1 {{ g }} -> |= {{ g }} p2 {{ h }} ->
@@ -1129,6 +1332,18 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Proof.
     move=> f g h p1 p2 Hp1 Hp2 s1 s2 /= Hf Hp.
     move: (eval_program_split Hp) => [s3 [Hep1 Hep2]].
+    apply: (Hp2 _ _ _ Hep2) => /=.
+    apply: (Hp1 _ _ _ Hep1) => /=.
+    assumption.
+  Qed.
+
+  Lemma succ_spec_concat :
+    forall f g h p1 p2,
+      ||= {{ f }} p1 {{ g }} -> ||= {{ g }} p2 {{ h }} ->
+      ||= {{ f }} (p1 ++ p2) {{ h }}.
+  Proof.
+    move=> f g h p1 p2 Hp1 Hp2 s1 s2 /= Hf Hp.
+    move: (succ_program_split Hp) => [s3 [Hep1 Hep2]].
     apply: (Hp2 _ _ _ Hep2) => /=.
     apply: (Hp1 _ _ _ Hep1) => /=.
     assumption.
@@ -1148,7 +1363,19 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     - exact: (eval_bvand_rng_distr1 Hgr1 Hgr2).
   Qed.
 
-
+  Lemma succ_spec_split_post :
+    forall f g1 g2 p,
+      ||= {{ f }} p {{ g1 }} ->
+      ||= {{ f }} p {{ g2 }} ->
+      ||= {{ f }} p {{ bvand g1 g2 }}.
+  Proof.
+    move=> f g1 g2 p Hg1 Hg2 s1 s2 /= Hf Hp.
+    move: (Hg1 s1 s2 Hf Hp) => /= {Hg1} [Hge1 Hgr1].
+    move: (Hg2 s1 s2 Hf Hp) => /= {Hg2} [Hge2 Hgr2].
+    split.
+    - exact: (eval_bvand_eqn_distr1 Hge1 Hge2).
+    - exact: (eval_bvand_rng_distr1 Hgr1 Hgr2).
+  Qed.
 
   (** Well-formed programs *)
 
