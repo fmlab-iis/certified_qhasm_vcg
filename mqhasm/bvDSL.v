@@ -65,7 +65,9 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   | bvAdc : var -> atomic -> atomic -> var -> instr
   | bvAdcC : var -> var -> atomic -> atomic -> var -> instr
   | bvSub : var -> atomic -> atomic -> instr
-(*  | bvSubC : var -> var -> atomic -> atomic -> instr *)
+  | bvSubC : var -> var -> atomic -> atomic -> instr
+  | bvSbb : var -> atomic -> atomic -> var -> instr
+  | bvSbbC : var -> var -> atomic -> atomic -> var -> instr
   | bvMul : var -> atomic -> atomic -> instr
   | bvMulf : var -> var -> atomic -> atomic -> instr
   | bvShl : var -> atomic -> int -> instr
@@ -92,8 +94,12 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvMul v e1 e2 => VS.add v (VS.union (vars_atomic e1) (vars_atomic e2))
     | bvAddC c v e1 e2
     | bvAdc v e1 e2 c
-    (*| bvSubC c v e1 e2*) => VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2)))
-    | bvAdcC c v e1 e2 a => VS.add a (VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2))))
+    | bvSubC c v e1 e2
+    | bvSbb v e1 e2 c =>
+      VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2)))
+    | bvAdcC c v e1 e2 y
+    | bvSbbC c v e1 e2 y =>
+      VS.add y (VS.add c (VS.add v (VS.union (vars_atomic e1) (vars_atomic e2))))
     | bvSplit vh vl e _ => VS.add vh (VS.add vl (vars_atomic e))
     | bvMulf vh vl e1 e2
     | bvConcatShl vh vl e1 e2 _ =>
@@ -107,11 +113,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvAdd v _ _
     | bvAdc v _ _ _
     | bvSub v _ _
+    | bvSbb v _ _ _
     | bvMul v _ _
     | bvShl v _ _ => VS.singleton v
     | bvAddC c v _ _
     | bvAdcC c v _ _ _
-    (*| bvSubC c v _ _*) => VS.add c (VS.singleton v)
+    | bvSubC c v _ _
+    | bvSbbC c v _ _ _ => VS.add c (VS.singleton v)
     | bvMulf vh vl _ _
     | bvSplit vh vl _ _
     | bvConcatShl vh vl _ _ _ => VS.add vh (VS.singleton vl)
@@ -124,11 +132,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvShl _ e _
     | bvSplit _ _ e _ => vars_atomic e
     | bvAdc _ e1 e2 c
-    | bvAdcC _ _ e1 e2 c => VS.add c (VS.union (vars_atomic e1) (vars_atomic e2))
+    | bvAdcC _ _ e1 e2 c
+    | bvSbb _ e1 e2 c
+    | bvSbbC _ _ e1 e2 c => VS.add c (VS.union (vars_atomic e1) (vars_atomic e2))
     | bvAdd _ e1 e2
     | bvAddC _ _ e1 e2
     | bvSub _ e1 e2
-(*    | bvSubC _ _ e1 e2 *)
+    | bvSubC _ _ e1 e2
     | bvMul _ e1 e2
     | bvMulf _ _ e1 e2
     | bvConcatShl _ _ e1 e2 _ => VS.union (vars_atomic e1) (vars_atomic e2)
@@ -552,57 +562,84 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 (*    | bvNeg v e => State.upd v (negB (eval_atomic e s)) s *)
     | bvAdd v e1 e2 => State.upd v (addB (eval_atomic e1 s) (eval_atomic e2 s)) s
     | bvAddC c v e1 e2 =>
-      State.upd2 c
-                 (high A.wordsize
-                       (addB (zeroExtend A.wordsize (eval_atomic e1 s))
-                             (zeroExtend A.wordsize (eval_atomic e2 s))))
-                 v
+      State.upd2 v
                  (low A.wordsize
                       (addB (zeroExtend A.wordsize (eval_atomic e1 s))
                             (zeroExtend A.wordsize (eval_atomic e2 s))))
-                 s
-    | bvAdc v e1 e2 c =>
-      State.upd v
-                (low A.wordsize
-                     (addB
-                        (addB (zeroExtend A.wordsize (eval_atomic e1 s))
-                              (zeroExtend A.wordsize (eval_atomic e2 s)))
-                        (zeroExtend A.wordsize (State.acc c s))))
-                s
-    | bvAdcC c v e1 e2 a =>
-      State.upd2 c
+                 c
                  (high A.wordsize
-                       (addB
-                          (addB (zeroExtend A.wordsize (eval_atomic e1 s))
-                                (zeroExtend A.wordsize (eval_atomic e2 s)))
-                          (zeroExtend A.wordsize (State.acc a s))))
-                 v
+                       (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                             (zeroExtend A.wordsize (eval_atomic e2 s))))
+                 s
+    | bvAdc v e1 e2 y =>
+      State.upd v
+                (addB (addB (eval_atomic e1 s) (eval_atomic e2 s))
+                      (State.acc y s))
+                s
+    | bvAdcC c v e1 e2 y =>
+      State.upd2 v
                  (low A.wordsize
                       (addB
                          (addB (zeroExtend A.wordsize (eval_atomic e1 s))
                                (zeroExtend A.wordsize (eval_atomic e2 s)))
-                         (zeroExtend A.wordsize (State.acc a s))))
+                         (zeroExtend A.wordsize (State.acc y s))))
+                 c
+                 (high A.wordsize
+                       (addB
+                          (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                                (zeroExtend A.wordsize (eval_atomic e2 s)))
+                          (zeroExtend A.wordsize (State.acc y s))))
                  s
     | bvSub v e1 e2 => State.upd v (subB (eval_atomic e1 s) (eval_atomic e2 s)) s
-(*    | bvSubC c v e1 e2 =>
-      State.upd2 c
-                 (if carry_subB (eval_atomic e1 s) (eval_atomic e2 s) then bvone else bvzero)
-                 v (subB (eval_atomic e1 s) (eval_atomic e2 s))
-                 s *)
+    | bvSubC c v e1 e2 =>
+      State.upd2 v
+                 (low A.wordsize
+                      (subB (zeroExtend A.wordsize (eval_atomic e1 s))
+                            (zeroExtend A.wordsize (eval_atomic e2 s))))
+                 c
+                 (negB
+                    (high A.wordsize
+                          (subB (zeroExtend A.wordsize (eval_atomic e1 s))
+                                (zeroExtend A.wordsize (eval_atomic e2 s)))))
+                 s
+    | bvSbb v e1 e2 y =>
+      State.upd v
+                (subB (subB (eval_atomic e1 s) (eval_atomic e2 s))
+                      (State.acc y s))
+                s
+    | bvSbbC c v e1 e2 y =>
+      State.upd2 v
+                 (low A.wordsize
+                       (subB
+                          (subB (zeroExtend A.wordsize (eval_atomic e1 s))
+                                (zeroExtend A.wordsize (eval_atomic e2 s)))
+                          (zeroExtend A.wordsize (State.acc y s))))
+                 c
+                 (negB
+                    (high A.wordsize
+                          (subB
+                             (subB (zeroExtend A.wordsize (eval_atomic e1 s))
+                                   (zeroExtend A.wordsize (eval_atomic e2 s)))
+                             (zeroExtend A.wordsize (State.acc y s)))))
+                 s
     | bvMul v e1 e2 => State.upd v (mulB (eval_atomic e1 s) (eval_atomic e2 s)) s
     | bvMulf vh vl e1 e2 =>
-      State.upd2 vh (high A.wordsize (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
-                 vl (low A.wordsize (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
+      State.upd2 vl
+                 (low A.wordsize
+                      (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
+                 vh
+                 (high A.wordsize
+                       (fullmulB (eval_atomic e1 s) (eval_atomic e2 s)))
                  s
     | bvShl v e p => State.upd v (shlBn (eval_atomic e s) (toNat p)) s
     | bvSplit vh vl e p =>
-      State.upd2 vh (fst (split_ext (eval_atomic e s) (toNat p)))
-                 vl (snd (split_ext (eval_atomic e s) (toNat p)))
+      State.upd2 vl (snd (split_ext (eval_atomic e s) (toNat p)))
+                 vh (fst (split_ext (eval_atomic e s) (toNat p)))
                  s
     | bvConcatShl vh vl e1 e2 p =>
-      State.upd2 vh (fst (concat_shl (eval_atomic e1 s)
+      State.upd2 vl (snd (concat_shl (eval_atomic e1 s)
                                      (eval_atomic e2 s) (toNat p)))
-                 vl (snd (concat_shl (eval_atomic e1 s)
+                 vh (fst (concat_shl (eval_atomic e1 s)
                                      (eval_atomic e2 s) (toNat p)))
                  s
     end.
@@ -1161,14 +1198,16 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvMul v e1 e2 => VS.subset (vars_atomic e1) vs
                                  && VS.subset (vars_atomic e2) vs
     | bvAddC c v e1 e2
-    (*| bvSubC c v e1 e2*) => (c != v)
+    | bvSubC c v e1 e2 => (c != v)
                             && VS.subset (vars_atomic e1) vs
                             && VS.subset (vars_atomic e2) vs
-    | bvAdc v e1 e2 c => VS.mem c vs
+    | bvAdc v e1 e2 c
+    | bvSbb v e1 e2 c => VS.mem c vs
                                 && VS.subset (vars_atomic e1) vs
                                 && VS.subset (vars_atomic e2) vs
-    | bvAdcC c v e1 e2 a => (c != v)
-                              && VS.mem a vs
+    | bvAdcC c v e1 e2 y
+    | bvSbbC c v e1 e2 y => (c != v)
+                              && VS.mem y vs
                               && VS.subset (vars_atomic e1) vs
                               && VS.subset (vars_atomic e2) vs
     | bvShl v e p => VS.subset (vars_atomic e) vs
@@ -1532,11 +1571,13 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvAdd _ _ _
     | bvAdc _ _ _ _
     | bvSub _ _ _
+    | bvSbb _ _ _ _
     | bvMul _ _ _
     | bvShl _ _ _ => true
     | bvAddC c v _ _
     | bvAdcC c v _ _ _
-    (*| bvSubC c v _ _*) => c != v
+    | bvSubC c v _ _
+    | bvSbbC c v _ _ _ => c != v
     | bvMulf vh vl _ _
     | bvSplit vh vl _ _
     | bvConcatShl vh vl _ _ _ => vh != vl

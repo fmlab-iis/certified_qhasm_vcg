@@ -21,6 +21,11 @@ Notation "x <= y" := (leB x y) : bits_scope.
 
 
 
+Ltac eq_add_posz H :=
+  match type of H with
+  | ?x = ?y => have: (toPosZ x = toPosZ y); [by rewrite H | move=> {H} H]
+  end.
+
 (** Constants *)
 
 Inductive nstring (n : nat) : Set :=
@@ -374,6 +379,29 @@ Section BitsLemmas.
     - exact: toNatBounded.
   Qed.
 
+  Lemma width1_case (p : BITS 1) : p = singleBit false \/ p = singleBit true.
+  Proof.
+    destruct p. case: tval i.
+    - done.
+    - move=> b [].
+      + case: b.
+        * right. apply: val_inj => /=. reflexivity.
+        * left. apply: val_inj => /=. reflexivity.
+      + done.
+  Qed.
+
+  Lemma ltB_width1 (p1 p2 : BITS 1) :
+    ltB p1 p2 ->
+    p1 = singleBit false /\ p2 = singleBit true.
+  Proof.
+    case: (width1_case p1); case: (width1_case p2) => -> ->; done.
+  Qed.
+
+  Lemma ltB_width_gt0 n (p1 p2 : BITS n) : ltB p1 p2 -> (0 < n)%N.
+  Proof.
+    by case: n p1 p2.
+  Qed.
+
 
 
   (* Operations *)
@@ -583,6 +611,15 @@ Section BitsLemmas.
     rewrite (toNat_addB_bounded H1). reflexivity.
   Qed.
 
+  Lemma toNat_addB3_bounded n (p1 p2 p3 : BITS n) :
+    ~~ carry_addB p1 p2 ->
+    ~~ carry_addB (addB p1 p2) p3 ->
+    toNat (addB (addB p1 p2) p3) = toNat p1 + toNat p2 + toNat p3.
+  Proof.
+    move=> H1 H2. rewrite (toNat_addB_bounded H2) (toNat_addB_bounded H1).
+    reflexivity.
+  Qed.
+
   Lemma toNat_addn3_bounded_lt (n : nat) :
     3 * (2^n - 1) < 4^n.
   Proof.
@@ -649,19 +686,74 @@ Section BitsLemmas.
       * exact: toNat_addn_ltn_two_power.
   Qed.
 
-  Lemma carry_subB_leB :
-    forall (n : nat) (x y : BITS n), ~~ carry_subB x y -> (y <= x)%bits.
+  Lemma toNat_invB_nil (p : BITS 0) : toNat (invB p) = 0%N.
   Proof.
-    move=> n x y. move: (sbbB_ltB_leB x y). case: (sbbB false x y).
+    rewrite toNatNil. reflexivity.
+  Qed.
+
+  Lemma toNat_negB_nil (p : BITS 0) : toNat (negB p) = 0%N.
+  Proof.
+    rewrite toNatNil. reflexivity.
+  Qed.
+
+  Lemma carry_subB_nil (p1 p2 : BITS 0) : carry_subB p1 p2 = false.
+  Proof.
+    reflexivity.
+  Qed.
+
+  Lemma carry_subB_leB n (x y : BITS n) : ~~ carry_subB x y -> (y <= x)%bits.
+  Proof.
+    move: (sbbB_ltB_leB x y). case: (sbbB false x y).
     move=> carry p /=. by case: carry.
   Qed.
 
-  Lemma toNat_subB_bounded :
-    forall (n : nat) (x y : BITS n),
-      ~~ carry_subB x y ->
-      toNat (subB x y) = (toNat x - toNat y).
+  Lemma geB_carry_subB n (p1 p2 : BITS n) :
+    leB p2 p1 -> ~~ carry_subB p1 p2.
   Proof.
-    move=> n x y H. apply: toNat_subB. by apply: carry_subB_leB.
+    rewrite leB_nat /sbbB /adcB /= => Hle. apply/negPn.
+    rewrite toNat_splitmsb1 toNat_adcBmain toNat_invB /=.
+    rewrite -subn1 (addnBA _ (toNatBounded_leq p2)).
+    replace (1 + toNat p1 + (2 ^ n - 1)) with
+            (1 + (2 ^ n - 1) + toNat p1) by ring.
+    rewrite (subnKC (expn2_gt0 n)). rewrite -(addnBA _ Hle).
+    replace (2^n) with (1 * 2^n) at 1; last by rewrite mul1n.
+    rewrite (divnMDl _ _ (expn2_gt0 n)). rewrite divn_small.
+    - done.
+    - apply: (@ltn_leq_trans (2^n - toNat p2)).
+      + apply: ltn_sub2r; exact: toNatBounded.
+      + exact: leq_subr.
+  Qed.
+
+  Lemma ltB_carry_subB n (p1 p2 : BITS n) :
+    ltB p1 p2 -> carry_subB p1 p2.
+  Proof.
+    rewrite ltB_nat /sbbB /adcB /= => Hlt.
+    rewrite toNat_splitmsb1 toNat_adcBmain toNat_invB /=.
+    rewrite -subn1 (addnBA _ (toNatBounded_leq p2)).
+    replace (1 + toNat p1 + (2 ^ n - 1)) with
+            (1 + (2 ^ n - 1) + toNat p1) by ring.
+    rewrite (subnKC (expn2_gt0 n)). rewrite divn_small; first by done.
+    apply: (@ltn_leq_trans (2^n + toNat p2 - toNat p2)).
+    - apply: ltn_sub2r.
+      + apply: ltn_addr. exact: toNatBounded.
+      + rewrite ltn_add2l. exact: Hlt.
+    - rewrite -(addnBA _ (leqnn (toNat p2))) subnn addn0. exact: leqnn.
+  Qed.
+
+  Lemma toNat_subB_bounded n (x y : BITS n) :
+    ~~ carry_subB x y ->
+    toNat (subB x y) = (toNat x - toNat y).
+  Proof.
+    move=> H. apply: toNat_subB. by apply: carry_subB_leB.
+  Qed.
+
+  Lemma toNat_subB3_bounded n (p1 p2 p3 : BITS n) :
+    ~~ carry_subB p1 p2 ->
+    ~~ carry_subB (subB p1 p2) p3 ->
+    toNat (subB (subB p1 p2) p3) = (toNat p1 - toNat p2 - toNat p3).
+  Proof.
+    move=> H1 H2. rewrite (toNat_subB_bounded H2) (toNat_subB_bounded H1).
+    reflexivity.
   Qed.
 
   Lemma toNat_high_addB_extn_ext1 n (p1 p2 : BITS n) :
@@ -934,6 +1026,12 @@ Section BitsLemmas.
 
   Definition toPosZBounded := toPosZ_max.
 
+  Corollary toPosZ_bound n (p : BITS n) :
+    0 <= toPosZ p < 2 ^ Z.of_nat n.
+  Proof.
+    split; [ exact: toPosZ_min | exact: toPosZ_max ].
+  Qed.
+
   Lemma toPosZ_fromPosZBounded_nat n m :
     (m < 2^n)%N ->
     toPosZ (fromPosZ (n:=n) (Z.of_nat m)) = (Z.of_nat m).
@@ -1015,9 +1113,95 @@ Section BitsLemmas.
     rewrite -toPosZ_toNat. reflexivity.
   Qed.
 
+  Lemma fromPosZ0 n : fromPosZ 0 = zero n.
+  Proof.
+    replace 0 with (Z.of_nat 0); last by reflexivity.
+    rewrite fromPosZ_fromNat. exact: fromNat0.
+  Qed.
+
+  Lemma toPosZCat m n (p : BITS m) (q: BITS n) :
+    toPosZ (p ## q) = toPosZ p * 2 ^ (Z.of_nat n) + toPosZ q.
+  Proof.
+    rewrite toPosZ_toNat toNatCat Nat2Z.inj_add Nat2Z.inj_mul Nat2Z_inj_expn
+            -!toPosZ_toNat. reflexivity.
+  Qed.
+
+  Lemma ltB_toPosZ n (p1 p2 : BITS n) :
+    ltB p1 p2 -> toPosZ p1 < toPosZ p2.
+  Proof.
+    move=> H. rewrite !toPosZ_toNat.
+    apply: (proj1 (Nat2Z.inj_lt (toNat p1) (toNat p2))).
+    apply: ltn_lt. rewrite -ltB_nat. exact: H.
+  Qed.
+
+  Lemma toPosZ_ltB n (p1 p2 : BITS n) :
+    toPosZ p1 < toPosZ p2 -> ltB p1 p2.
+  Proof.
+    move=> H. rewrite !toPosZ_toNat in H.
+    move: (proj2 (Nat2Z.inj_lt (toNat p1) (toNat p2)) H) => {H} H.
+    move: (lt_ltn H) => {H} H. rewrite -ltB_nat in H. exact: H.
+  Qed.
+
+  Lemma leB_toPosZ n (p1 p2 : BITS n) :
+    leB p1 p2 -> toPosZ p1 <= toPosZ p2.
+  Proof.
+    move=> H. rewrite !toPosZ_toNat.
+    apply: (proj1 (Nat2Z.inj_le (toNat p1) (toNat p2))).
+    apply: leq_le. rewrite -leB_nat. exact: H.
+  Qed.
+
+  Lemma toPosZ_leB n (p1 p2 : BITS n) :
+    toPosZ p1 <= toPosZ p2 -> leB p1 p2.
+  Proof.
+    move=> H. rewrite !toPosZ_toNat in H.
+    move: (proj2 (Nat2Z.inj_le (toNat p1) (toNat p2)) H) => {H} H.
+    move: (le_leq H) => {H} H. rewrite -leB_nat in H. exact: H.
+  Qed.
+
+  Lemma ltB_zeroExtend n m (p1 p2 : BITS n) :
+    ltB p1 p2 -> ltB (zeroExtend m p1) (zeroExtend m p2).
+  Proof.
+    rewrite !ltB_nat. rewrite !toNat_zeroExtend. done.
+  Qed.
+
+  Lemma leB_zeroExtend n m (p1 p2 : BITS n) :
+    leB p1 p2 -> leB (zeroExtend m p1) (zeroExtend m p2).
+  Proof.
+    rewrite !leB_nat. rewrite !toNat_zeroExtend. done.
+  Qed.
+
 
 
   (* toPosZ and operations *)
+
+  Lemma toPosZ_eucl n1 n2 (p : BITS (n2 + n1)) q r :
+    (q, r) = Z.div_eucl (toPosZ p) (2 ^ Z.of_nat n2) ->
+    q = toPosZ (high n1 p) /\ r = toPosZ (low n2 p).
+  Proof.
+    rewrite !toPosZ_toNat. exact: toNat_eucl.
+  Qed.
+
+  Lemma toPosZ_eucl_high n1 n2 (p : BITS (n2 + n1)) q r :
+    (q, r) = Z.div_eucl (toPosZ p) (2 ^ Z.of_nat n2) ->
+    q = toPosZ (high n1 p).
+  Proof.
+    rewrite !toPosZ_toNat. exact: toNat_eucl_high.
+  Qed.
+
+  Lemma toPosZ_eucl_low n1 n2 (p : BITS (n2 + n1)) q r :
+    (q, r) = Z.div_eucl (toPosZ p) (2 ^ Z.of_nat n2) ->
+    r = toPosZ (low n2 p).
+  Proof.
+    rewrite !toPosZ_toNat. exact: toNat_eucl_low.
+  Qed.
+
+  Corollary toPosZ_addB n (p1 p2: BITS n) :
+    toPosZ (addB p1 p2) = (toPosZ p1 + toPosZ p2) mod 2 ^ (Z.of_nat n).
+  Proof.
+    rewrite !toPosZ_toNat. rewrite toNat_addB. rewrite Nat2Z_inj_modn.
+    - rewrite Nat2Z.inj_add Nat2Z_inj_expn. reflexivity.
+    - rewrite -lt0n expn2_gt0. done.
+  Qed.
 
   Lemma toPosZ_addB_bounded n (p1 p2 : BITS n) :
     ~~ carry_addB p1 p2 ->
@@ -1071,6 +1255,99 @@ Section BitsLemmas.
     rewrite !Nat2Z.inj_add. reflexivity.
   Qed.
 
+  Lemma toPosZ_addB3_bounded n (p1 p2 p3 : BITS n) :
+    ~~ carry_addB p1 p2 -> ~~ carry_addB (p1 + p2)%bits p3 ->
+    toPosZ ((p1 + p2) + p3)%bits =
+    (toPosZ p1 + toPosZ p2 + toPosZ p3)%Z.
+  Proof.
+    move=> H1 H2. rewrite !toPosZ_toNat (toNat_addB3_bounded H1 H2).
+    rewrite !Nat2Z.inj_add. reflexivity.
+  Qed.
+
+  Corollary toPosZ_negB n (p : BITS n) :
+    toPosZ (negB p) =
+    if toPosZ p == 0 then 0 else 2 ^ (Z.of_nat n) - toPosZ p.
+  Proof.
+    rewrite !toPosZ_toNat. rewrite toNat_negB.
+    case H: (toNat p == 0)%N.
+    - rewrite (eqP H) /=. reflexivity.
+    - have Hz: (Z.of_nat (toNat p) == 0) = false.
+      { replace 0 with (Z.of_nat 0); last by reflexivity.
+        apply/negP => Heq. move/negP: H; apply.
+        move: (Nat2Z.inj _ _ (eqP Heq)). by move=> ->. }
+      rewrite Hz. rewrite Nat2Z.inj_sub.
+      * rewrite expn_pow Nat2Z_inj_pow. reflexivity.
+      * apply: leq_le. apply: ltnW. exact: (toNatBounded p).
+  Qed.
+
+  Lemma toPosZ_subB_geB n (p1 p2 : BITS n) :
+    leB p2 p1 -> toPosZ (subB p1 p2) = toPosZ p1 - toPosZ p2.
+  Proof.
+    move=> H. have: (toNat p2 <= toNat p1)%coq_nat.
+    { apply: leq_le. rewrite -leB_nat. exact: H. } move=> Hle.
+    rewrite toPosZ_toNat (toNat_subB H) (Nat2Z.inj_sub _ _ Hle) -!toPosZ_toNat.
+    reflexivity.
+  Qed.
+
+  Lemma toPosZ_subB_ltB n (p1 p2 : BITS n) :
+    ltB p1 p2 -> toPosZ (subB p1 p2) = toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat n.
+  Proof.
+    move=> Hlt. rewrite subB_equiv_addB_negB toPosZ_addB toPosZ_negB.
+    case Hp2: (toPosZ p2 == 0).
+    - rewrite ltB_nat in Hlt. have: (toNat p2 = 0)%N.
+      { apply: Nat2Z.inj. rewrite -toPosZ_toNat. rewrite (eqP Hp2). reflexivity. }
+      move=> H; rewrite H in Hlt. done.
+    - rewrite Z.add_sub_assoc Z.add_sub_swap. move: (ltB_toPosZ Hlt).
+      move=> {Hlt Hp2} Hlt. rewrite Zmod_small; first by reflexivity. split.
+      + rewrite -Z.add_sub_swap.
+        apply: (proj2 (Z.le_0_sub (toPosZ p2) (toPosZ p1 + 2 ^ Z.of_nat n))).
+        apply: Z.le_trans.
+        * apply: Z.lt_le_incl. exact: (toPosZ_max p2).
+        * rewrite -{1}(Zplus_0_l (2 ^ Z.of_nat n)).
+          apply: (proj1 (Z.add_le_mono_r 0 (toPosZ p1) (2 ^ Z.of_nat n))).
+          exact: toPosZ_min.
+      + rewrite -{2}(Zplus_0_l (2 ^ Z.of_nat n)).
+        apply: (proj1 (Z.add_lt_mono_r (toPosZ p1 - toPosZ p2)
+                                       0 (2 ^ Z.of_nat n))).
+        exact: (proj2 (Z.lt_sub_0 (toPosZ p1) (toPosZ p2)) Hlt).
+  Qed.
+
+  Lemma subB_zeroExtend_catB n (p1 p2 : BITS n) :
+    subB (zeroExtend n p1) (zeroExtend n p2) =
+    (negB (fromNat (carry_subB p1 p2))) ## (subB p1 p2).
+  Proof.
+    apply: toPosZ_inj. rewrite toPosZCat toPosZ_negB. case Hge: (leB p2 p1).
+    - move: (geB_carry_subB Hge). move/negPf => Hc. rewrite Hc /=.
+      rewrite (toPosZ_toNat (@fromNat n 0)) (fromNatK (expn2_gt0 n)) /=.
+      rewrite (toPosZ_subB_geB (leB_zeroExtend n Hge)) !toPosZ_zeroExtend.
+      rewrite (toPosZ_subB_geB Hge). reflexivity.
+    - move/idP/negPn: Hge. rewrite -ltBNle => Hlt.
+      move: (ltB_carry_subB Hlt) => Hc. rewrite Hc /=. case: n p1 p2 Hlt Hc.
+      + move=> p1 p2 _ _. rewrite !toPosZNil /=. reflexivity.
+      + move=> n. set m := n.+1. move=> p1 p2 Hlt Hc.
+        rewrite (toPosZ_toNat (@fromNat m 1)) (fromNatK (ltn_1_2expnS n)) /=.
+        rewrite (toPosZ_subB_ltB (ltB_zeroExtend m Hlt)) !toPosZ_zeroExtend.
+        rewrite (toPosZ_subB_ltB Hlt).
+        replace (Z.pow_pos 2 (Pos.of_succ_nat n)) with (2 ^ (Z.of_nat m))
+          by reflexivity. rewrite -!Zpower_nat_Z Zpower_nat_is_exp.
+        set x := toPosZ p1 - toPosZ p2. set y := Zpower_nat 2 m.
+        rewrite Z.mul_sub_distr_r Z.mul_1_l. ring.
+  Qed.
+
+  Lemma subB_zeroExtend_high n (p1 p2 : BITS n) :
+    high n (subB (zeroExtend n p1) (zeroExtend n p2)) =
+    negB (fromNat (carry_subB p1 p2)).
+  Proof.
+    rewrite subB_zeroExtend_catB high_catB. reflexivity.
+  Qed.
+
+  Lemma subB_zeroExtend_low n (p1 p2 : BITS n) :
+    low n (subB (zeroExtend n p1) (zeroExtend n p2)) =
+    subB p1 p2.
+  Proof.
+    rewrite subB_zeroExtend_catB low_catB. reflexivity.
+  Qed.
+
   Lemma toPosZ_subB_bounded n (p1 p2 : BITS n) :
     ~~ carry_subB p1 p2 ->
     toPosZ (subB p1 p2) = toPosZ p1 - toPosZ p2.
@@ -1079,6 +1356,510 @@ Section BitsLemmas.
     move=> H. rewrite !toPosZ_toNat (toNat_subB H).
     rewrite leB_nat in H. move: (leq_le H) => {H} H.
     rewrite -(Nat2Z.inj_sub _ _ H) subn_sub. reflexivity.
+  Qed.
+
+  Lemma subB_zeroExtend_high0_carry0 n (p1 p2 : BITS n) :
+    high n (subB (zeroExtend n p1) (zeroExtend n p2)) = zero n ->
+    carry_subB p1 p2 = false.
+  Proof.
+    rewrite subB_zeroExtend_high. case Hc: (carry_subB p1 p2).
+    - move=> Hneg. have: toNat (negB (@fromNat n true)) = toNat (zero n) by
+          rewrite Hneg. rewrite toNat_negB toNat_zero /= => {Hneg}.
+      case: n p1 p2 Hc.
+      + move=> p1 p2 Hc _. rewrite carry_subB_nil in Hc. discriminate.
+      + move=> n p1 p2 Hc.
+        case H: (toNat # (1) == 0%N).
+        * rewrite (fromNatK (expn2_gt1 n)) in H. done.
+        * rewrite (fromNatK (expn2_gt1 n)). move/eqP=> {Hc H} H.
+          rewrite subn_eq0 leqNgt expn2_gt1 in H. done.
+    - reflexivity.
+  Qed.
+
+  Lemma toPosZ_subB_zeroExtend_bounded n (p1 p2 : BITS n) :
+    high n (subB (zeroExtend n p1) (zeroExtend n p2)) = zero n ->
+    toPosZ (subB (zeroExtend n p1) (zeroExtend n p2)) = toPosZ p1 - toPosZ p2.
+  Proof.
+    move=> Hh. rewrite (catB_high_low (zeroExtend n p1 - zeroExtend n p2)).
+    rewrite toPosZCat Hh toPosZ_zero subB_zeroExtend_low toPosZ_subB_bounded.
+    - reflexivity.
+    - by rewrite (subB_zeroExtend_high0_carry0 Hh).
+  Qed.
+
+  Lemma toPosZ_subB_eucl n (p1 p2 : BITS n) :
+    toPosZ p1 - toPosZ p2 =
+    (- (toPosZ (negB (high n (zeroExtend n p1 - zeroExtend n p2))))) *
+    2 ^ (Z.of_nat n) +
+        (toPosZ (low n (zeroExtend n p1 - zeroExtend n p2))).
+  Proof.
+    rewrite subB_zeroExtend_high subB_zeroExtend_low negBK.
+    case Hge: (leB p2 p1).
+    - move: (geB_carry_subB Hge). move/negPf => Hc. rewrite Hc /=.
+      rewrite (toPosZ_toNat (@fromNat n 0)) (fromNatK (expn2_gt0 n)) /=.
+      rewrite (toPosZ_subB_geB Hge). reflexivity.
+    - move/idP/negPn: Hge. rewrite -ltBNle => Hlt.
+      move: (ltB_carry_subB Hlt) => Hc. rewrite Hc /=. case: n p1 p2 Hlt Hc.
+      + move=> p1 p2 _ _. rewrite !toPosZNil /=. reflexivity.
+      + move=> n. set m := n.+1. move=> p1 p2 Hlt Hc.
+        rewrite (toPosZ_toNat (@fromNat m 1)) (fromNatK (ltn_1_2expnS n)).
+        rewrite (toPosZ_subB_ltB Hlt). set k := Z.of_nat m. ring.
+  Qed.
+
+  Lemma toPosZ_subB_zeroExtend_high n q r (p1 p2 : BITS n) :
+    (q, r) = Z.div_eucl (toPosZ p1 - toPosZ p2) (2 ^ Z.of_nat n) ->
+    toPosZ (negB (high n (zeroExtend n p1 - zeroExtend n p2))) = (- q)%Z.
+  Proof.
+    move=> H. rewrite (Zdiv_eucl_q H) toPosZ_subB_eucl.
+    rewrite (Z_div_plus_full_l _ _ _ (@two_power_of_nat_ne0 n)).
+    move: (toPosZ_bound (low n (zeroExtend n p1 - zeroExtend n p2))) => Hb.
+    rewrite (Zdiv_small _ _ Hb) Zplus_0_r Z.opp_involutive. reflexivity.
+  Qed.
+
+  Lemma toPosZ_subB_zeroExtend_low n q r (p1 p2 : BITS n) :
+    (q, r) = Z.div_eucl (toPosZ p1 - toPosZ p2) (2 ^ Z.of_nat n) ->
+    toPosZ (low n (zeroExtend n p1 - zeroExtend n p2)) = r.
+  Proof.
+    move=> H. rewrite (Zdiv_eucl_r H) toPosZ_subB_eucl.
+    rewrite Zplus_comm Z_mod_plus_full.
+    rewrite Zmod_small; first by reflexivity.
+    exact: (toPosZ_bound (low n (zeroExtend n p1 - zeroExtend n p2))).
+  Qed.
+
+  Lemma ltB_toPosZ_subB_zeroExtend_min n (p1 p2 : BITS n) :
+    ltB p1 p2 ->
+    2 ^ Z.of_nat (n + n) - 2 ^ Z.of_nat n <
+    toPosZ (subB (zeroExtend n p1) (zeroExtend n p2)).
+  Proof.
+    move=> Hlt. rewrite (toPosZ_subB_ltB (ltB_zeroExtend _ Hlt))
+                        !toPosZ_zeroExtend. move: (ltB_toPosZ Hlt) => {Hlt} Hlt.
+    rewrite Zplus_comm. apply: (proj1 (Z.add_lt_mono_l _ _ _)).
+    apply: (proj2 (Z.opp_lt_mono _ _)).
+    rewrite Z.opp_involutive Z.opp_sub_distr Z.add_opp_l.
+    rewrite -(Z.sub_0_r (2 ^ Z.of_nat n)). apply: Z.sub_lt_le_mono.
+    - exact: toPosZ_max.
+    - exact: toPosZ_min.
+  Qed.
+
+  Lemma ltB_subB3_zeroExtend n (p1 p2 p3 : BITS n) :
+    ltB p1 p2 ->
+    leB (zeroExtend n p3) (subB (zeroExtend n p1) (zeroExtend n p2)).
+  Proof.
+    move=> Hlt. apply: toPosZ_leB. apply: (Z.le_trans _ (2 ^ Z.of_nat n)).
+    - rewrite toPosZ_zeroExtend. apply: Z.lt_le_incl. exact: toPosZ_max.
+    - apply: (Z.le_trans _ (2 ^ Z.of_nat (n + n) - 2 ^ Z.of_nat n)).
+      + rewrite -!Zpower_nat_Z Zpower_nat_is_exp.
+        rewrite -{4}(Z.mul_1_r (Zpower_nat 2 n)) -Z.mul_sub_distr_l.
+        rewrite -{1}(Z.mul_1_r (Zpower_nat 2 n)). apply: Zmult_le_compat_l.
+        * replace 1 with (2 - 1) at 1 by done. apply: Z.sub_le_mono; last by done.
+          replace 2 with (Zpower_nat 2 1) at 1 by done.
+          rewrite !Zpower_nat_Z. apply: Z.pow_le_mono_r; first by done.
+          apply: (proj1 (Nat2Z.inj_le _ _)). apply: leq_le. case: n p1 p2 p3 Hlt.
+          -- move=> p1 p2 _ Hlt. move: (ltB_toPosZ Hlt). rewrite !toPosZNil.
+             done.
+          -- done.
+        * apply: Z.lt_le_incl. apply: Z.gt_lt. exact: Zpower_nat_gt0.
+      + apply: Z.lt_le_incl. exact: (ltB_toPosZ_subB_zeroExtend_min Hlt).
+  Qed.
+
+  Lemma geB_geB_subB3_zeroExtend n m (p1 p2 p3 : BITS n) :
+    leB p2 p1 ->
+    leB p3 (subB p1 p2) ->
+    leB (zeroExtend m p3) (subB (zeroExtend m p1) (zeroExtend m p2)).
+  Proof.
+    move=> Hge Hle. apply: toPosZ_leB.
+    rewrite (toPosZ_subB_geB (leB_zeroExtend _ Hge)) !toPosZ_zeroExtend.
+    rewrite -(toPosZ_subB_geB Hge). exact: (leB_toPosZ Hle).
+  Qed.
+
+  Lemma geB_ltB_subB3_zeroExtend n m (p1 p2 p3 : BITS n) :
+    leB p2 p1 ->
+    ltB (subB p1 p2) p3 ->
+    ltB (subB (zeroExtend m p1) (zeroExtend m p2)) (zeroExtend m p3) .
+  Proof.
+    move=> Hge Hlt. apply: toPosZ_ltB.
+    rewrite (toPosZ_subB_geB (leB_zeroExtend _ Hge)) !toPosZ_zeroExtend.
+    rewrite -(toPosZ_subB_geB Hge). exact: (ltB_toPosZ Hlt).
+  Qed.
+
+  Definition carry_subB3 n (p1 p2 p3 : BITS n) :=
+    negB
+      (high n
+            (subB (subB (zeroExtend n p1) (zeroExtend n p2)) (zeroExtend n p3))).
+
+  Lemma toPosZ_subB3_bounded n (p1 p2 p3 : BITS n) :
+    ~~ carry_subB p1 p2 ->
+    ~~ carry_subB (p1 - p2)%bits p3 ->
+    toPosZ (p1 - p2 - p3)%bits = (toPosZ p1 - toPosZ p2 - toPosZ p3)%Z.
+  Proof.
+    move=> H1 H2. rewrite !toPosZ_toNat (toNat_subB3_bounded H1 H2).
+    rewrite !Nat2Z.inj_sub.
+    - reflexivity.
+    - apply: leq_le. rewrite -leB_nat. exact: (carry_subB_leB H1).
+    - apply: leq_le. rewrite -(toNat_subB_bounded H1) -leB_nat.
+      exact: (carry_subB_leB H2).
+  Qed.
+
+  Lemma toPosZ_subB3_bound1 n (p1 p2 p3 : BITS n) :
+    leB p2 p1 ->
+    leB p3 (subB p1 p2) ->
+    0 <= toPosZ p1 - toPosZ p2 - toPosZ p3 < 2 ^ Z.of_nat n.
+  Proof.
+    move=> Hge12 Hge123. rewrite -(toPosZ_subB_geB Hge12).
+    rewrite -(toPosZ_subB_geB Hge123). exact: toPosZ_bound.
+  Qed.
+
+  Lemma toPosZ_subB3_bound2 n (p1 p2 p3 : BITS n) :
+    ltB p1 p2 ->
+    leB p3 (p1 - p2) ->
+    - (2 ^ Z.of_nat n) <= toPosZ p1 - toPosZ p2 - toPosZ p3 < 0.
+  Proof.
+    move=> Hlt Hge. move: (@toPosZ_min _ p3) (leB_toPosZ Hge).
+    rewrite (toPosZ_subB_ltB Hlt) => H1 H2.
+    move: (proj1 (Z.opp_le_mono _ _) H1) (proj1 (Z.opp_le_mono _ _) H2).
+    rewrite Z.opp_0 Z.opp_add_distr Z.add_opp_r => {H1 H2} H1 H2.
+    move: (proj1 (Z.add_le_mono_l _ _ (toPosZ p1 - toPosZ p2)) H1).
+    move: (proj1 (Z.add_le_mono_l _ _ (toPosZ p1 - toPosZ p2)) H2).
+    rewrite Z.add_sub_assoc !Z.add_opp_r Z.sub_diag Z.sub_0_l Z.add_0_r.
+    move=> {H1 H2} H1 H2. have: (toPosZ p1 - toPosZ p2 < 0).
+    { apply: (proj2 (Z.lt_sub_lt_add_r _ _ _)). rewrite Z.add_0_l.
+      exact: (ltB_toPosZ Hlt). }
+    move=> H3; move: (Z.le_lt_trans _ _ _ H2 H3) => {H2 H3} H2.
+    exact: (conj H1 H2).
+  Qed.
+
+  Lemma toPosZ_subB3_bound3 n (p1 p2 p3 : BITS n) :
+    leB p2 p1 ->
+    ltB (p1 - p2) p3 ->
+    - (2 ^ Z.of_nat n) < toPosZ p1 - toPosZ p2 - toPosZ p3 < 0.
+  Proof.
+    move=> Hge Hlt. move: (@toPosZ_max _ p3) (ltB_toPosZ Hlt).
+    rewrite (toPosZ_subB_geB Hge) => H1 H2.
+    move: (proj1 (Z.opp_lt_mono _ _) H1) (proj1 (Z.opp_lt_mono _ _) H2).
+    move=> {H1 H2} H1 H2.
+    move: (proj1 (Z.add_lt_mono_l _ _ (toPosZ p1 - toPosZ p2)) H2).
+    rewrite !Z.add_opp_r Z.sub_diag => {H2} H2.
+    move: (leB_toPosZ Hge) => H3. move: (Zle_minus_le_0 _ _ H3) => {H3} H3.
+    move: (Z.add_le_lt_mono _ _ _ _ H3 H1). rewrite !Z.add_opp_r Z.sub_0_l.
+    move=> {H1 H3} H1. exact: (conj H1 H2).
+  Qed.
+
+  Lemma toPosZ_subB3_bound4 n (p1 p2 p3 : BITS n) :
+    ltB p1 p2 ->
+    ltB (p1 - p2) p3 ->
+    -(2 * 2 ^ Z.of_nat n) < toPosZ p1 - toPosZ p2 - toPosZ p3 < -(2 ^ Z.of_nat n).
+  Proof.
+    move=> Hlt12 Hlt123.
+    move: (ltB_toPosZ Hlt123) (@toPosZ_min _ p1) (toPosZ_max p2) (toPosZ_max p3).
+    rewrite (toPosZ_subB_ltB Hlt12). move=> H1 H2 H3 H4.
+    move: (proj1 (Z.opp_lt_mono _ _) H1) (proj1 (Z.opp_lt_mono _ _) H3)
+                                         (proj1 (Z.opp_lt_mono _ _) H4).
+    rewrite Z.opp_add_distr Z.add_opp_r => {H1 H3 H4} H1 H3 H4.
+    move: (proj1 (Z.add_lt_mono_l _ _ (toPosZ p1 - toPosZ p2)) H1).
+    rewrite Z.add_sub_assoc !Z.add_opp_r Z.sub_diag Z.sub_0_l => {H1} H1.
+    move: (Z.add_le_lt_mono _ _ _ _ H2 H3). rewrite !Z.add_opp_r Z.sub_0_l.
+    move=> {H2 H3} H2. move: (Z.add_lt_mono _ _ _ _ H2 H4). rewrite !Z.add_opp_r.
+    replace (- 2 ^ Z.of_nat n - 2 ^ Z.of_nat n) with
+            (- (2 * 2 ^ Z.of_nat n)) by ring.
+    move=> {H2 H4} H2. exact: (conj H2 H1).
+  Qed.
+
+  Lemma ltB_ltB_subB_width_gt1 n (p1 p2 p3 : BITS n) :
+    ltB p1 p2 -> ltB (subB p1 p2) p3 -> (1 < n)%N.
+  Proof.
+    case: n p1 p2 p3.
+    - done.
+    - move=> [].
+      + move=> p1 p2 p3 Hlt12 Hlt123. apply: False_ind.
+        move: (ltB_width1 Hlt12) => [H1 H2]. rewrite H1 H2 in Hlt123.
+        have: (singleBit false - singleBit true)%bits = singleBit true.
+        { apply: toPosZ_inj. reflexivity. }
+        move=> H; rewrite H in Hlt123. rewrite ltBNle in Hlt123.
+        move/negP: Hlt123; apply. rewrite leB_nat.
+        exact: (toNatBounded_leq p3).
+      + move=> n p1 p2 p3 Hlt12 Hlt123. done.
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_bounded_fact1 n :
+    (0 < n)%N ->
+    2 ^ (Z.of_nat n) <= 2 ^ Z.of_nat (n + n) - 2 ^ (Z.of_nat n).
+  Proof.
+    move=> H. rewrite Nat2Z.inj_add Z.pow_add_r;
+                [idtac | exact: Nat2Z.is_nonneg | exact: Nat2Z.is_nonneg].
+    rewrite -{4}(Z.mul_1_r (2 ^ Z.of_nat n)) -Z.mul_sub_distr_l.
+    rewrite -{1}(Z.mul_1_r (2 ^ Z.of_nat n)).
+    apply: (proj1 (Z.mul_le_mono_pos_l _ _ _ _));
+      first exact: zero_lt_two_power_of_nat.
+    apply: (proj1 (Z.le_add_le_sub_r _ _ _)) => /=.
+    case: n H.
+    - done.
+    - move=> n _. rewrite -addn1 Nat2Z.inj_add Z.pow_add_r;
+                    [idtac | exact: Nat2Z.is_nonneg | done].
+      rewrite -{1}(Z.mul_1_l 2). replace (2 ^ Z.of_nat 1) with 2 by done.
+      apply: (proj1 (Z.mul_le_mono_pos_r _ _ _ _)); first by done.
+      move: (zero_lt_two_power_of_nat n)=> H. omega.
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_bounded_fact2 n :
+    (1 < n)%N ->
+    2 ^ (Z.of_nat n) <= 2 ^ Z.of_nat (n + n) - 2 * 2 ^ (Z.of_nat n).
+  Proof.
+    move=> H. rewrite Nat2Z.inj_add Z.pow_add_r;
+                [idtac | exact: Nat2Z.is_nonneg | exact: Nat2Z.is_nonneg].
+    apply: (proj1 (Z.le_add_le_sub_r _ _ _)).
+    rewrite -{1}(Z.mul_1_l (2 ^ Z.of_nat n)) -Z.mul_add_distr_r.
+    apply: Z.mul_le_mono_nonneg_r.
+    - apply: Z.lt_le_incl. exact: zero_lt_two_power_of_nat.
+    - move: (ltn_lt H) => {H} H. elim: H.
+      + done.
+      + move=> {n} m H IH. rewrite -addn1 Nat2Z.inj_add Z.pow_add_r;
+                [idtac | exact: Nat2Z.is_nonneg | exact: Nat2Z.is_nonneg].
+        rewrite -(Z.mul_1_r (1 + 2)).
+        replace (2 ^ Z.of_nat 1) with 2 by reflexivity.
+        by apply: Z.mul_le_mono_nonneg.
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_high_ne0_case n (p1 p2 p3 : BITS n) :
+    high n (subB (subB (zeroExtend n p1) (zeroExtend n p2))
+                 (zeroExtend n p3)) != zero n ->
+    ltB p1 p2 \/ (leB p2 p1 /\ ltB (subB p1 p2) p3).
+  Proof.
+    move=> Hne. case Hge12: (leB p2 p1).
+    - case Hge123: (leB p3 (p1 - p2)).
+      + apply: False_ind. move/negP: Hne; apply. apply/eqP. apply: toPosZ_inj.
+        rewrite toPosZ_high toPosZ_zero.
+        rewrite (toPosZ_subB_geB (geB_geB_subB3_zeroExtend _ Hge12 Hge123)).
+        rewrite (toPosZ_subB_geB (leB_zeroExtend _ Hge12)) !toPosZ_zeroExtend.
+        rewrite Z.div_small; first by reflexivity.
+        exact: toPosZ_subB3_bound1.
+      + move/idP/negPn: Hge123. rewrite -ltBNle => Hlt123. by right.
+    - move/idP/negPn: Hge12. rewrite -ltBNle => Hlt12. by left.
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_high_eq0_case n (p1 p2 p3 : BITS n) :
+    high n (subB (subB (zeroExtend n p1) (zeroExtend n p2))
+                 (zeroExtend n p3)) = zero n ->
+    leB p2 p1 /\ leB p3 (subB p1 p2).
+  Proof.
+    move=> Heq. case Hge12: (leB p2 p1).
+    - case Hge123: (leB p3 (p1 - p2)).
+      + done.
+      + move/idP/negPn: Hge123. rewrite -ltBNle => Hlt123. apply: False_ind.
+        eq_add_posz Heq. rewrite toPosZ_high toPosZ_zero in Heq. move: Heq.
+        rewrite (toPosZ_subB_ltB (geB_ltB_subB3_zeroExtend _ Hge12 Hlt123)).
+        rewrite (toPosZ_subB_geB (leB_zeroExtend _ Hge12)) !toPosZ_zeroExtend.
+        have: 2 ^ Z.of_nat n <
+              toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 ^ Z.of_nat (n + n).
+        { move: (proj1 (toPosZ_subB3_bound3 Hge12 Hlt123)) => H.
+          move: (proj1 (Z.add_lt_mono_r _ _ (2 ^ Z.of_nat (n + n))) H) => {H}.
+          rewrite Z.add_comm Z.add_opp_r => H. apply: (Z.le_lt_trans _ _ _ _ H).
+          apply: toPosZ_subB3_zeroExtend_bounded_fact1 => {H Hge12}.
+          exact: (ltB_width_gt0 Hlt123). }
+        move=> H. move: (Z.lt_le_incl _ _ H) => {H} H.
+        move: (Z.div_str_pos _ _ (conj
+                                    (zero_lt_two_power_of_nat n) H)).
+        move=> {H} H Heq. rewrite Heq in H. done.
+    - move/idP/negPn: Hge12. rewrite -ltBNle => Hlt12.
+      case Hge123: (leB p3 (p1 - p2)).
+      + apply: False_ind. eq_add_posz Heq. move: Heq.
+        rewrite toPosZ_high toPosZ_zero.
+        rewrite (toPosZ_subB_geB (ltB_subB3_zeroExtend _ Hlt12)).
+        rewrite (toPosZ_subB_ltB (ltB_zeroExtend _ Hlt12)) !toPosZ_zeroExtend.
+        replace (toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat (n + n) - toPosZ p3) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 ^ Z.of_nat (n + n)) by ring.
+        have: 2 ^ Z.of_nat n <=
+              toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 ^ Z.of_nat (n + n).
+        { move: (proj1 (toPosZ_subB3_bound2 Hlt12 Hge123)) => H.
+          move: (proj1 (Z.add_le_mono_r _ _ (2 ^ Z.of_nat (n + n))) H) => {H}.
+          rewrite Z.add_comm Z.add_opp_r => H. apply: (Z.le_trans _ _ _ _ H).
+          apply: toPosZ_subB3_zeroExtend_bounded_fact1 => {H Hge123}.
+          exact: (ltB_width_gt0 Hlt12). }
+        move=> H. move: (Z.div_str_pos _ _
+                                       (conj (zero_lt_two_power_of_nat n) H)).
+        move=> {H} H Heq. rewrite Heq in H. done.
+      + move/idP/negPn: Hge123. rewrite -ltBNle => Hlt123. apply: False_ind.
+        eq_add_posz Heq. rewrite toPosZ_high toPosZ_zero in Heq. move: Heq.
+        rewrite (toPosZ_subB_geB (ltB_subB3_zeroExtend _ Hlt12)).
+        rewrite (toPosZ_subB_ltB (ltB_zeroExtend _ Hlt12)) !toPosZ_zeroExtend.
+        replace (toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat (n + n) - toPosZ p3) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 ^ Z.of_nat (n + n)) by ring.
+        move: (toPosZ_subB3_bound4 Hlt12 Hlt123) => H.
+        move: (Z.add_lt_le_mono _ _ _ _ (proj1 H)
+                                (Z.le_refl (2 ^ Z.of_nat (n + n)))) => {H}.
+        rewrite Z.add_comm Z.add_opp_r => H1 Hh.
+        move: (ltB_ltB_subB_width_gt1 Hlt12 Hlt123) => Hn.
+        move: (toPosZ_subB3_zeroExtend_bounded_fact2 Hn) => H2.
+        move: (Z.le_lt_trans _ _ _ H2 H1) => {H1 H2} H.
+        move: (Z.div_str_pos _ _ (conj
+                                    (zero_lt_two_power_of_nat n)
+                                    (Z.lt_le_incl _ _ H))).
+        rewrite Hh. done.
+  Qed.
+
+  Lemma subB3_zeroExtend_low n (p1 p2 p3 : BITS n) :
+    low n (subB (subB (zeroExtend n p1) (zeroExtend n p2)) (zeroExtend n p3)) =
+    subB (subB p1 p2) p3.
+  Proof.
+    apply: toPosZ_inj. rewrite toPosZ_low.
+    case Hge123: (leB p3 (p1 - p2)).
+    - rewrite (toPosZ_subB_geB Hge123). case Hge12: (leB p2 p1).
+      + rewrite (toPosZ_subB_geB Hge12).
+        rewrite (toPosZ_subB_geB (geB_geB_subB3_zeroExtend n Hge12 Hge123)).
+        rewrite (toPosZ_subB_geB (leB_zeroExtend _ Hge12)) !toPosZ_zeroExtend.
+        rewrite (Zmod_small _ _ (toPosZ_subB3_bound1 Hge12 Hge123)).
+        reflexivity.
+      + move/idP/negPn: Hge12. rewrite -ltBNle => Hlt12.
+        rewrite (toPosZ_subB_ltB Hlt12).
+        rewrite (toPosZ_subB_geB (ltB_subB3_zeroExtend p3 Hlt12)).
+        rewrite (toPosZ_subB_ltB (ltB_zeroExtend _ Hlt12)).
+        rewrite !toPosZ_zeroExtend.
+        rewrite -!Zpower_nat_Z Zpower_nat_is_exp !Zpower_nat_Z.
+        rewrite -(Z_mod_plus_full _ 1 (2 ^ Z.of_nat n)).
+        replace (toPosZ p1 - toPosZ p2 +
+                 2 ^ Z.of_nat n * 2 ^ Z.of_nat n -
+                                      toPosZ p3 + 1 * 2 ^ Z.of_nat n) with
+        (toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat n - toPosZ p3 +
+                                     2 ^ Z.of_nat n * 2 ^ Z.of_nat n)
+          by ring.
+        rewrite Z_mod_plus_full Zmod_small; first by reflexivity.
+        replace (toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat n - toPosZ p3) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 ^ Z.of_nat n) by ring.
+        split.
+        * apply: (proj1 (Z.le_sub_le_add_r _ _ _)). rewrite Z.sub_0_l.
+          exact: (proj1 (toPosZ_subB3_bound2 Hlt12 Hge123)).
+        * apply: (proj2 (Z.lt_add_lt_sub_r _ _ _)). rewrite Z.sub_diag.
+          exact: (proj2 (toPosZ_subB3_bound2 Hlt12 Hge123)).
+    - move/idP/negPn: Hge123. rewrite -ltBNle => Hlt123.
+      rewrite (toPosZ_subB_ltB Hlt123). case Hge12: (leB p2 p1).
+      + rewrite (toPosZ_subB_geB Hge12)
+                (toPosZ_subB_ltB (geB_ltB_subB3_zeroExtend _ Hge12 Hlt123))
+                (toPosZ_subB_geB (leB_zeroExtend _ Hge12)) !toPosZ_zeroExtend.
+        rewrite -!Zpower_nat_Z Zpower_nat_is_exp !Zpower_nat_Z.
+        rewrite -(Z_mod_plus_full _ 1 (2 ^ Z.of_nat n)).
+        replace (toPosZ p1 - toPosZ p2 - toPosZ p3 +
+                 2 ^ Z.of_nat n * 2 ^ Z.of_nat n + 1 * 2 ^ Z.of_nat n) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 +
+         2 ^ Z.of_nat n + 2 ^ Z.of_nat n * 2 ^ Z.of_nat n) by ring.
+        rewrite Z_mod_plus_full Zmod_small; first by reflexivity.
+        split.
+        * apply: (proj1 (Z.le_sub_le_add_r _ _ _)). rewrite Z.sub_0_l.
+          apply: Z.lt_le_incl. exact: (proj1 (toPosZ_subB3_bound3 Hge12 Hlt123)).
+        * apply: (proj2 (Z.lt_add_lt_sub_r _ _ _)). rewrite Z.sub_diag.
+          exact: (proj2 (toPosZ_subB3_bound3 Hge12 Hlt123)).
+      + move/idP/negPn: Hge12. rewrite -ltBNle => Hlt12.
+        rewrite (toPosZ_subB_ltB Hlt12)
+                (toPosZ_subB_geB (ltB_subB3_zeroExtend _ Hlt12))
+                (toPosZ_subB_ltB (ltB_zeroExtend _ Hlt12)) !toPosZ_zeroExtend.
+        replace (toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat n - toPosZ p3 +
+                                             2 ^ Z.of_nat n) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 * 2 ^ Z.of_nat n) by ring.
+        rewrite -(Z_mod_plus_full _ 2 (2 ^ Z.of_nat n)).
+        replace (toPosZ p1 - toPosZ p2 +
+                 2 ^ Z.of_nat (n + n) - toPosZ p3 + 2 * 2 ^ Z.of_nat n) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 +
+         2 * 2 ^ Z.of_nat n + 2 ^ Z.of_nat (n + n)) by ring.
+        rewrite -!Zpower_nat_Z Zpower_nat_is_exp !Zpower_nat_Z.
+        rewrite Z_mod_plus_full Zmod_small; first by reflexivity.
+        split.
+        * apply: (proj1 (Z.le_sub_le_add_r _ _ _)). rewrite Z.sub_0_l.
+          apply: Z.lt_le_incl. exact: (proj1 (toPosZ_subB3_bound4 Hlt12 Hlt123)).
+        * apply: (proj2 (Z.lt_add_lt_sub_r _ _ _)).
+          replace (2 ^ Z.of_nat n - 2 * 2 ^ Z.of_nat n) with
+                  (- (2 ^ Z.of_nat n)) by ring.
+          exact: (proj2 (toPosZ_subB3_bound4 Hlt12 Hlt123)).
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_bounded n (p1 p2 p3 : BITS n) :
+    high n (subB (subB (zeroExtend n p1) (zeroExtend n p2))
+                 (zeroExtend n p3)) = zero n ->
+    toPosZ (subB (subB (zeroExtend n p1) (zeroExtend n p2))
+                       (zeroExtend n p3)) = toPosZ p1 - toPosZ p2 - toPosZ p3.
+  Proof.
+    move=> Heq. move: (toPosZ_subB3_zeroExtend_high_eq0_case Heq) =>
+                [Hge12 Hge123].
+    rewrite (catB_high_low
+               (zeroExtend n p1 - zeroExtend n p2 - zeroExtend n p3)%bits).
+    rewrite toPosZCat Heq toPosZ_zero Zmult_0_l Zplus_0_l subB3_zeroExtend_low.
+    rewrite (toPosZ_subB_geB Hge123) (toPosZ_subB_geB Hge12). reflexivity.
+  Qed.
+
+  Lemma toPosZ_subB3_eucl n (p1 p2 p3 : BITS n) :
+    toPosZ p1 - toPosZ p2 - toPosZ p3 =
+    (- (toPosZ (negB (high n (zeroExtend n p1 - zeroExtend n p2 - zeroExtend n p3)%bits)))) *
+    2 ^ (Z.of_nat n) +
+        (toPosZ (low n (zeroExtend n p1 - zeroExtend n p2 - zeroExtend n p3)%bits)).
+  Proof.
+    rewrite toPosZ_negB toPosZ_low.
+    case Hh: (high n (subB (subB (zeroExtend n p1) (zeroExtend n p2))
+                           (zeroExtend n p3)) == zero n).
+    - rewrite (eqP Hh) toPosZ_zero /=.
+      rewrite (toPosZ_subB3_zeroExtend_bounded (eqP Hh)).
+      rewrite Zmod_small; first by reflexivity. split.
+      + rewrite -(toPosZ_subB3_zeroExtend_bounded (eqP Hh)). exact: toPosZ_min.
+      + apply: (proj2 (Z.lt_sub_lt_add_r (toPosZ p1 - toPosZ p2) (2 ^ Z.of_nat n)
+                                         (toPosZ p3))).
+        apply: (proj2 (Z.lt_sub_lt_add_r (toPosZ p1) _ (toPosZ p2))).
+        apply: (Z.lt_le_trans _ (2 ^ Z.of_nat n)); first by exact: toPosZ_max.
+        apply: Zle_plus_r; last by exact: toPosZ_min.
+        apply: Zle_plus_r; last by exact: toPosZ_min. exact: Z.le_refl.
+    - have: (toPosZ (high n ((zeroExtend n p1 - zeroExtend n p2)%bits - zeroExtend n p3)) == 0) = false.
+      { apply/negP => H. move/negP: Hh; apply. apply/eqP. apply: toPosZ_inj.
+        rewrite (eqP H) toPosZ_zero. reflexivity. }
+      move=> ->. rewrite toPosZ_high. move/idP/negP: Hh => Hh.
+      case: (toPosZ_subB3_zeroExtend_high_ne0_case Hh).
+      + move=> Hlt12. rewrite (toPosZ_subB_geB (ltB_subB3_zeroExtend _ Hlt12)).
+        rewrite (toPosZ_subB_ltB (ltB_zeroExtend _ Hlt12)) !toPosZ_zeroExtend.
+        replace (toPosZ p1 - toPosZ p2 + 2 ^ Z.of_nat (n + n) - toPosZ p3) with
+        (toPosZ p1 - toPosZ p2 - toPosZ p3 + 2 ^ Z.of_nat (n + n)) by ring.
+        rewrite Nat2Z.inj_add Z.pow_add_r;
+          [idtac | exact: Nat2Z.is_nonneg | exact: Nat2Z.is_nonneg].
+        rewrite Z_mod_plus_full (Z_div_plus_full _ _ _ (@two_power_of_nat_ne0 n)).
+        rewrite Z.sub_add_distr.
+        replace (2 ^ Z.of_nat n -
+                     (toPosZ p1 - toPosZ p2 - toPosZ p3) / 2 ^ Z.of_nat n -
+                                                               2 ^ Z.of_nat n)
+        with (2 ^ Z.of_nat n -
+                  2 ^ Z.of_nat n -
+                      (toPosZ p1 - toPosZ p2 - toPosZ p3) / 2 ^ Z.of_nat n)
+          by ring.
+        rewrite Z.sub_diag Z.sub_0_l Z.opp_involutive.
+        rewrite Z.mul_comm. apply: Z_div_mod_eq. apply: Z.lt_gt.
+        exact: zero_lt_two_power_of_nat.
+      + move=> [Hge12 Hlt123].
+        rewrite (toPosZ_subB_ltB (geB_ltB_subB3_zeroExtend _ Hge12 Hlt123)).
+        rewrite (toPosZ_subB_geB (leB_zeroExtend _ Hge12)) !toPosZ_zeroExtend.
+        rewrite Nat2Z.inj_add Z.pow_add_r;
+          [idtac | exact: Nat2Z.is_nonneg | exact: Nat2Z.is_nonneg].
+        rewrite Z_mod_plus_full (Z_div_plus_full _ _ _ (@two_power_of_nat_ne0 n)).
+        rewrite Z.sub_add_distr.
+        replace (2 ^ Z.of_nat n -
+                     (toPosZ p1 - toPosZ p2 - toPosZ p3) / 2 ^ Z.of_nat n -
+                                                               2 ^ Z.of_nat n)
+        with (2 ^ Z.of_nat n -
+                  2 ^ Z.of_nat n -
+                      (toPosZ p1 - toPosZ p2 - toPosZ p3) / 2 ^ Z.of_nat n)
+          by ring.
+        rewrite Z.sub_diag Z.sub_0_l Z.opp_involutive.
+        rewrite Z.mul_comm. apply: Z_div_mod_eq. apply: Z.lt_gt.
+        exact: zero_lt_two_power_of_nat.
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_high n q r (p1 p2 p3 : BITS n) :
+    (q, r) = Z.div_eucl (toPosZ p1 - toPosZ p2 - toPosZ p3) (2 ^ Z.of_nat n) ->
+    toPosZ (carry_subB3 p1 p2 p3) =
+    (- q)%Z.
+  Proof.
+    move=> H. rewrite (Zdiv_eucl_q H). rewrite toPosZ_subB3_eucl.
+    rewrite (Z_div_plus_full_l _ _ _ (@two_power_of_nat_ne0 n)).
+    rewrite (Zdiv_small _ _ (toPosZ_bound _)).
+    rewrite Zplus_0_r Z.opp_involutive. reflexivity.
+  Qed.
+
+  Lemma toPosZ_subB3_zeroExtend_low n q r (p1 p2 p3 : BITS n) :
+    (q, r) = Z.div_eucl (toPosZ p1 - toPosZ p2 - toPosZ p3) (2 ^ Z.of_nat n) ->
+    toPosZ (low n (zeroExtend n p1 - zeroExtend n p2 - zeroExtend n p3)%bits) = r.
+  Proof.
+    move=> H. rewrite (Zdiv_eucl_r H). rewrite toPosZ_subB3_eucl.
+    rewrite Zplus_comm Z_mod_plus_full.
+    rewrite Zmod_small; first by reflexivity. exact: toPosZ_bound.
   Qed.
 
   Lemma toPosZ_mulB_bounded n (p1 p2 : BITS n) :

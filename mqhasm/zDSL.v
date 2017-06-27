@@ -3,7 +3,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
-From Common Require Import Types SsrOrdered ZAriths FSets Var Store.
+From Common Require Import Tactics Types SsrOrdered ZAriths FSets Var Store.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -464,7 +464,7 @@ Module MakeZDSL (V : SsrOrderedType).
     | zAssign v e => State.upd v (eval_exp e s) s
     | zSplit vh vl e i =>
       let (q, r) := Z.div_eucl (eval_exp e s) (2^(Z.of_nat i)) in
-      State.upd2 vh q vl r s
+      State.upd2 vl r vh q s
     end.
 
   Fixpoint eval_program (s : State.t) (p : program) : State.t :=
@@ -1184,30 +1184,21 @@ Module MakeZDSL (V : SsrOrderedType).
           apply: False_ind; apply: (negP Hxv).
           assumption.
     - move=> vh vl e p Heqm Hsub.
-      set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p) by reflexivity.
+      sethave tmp (Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p)).
       destruct tmp as [q1 r1] => Hqr1.
-      set tmp := Z.div_eucl (eval_exp e s2) (2 ^ Z.of_nat p).
-      have: tmp = Z.div_eucl (eval_exp e s2) (2 ^ Z.of_nat p) by reflexivity.
+      sethave tmp (Z.div_eucl (eval_exp e s2) (2 ^ Z.of_nat p)).
       destruct tmp as [q2 r2] => Hqr2.
       rewrite (state_eqmod_exp (state_eqmod_subset Heqm Hsub)) in Hqr1.
-      rewrite -Hqr2 in Hqr1.
-      move: Hqr1 => {Hqr2} [] Hq Hr.
-      rewrite {}Hq {}Hr => {q1 r1}.
-      move=> v Hmem.
-      case Hvvl: (v == vl).
-      + rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hvvl).
-        reflexivity.
-      + move/idP/negP: Hvvl => Hvvl.
-        case Hvvh: (v == vh).
-        * rewrite 2!(State.acc_upd2_eq1 _ _ _ Hvvh Hvvl).
-          reflexivity.
-        * move/idP/negP: Hvvh => Hvvh.
+      rewrite -Hqr2 in Hqr1. case: Hqr1 => -> -> {q1 r1}. move=> v Hmem.
+      case Hvvh: (v == vh).
+      + rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hvvh). reflexivity.
+      + move/idP/negP: Hvvh => Hvvh. case Hvvl: (v == vl).
+        * rewrite 2!(State.acc_upd2_eq1 _ _ _ Hvvl Hvvh). reflexivity.
+        * move/idP/negP: Hvvl => Hvvl.
           case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-          -- rewrite 2!(State.acc_upd2_neq _ _ _ Hvvh Hvvl).
+          -- rewrite 2!(State.acc_upd2_neq _ _ _ Hvvl Hvvh).
              exact: (Heqm v Hmem).
-          -- apply: False_ind.
-             case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
+          -- apply: False_ind. case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
              ++ apply: (negP Hvvh); assumption.
              ++ move: (VSLemmas.mem_singleton1 Hmem) => {Hmem} Hmem.
                 apply: (negP Hvvl); assumption.
@@ -1594,52 +1585,33 @@ Module MakeZDSL (V : SsrOrderedType).
     state_eqmod vs1 (eval_instr s1 i1) (eval_instr s2 i2).
   Proof.
     elim: i1 vs1 vs2 i2 s1 s2 => /=.
-    - move=> v e vs1 vs2 i2 s1 s2.
-      case Hmemv: (VS.mem v vs1).
-      + move => [Hvs Hi2] Heqm.
-        rewrite -{}Hi2 /= => x Hmemx.
-        case Hxv: (x == v).
-        * rewrite 2!(State.acc_upd_eq _ _ Hxv).
-          apply: state_eqmod_exp.
-          apply: (state_eqmod_subset Heqm).
-          rewrite -Hvs.
+    - move=> v e vs1 vs2 i2 s1 s2. case Hmemv: (VS.mem v vs1).
+      + move => [Hvs Hi2] Heqm. rewrite -{}Hi2 /= => x Hmemx. case Hxv: (x == v).
+        * rewrite 2!(State.acc_upd_eq _ _ Hxv). apply: state_eqmod_exp.
+          apply: (state_eqmod_subset Heqm). rewrite -Hvs.
           exact: VSLemmas.union_subset_1.
-        * move/idP/negP: Hxv => Hxv.
-          rewrite 2!(State.acc_upd_neq _ _ Hxv).
-          apply: Heqm.
-          rewrite -Hvs; apply: VSLemmas.mem_union3.
-          apply: (VSLemmas.mem_remove3 _ Hmemx).
-          move=> Heq; apply: (negP Hxv).
+        * move/idP/negP: Hxv => Hxv. rewrite 2!(State.acc_upd_neq _ _ Hxv).
+          apply: Heqm. rewrite -Hvs; apply: VSLemmas.mem_union3.
+          apply: (VSLemmas.mem_remove3 _ Hmemx). move=> Heq; apply: (negP Hxv).
           assumption.
       + discriminate.
     - move=> vh vl e p vs1 vs2 i2 s1 s2.
-      set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p) by reflexivity.
+      sethave tmp (Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p)).
       destruct tmp as (q1, r1) => Hqr1.
       case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
-      + move=> [Hvs Hi2] Heqm.
-        rewrite -{}Hi2 /= => x Hmemx.
+      + move=> [Hvs Hi2] Heqm. rewrite -{}Hi2 /= => x Hmemx.
         have: (eval_exp e s1) = (eval_exp e s2) by
-          apply: state_eqmod_exp;
-          apply: (state_eqmod_subset Heqm);
-          rewrite -Hvs;
-          exact: VSLemmas.union_subset_1.
-        move=> He; rewrite -{}He -{}Hqr1.
-        case Hxvl: (x == vl).
-        * rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hxvl).
-          reflexivity.
-        * move/idP/negP: Hxvl => Hxvl.
-          case Hxvh: (x == vh).
-          -- rewrite 2!(State.acc_upd2_eq1 _ _ _ Hxvh Hxvl).
-             reflexivity.
-          -- move/idP/negP: Hxvh => Hxvh.
-             rewrite 2!(State.acc_upd2_neq _ _ _ Hxvh Hxvl).
-             apply: Heqm.
-             rewrite -Hvs.
-             apply: VSLemmas.mem_union3.
+          apply: state_eqmod_exp; apply: (state_eqmod_subset Heqm);
+          rewrite -Hvs; exact: VSLemmas.union_subset_1.
+        move=> He; rewrite -{}He -{}Hqr1. case Hxvh: (x == vh).
+        * rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hxvh). reflexivity.
+        * move/idP/negP: Hxvh => Hxvh. case Hxvl: (x == vl).
+          -- rewrite 2!(State.acc_upd2_eq1 _ _ _ Hxvl Hxvh). reflexivity.
+          -- move/idP/negP: Hxvl => Hxvl.
+             rewrite 2!(State.acc_upd2_neq _ _ _ Hxvl Hxvh).
+             apply: Heqm. rewrite -Hvs. apply: VSLemmas.mem_union3.
              apply: (VSLemmas.mem_remove3 (negP Hxvh)).
-             apply: (VSLemmas.mem_remove3 (negP Hxvl)).
-             assumption.
+             apply: (VSLemmas.mem_remove3 (negP Hxvl)). assumption.
       + discriminate.
   Qed.
 
@@ -1649,39 +1621,27 @@ Module MakeZDSL (V : SsrOrderedType).
     state_eqmod vs1 (eval_instr s1 i) s2.
   Proof.
     elim: i vs1 vs2 s1 s2 => /=.
-    - move=> v e vs1 vs2 s1 s2.
-      case Hmemv: (VS.mem v vs1).
+    - move=> v e vs1 vs2 s1 s2. case Hmemv: (VS.mem v vs1).
       + discriminate.
-      + move => [Hvs] Heqm.
-        rewrite -Hvs in Heqm => {Hvs vs2}.
-        move => x Hmemx.
-        case Hxv: (x == v).
-        * rewrite (eqP Hxv) Hmemv in Hmemx.
-          discriminate.
-        * move/idP/negP: Hxv => Hxv.
-          rewrite (State.acc_upd_neq _ _ Hxv).
-          apply: Heqm.
-          assumption.
+      + move => [Hvs] Heqm. rewrite -Hvs in Heqm => {Hvs vs2}.
+        move => x Hmemx. case Hxv: (x == v).
+        * rewrite (eqP Hxv) Hmemv in Hmemx. discriminate.
+        * move/idP/negP: Hxv => Hxv. rewrite (State.acc_upd_neq _ _ Hxv).
+          apply: Heqm. assumption.
     - move=> vh vl e p vs1 vs2 s1 s2.
-      set tmp := Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p) by reflexivity.
+      sethave tmp (Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p)).
       destruct tmp as (q1, r1) => Hqr1.
       case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
       + discriminate.
-      + move=> [Hvs] Heqm.
-        rewrite -Hvs in Heqm => {Hvs vs2}.
-        move => x Hmemx.
-        case Hxvl: (x == vl).
-        * rewrite -(eqP Hxvl) Hmemx orbT in Hmemhl.
-          discriminate.
-        * move/idP/negP: Hxvl => Hxvl.
-          case Hxvh: (x == vh).
-          -- rewrite -(eqP Hxvh) Hmemx in Hmemhl.
-             discriminate.
-          -- move/idP/negP: Hxvh => Hxvh.
-             rewrite (State.acc_upd2_neq _ _ _ Hxvh Hxvl).
-             apply: Heqm.
-             assumption.
+      + move=> [Hvs] Heqm. rewrite -Hvs in Heqm => {Hvs vs2}. move => x Hmemx.
+        case Hxvh: (x == vh).
+        * rewrite -(eqP Hxvh) Hmemx in Hmemhl. discriminate.
+        * move/idP/negP: Hxvh => Hxvh.
+          case Hxvl: (x == vl).
+          -- rewrite -(eqP Hxvl) Hmemx orbT in Hmemhl. discriminate.
+          -- move/idP/negP: Hxvl => Hxvl.
+             rewrite (State.acc_upd2_neq _ _ _ Hxvl Hxvh).
+             apply: Heqm. assumption.
   Qed.
 
   Lemma slice_instr_some_cons_eqmod vs1 vs2 vs3 lst slst p sliced s1 s2 :
@@ -1945,23 +1905,20 @@ Module MakeZDSL (V : SsrOrderedType).
         move: (slice_instr_some_subset_lvs
                  (well_formed_program_concat1 Hwell1) Hsub Hslst) => Hsub'.
         rewrite cat_rcons in Hwell1.
-        (* start have *)
         have: well_formed_program vs1' (lst' :: sliced).
-        apply: (slice_instr_some_cons_well_formed _ Hwell2 Hslst).
-        exact: (well_formed_instr_qsne
-                  (well_formed_program_cons1 (well_formed_program_concat2 Hwell1))).
-        (* end have *)
+        { apply: (slice_instr_some_cons_well_formed _ Hwell2 Hslst).
+          exact: (well_formed_instr_qsne
+                    (well_formed_program_cons1
+                       (well_formed_program_concat2 Hwell1))). }
         move=> Hwell'.
         rewrite -(slice_instr_some_instr Hslst) in Hwell' Hsp1.
         move: (IH vs vs1' vs2 p2 (lst::sliced) Hwell1 Hwell' Hsub' Hsp1).
         rewrite -(slice_instr_some_vars Hslst).
         move=> H.
         move: (VSLemmas.subset_union_diff4 (VSLemmas.subset_union5 H)) => {H} H.
-        (* start have *)
         have: VS.subset (lvs_instr lst) (VS.union vs (lvs_program p2)).
-        apply: VSLemmas.subset_union2.
-        exact: (VSLemmas.subset_union4 (slice_program_rec_sliced_lvs Hsp1)).
-        (* end have *)
+        { apply: VSLemmas.subset_union2.
+          exact: (VSLemmas.subset_union4 (slice_program_rec_sliced_lvs Hsp1)). }
         move=> H1.
         move: H; rewrite (VSLemmas.union_subset_equal H1).
         by apply.

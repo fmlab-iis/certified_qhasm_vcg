@@ -192,10 +192,10 @@ Module FSetLemmas (S : FSetInterface.S).
 
   Lemma not_mem_union2 :
     forall v s1 s2,
-      ~~ S.mem v s1 /\ ~~ S.mem v s2 ->
+      ~~ S.mem v s1 -> ~~ S.mem v s2 ->
       ~~ S.mem v (S.union s1 s2).
   Proof.
-    move=> v s1 s2 [] /negP H1 /negP H2; apply/negP => Hmem.
+    move=> v s1 s2 /negP H1 /negP H2; apply/negP => Hmem.
     case: (mem_union1 Hmem) => H3.
     - apply: H1; assumption.
     - apply: H2; assumption.
@@ -499,6 +499,18 @@ Module FSetLemmas (S : FSetInterface.S).
     assumption.
   Qed.
 
+  Lemma is_empty_mem v s : S.is_empty s -> ~~ S.mem v s.
+  Proof.
+    move=> H. apply/negP => /memP Hmem. apply: (S.is_empty_2 H).
+    exact: Hmem.
+  Qed.
+
+  Lemma is_empty_not_mem s : (forall x, ~~ S.mem x s) -> S.is_empty s.
+  Proof.
+    move=> H. apply: S.is_empty_1. move=> x /memP Hmem.
+    move: (H x) => /negP; apply. exact: Hmem.
+  Qed.
+
   Lemma Empty_mem :
     forall v s,
       S.Empty s ->
@@ -722,6 +734,13 @@ Module FSetLemmas (S : FSetInterface.S).
     exact: mem_disjoint1.
   Qed.
 
+  Lemma mem_disjoint3 s1 s2 :
+    (forall x, S.mem x s1 -> ~~ S.mem x s2) -> disjoint s1 s2.
+  Proof.
+    move=> H. apply: is_empty_not_mem. move=> x. apply/negP => Hmem.
+    move: (H x (mem_inter1 Hmem)). move/negP; apply. exact: (mem_inter2 Hmem).
+  Qed.
+
   Lemma disjoint_singleton x s :
     disjoint s (S.singleton x) = ~~ S.mem x s.
   Proof.
@@ -772,6 +791,25 @@ Module FSetLemmas (S : FSetInterface.S).
         exact: (mem_inter2 Hv).
   Qed.
 
+  Lemma disjoint_union s1 s2 s3 :
+    disjoint s1 (S.union s2 s3) = disjoint s1 s2 && disjoint s1 s3.
+  Proof.
+    case H12: (disjoint s1 s2); case H13: (disjoint s1 s3) => /=.
+    - apply: mem_disjoint3 => x Hmem1. apply/negP => Hmem23.
+      case: (mem_union1 Hmem23) => Hmem.
+      + move: (mem_disjoint1 H12 Hmem1). move/negP; apply. exact: Hmem.
+      + move: (mem_disjoint1 H13 Hmem1). move/negP; apply. exact: Hmem.
+    - apply/negP => H123. move/negP: H13; apply. apply: mem_disjoint3 => x Hmem1.
+      apply/negP => Hmem3. move: (mem_disjoint1 H123 Hmem1). move/negP; apply.
+      apply: mem_union3. exact: Hmem3.
+    - apply/negP => H123. move/negP: H12; apply. apply: mem_disjoint3 => x Hmem1.
+      apply/negP => Hmem2. move: (mem_disjoint1 H123 Hmem1). move/negP; apply.
+      apply: mem_union2. exact: Hmem2.
+    - apply/negP => H123. move/negP: H13; apply. apply: mem_disjoint3 => x Hmem1.
+      apply/negP => Hmem3. move: (mem_disjoint1 H123 Hmem1). move/negP; apply.
+      apply: mem_union3. exact: Hmem3.
+  Qed.
+
   Lemma subset_union_disjoint1 s1 s2 s3 :
     S.subset s1 (S.union s2 s3) ->
     disjoint s1 s3 ->
@@ -795,6 +833,52 @@ Module FSetLemmas (S : FSetInterface.S).
   Proof.
     rewrite OP.P.union_sym.
     exact: subset_union_disjoint1.
+  Qed.
+
+  Lemma max_elt1 s x : S.max_elt s = Some x -> S.mem x s.
+  Proof.
+    move=> H; apply/memP; exact: S.max_elt_1.
+  Qed.
+
+  Lemma max_elt2 s x y : S.max_elt s = Some x -> S.mem y s -> ~ S.E.lt x y.
+  Proof.
+    move=> H1 /memP H2; exact: (S.max_elt_2 H1 H2).
+  Qed.
+
+  Lemma max_elt3 s : S.max_elt s = None -> S.is_empty s.
+  Proof.
+    move=> H; apply: S.is_empty_1; exact: S.max_elt_3 H.
+  Qed.
+
+  Lemma union_same s : S.Equal (S.union s s) s.
+  Proof.
+    apply: union_subset_equal. exact: subset_refl.
+  Qed.
+
+  Lemma union2_same1 s1 s2 s3 :
+    S.Equal (S.union (S.union s1 s2) (S.union s1 s3))
+            (S.union s1 (S.union s2 s3)).
+  Proof.
+    rewrite -OP.P.union_assoc (OP.P.union_sym _ s1) -OP.P.union_assoc
+            union_same OP.P.union_assoc. reflexivity.
+  Qed.
+
+  Lemma union2_same2 s1 s2 s3 :
+    S.Equal (S.union (S.union s1 s3) (S.union s2 s3))
+            (S.union (S.union s1 s2) s3).
+  Proof.
+    rewrite OP.P.union_assoc (OP.P.union_sym s3) OP.P.union_assoc
+            union_same OP.P.union_assoc. reflexivity.
+  Qed.
+
+  Lemma add2_same x s1 s2 :
+    S.Equal (S.union (S.add x s1) (S.add x s2))
+            (S.add x (S.union s1 s2)).
+  Proof.
+    have Heq: S.E.eq x x by reflexivity.
+    move: (@mem_add2 x x (S.union s1 s2) Heq) => Hx.
+    rewrite -(add_equal Hx). rewrite -(@union_add2 x s1 s2).
+    rewrite -OP.P.union_add. reflexivity.
   Qed.
 
 End FSetLemmas.

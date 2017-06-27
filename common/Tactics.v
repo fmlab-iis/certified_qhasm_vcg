@@ -78,3 +78,4 @@ Ltac applyP H :=
     apply/negP => H0; apply: (negP H); move: H0
   end.
 
+Ltac sethave e1 e2 := set e1 := e2; have: e1 = e2 by reflexivity.
