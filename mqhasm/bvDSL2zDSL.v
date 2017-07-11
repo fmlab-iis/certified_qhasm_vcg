@@ -569,7 +569,7 @@ Proof.
    tac).
 Qed.
 
-Lemma vars_bv2z_atomic a :
+Lemma bv2z_atomic_vars a :
   zDSL.VS.Equal (zDSL.vars_exp (bv2z_atomic a))
                 (bv2z_vars (vars_atomic a)).
 Proof.
@@ -579,40 +579,57 @@ Proof.
   - reflexivity.
 Qed.
 
+Lemma bv2z_eexp_vars (e : eexp) :
+  zDSL.VS.Equal (zDSL.vars_exp (bv2z_eexp e)) (bv2z_vars (vars_eexp e)).
+Proof.
+  elim: e => /=.
+  - move=> a. exact: bv2z_vars_singleton.
+  - reflexivity.
+  - move=> _ e IH. rewrite IH. reflexivity.
+  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2 bv2z_vars_union. reflexivity.
+Qed.
+
+(* Convert (zDSL.VS.subset _ _) containing bv2z_vars to
+   (VS.subset _ _). *)
+Ltac subset_to_bvdsl :=
+  match goal with
+  | |- context f [zDSL.VS.union _ zDSL.VS.empty] =>
+    rewrite zDSL.VSLemmas.union_emptyr; subset_to_bvdsl
+  | |- context f [vars_exp (bv2z_atomic _)] =>
+    rewrite !bv2z_atomic_vars; subset_to_bvdsl
+  | |- context f [vars_exp (bv2z_eexp _)] =>
+    rewrite !bv2z_eexp_vars; subset_to_bvdsl
+  | |- context f [zDSL.VS.singleton _] =>
+    rewrite bv2z_vars_singleton; subset_to_bvdsl
+  | |- context f [zDSL.VS.add _ (bv2z_vars _)] =>
+    rewrite -bv2z_vars_add; subset_to_bvdsl
+  | |- context f [zDSL.VS.union (bv2z_vars _) (bv2z_vars _)] =>
+    rewrite -!bv2z_vars_union; subset_to_bvdsl
+  | |- is_true (zDSL.VS.subset (bv2z_vars _) (bv2z_vars ?vs)) =>
+    rewrite bv2z_vars_subset; subset_to_bvdsl
+  | |- _ => idtac
+  end.
+
+Ltac push_bv2z_vars :=
+  match goal with
+  | |- context f [bv2z_vars (vars_atomic _)] =>
+    rewrite -!bv2z_atomic_vars; push_bv2z_vars
+  | |- context f [bv2z_vars (vars_eexp _)] =>
+    rewrite -!bv2z_eexp_vars; push_bv2z_vars
+  | |- context f [bv2z_vars (VS.singleton _)] =>
+    rewrite -!bv2z_vars_singleton; push_bv2z_vars
+  | |- context f [bv2z_vars (VS.add _ _)] =>
+    rewrite !bv2z_vars_add; push_bv2z_vars
+  | |- context f [bv2z_vars (VS.union _ _)] =>
+    rewrite !bv2z_vars_union; push_bv2z_vars
+  | |- _ => idtac
+  end.
+
 Lemma vars_bv2z_instr i :
   zDSL.VS.Equal (zDSL.vars_program (bv2z_instr i))
                 (bv2z_vars (vars_instr i)).
 Proof.
-  case: i => /=; intros;
-  (let rec tac :=
-       match goal with
-       | |- context f [zDSL.VS.union _ zDSL.VS.empty] =>
-         rewrite zDSL.VSLemmas.union_emptyr; tac
-       | |- context f [bv2z_vars (VS.add _ _)] =>
-         rewrite bv2z_vars_add; tac
-       | |- context f [bv2z_vars (VS.union _ _)] =>
-         rewrite bv2z_vars_union; tac
-       | |- context f [bv2z_vars (vars_atomic _)] =>
-         rewrite vars_bv2z_atomic; tac
-       | |- zDSL.VS.Equal ?vs ?vs =>
-         reflexivity
-       | |- context f [zDSL.VS.add ?v (zDSL.VS.singleton ?v)] =>
-         rewrite (zDSL.VSLemmas.add_equal (zDSL.VSLemmas.mem_singleton2
-                                             (eqxx v))); tac
-       | |- context f [zDSL.VS.union _ (zDSL.VS.singleton _)] =>
-         rewrite -zDSL.VSLemmas.add_union_singleton2; tac
-       | |- context f [zDSL.VS.add ?v (zDSL.VS.add ?v _)] =>
-         rewrite (zDSL.VSLemmas.add_equal (zDSL.VSLemmas.mem_add2 _ (eqxx v)));
-         tac
-       | |- zDSL.VS.Equal (zDSL.VS.add ?v1 (zDSL.VS.add _ _))
-                          (zDSL.VS.add ?v2 (zDSL.VS.add ?v1 _)) =>
-         rewrite (zDSL.VSLemmas.OP.P.add_add _ v2 v1); tac
-       | |- zDSL.VS.Equal (zDSL.VS.add ?v ?vs1)
-                          (zDSL.VS.add ?v ?vs2) =>
-         have: zDSL.VS.Equal vs1 vs2; [tac | move=> ->; reflexivity]
-       | |- _ => idtac
-       end in
-   tac).
+  case: i => /=; intros; push_bv2z_vars; zDSL.VSLemmas.dp_Equal.
 Qed.
 
 Lemma vars_bv2z_program p :
@@ -626,58 +643,13 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma bv2z_eexp_vars (e : eexp) :
-  zDSL.VS.Equal (zDSL.vars_exp (bv2z_eexp e)) (bv2z_vars (vars_eexp e)).
-Proof.
-  elim: e => /=.
-  - move=> a. exact: bv2z_vars_singleton.
-  - reflexivity.
-  - move=> _ e IH. rewrite IH. reflexivity.
-  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2 bv2z_vars_union. reflexivity.
-Qed.
-
 Lemma eqn_bexp_vars_subset f :
   zDSL.VS.subset (zDSL.vars_bexp (bv2z_ebexp (eqn_bexp f)))
                  (bv2z_vars (vars_bexp f)).
 Proof.
   case: f => e r /=. rewrite bv2z_vars_union /=.
   apply: zDSL.VSLemmas.subset_union1 => {r}.
-  elim: e => /=; intros;
-  (let rec tac :=
-       match goal with
-       | |- is_true (zDSL.VS.subset zDSL.VS.empty _) =>
-         exact: zDSL.VSLemmas.subset_empty
-       | |- is_true (zDSL.VS.subset _ (bv2z_vars (VS.union _ _))) =>
-         rewrite !bv2z_vars_union;
-         repeat (apply: zDSL.VSLemmas.subset_union3);
-         tac
-       | |- is_true (zDSL.VS.subset
-                       (zDSL.vars_exp (bv2z_eexp ?e))
-                       (zDSL.VS.union (bv2z_vars (vars_eexp ?e)) _)) =>
-         apply: zDSL.VSLemmas.subset_union1;
-         rewrite bv2z_eexp_vars;
-         exact: zDSL.VSLemmas.subset_refl
-       | |- is_true (zDSL.VS.subset
-                       (zDSL.vars_exp (bv2z_eexp ?e))
-                       (zDSL.VS.union _ (bv2z_vars (vars_eexp ?e)))) =>
-         apply: zDSL.VSLemmas.subset_union2;
-         rewrite bv2z_eexp_vars;
-         exact: zDSL.VSLemmas.subset_refl
-       | |- is_true (zDSL.VS.subset
-                       (zDSL.vars_exp (bv2z_eexp ?e))
-                       (zDSL.VS.union _ (zDSL.VS.union _ _))) =>
-         apply: zDSL.VSLemmas.subset_union2; tac
-       | H : is_true (zDSL.VS.subset ?vs1 ?vs2) |-
-         is_true (zDSL.VS.subset ?vs1 (zDSL.VS.union ?vs2 _)) =>
-         apply: zDSL.VSLemmas.subset_union1;
-         assumption
-       | H : is_true (zDSL.VS.subset ?vs1 ?vs2) |-
-         is_true (zDSL.VS.subset ?vs1 (zDSL.VS.union _ ?vs2)) =>
-         apply: zDSL.VSLemmas.subset_union2;
-         assumption
-       | |- _ => idtac
-       end in
-  tac).
+  elim: e => /=; intros; push_bv2z_vars; zDSL.VSLemmas.dp_subset.
 Qed.
 
 Lemma bv2z_instr_well_formed vs i :
@@ -693,23 +665,8 @@ Proof.
          let H1 := fresh in
          let H2 := fresh in
          move/andP: H => [H1 H2]; tac
-       | H : is_true (VS.subset (vars_atomic ?a) ?vs) |-
-         is_true (zDSL.VS.subset
-                    (zDSL.vars_exp (bv2z_atomic ?a)) (bv2z_vars ?vs)) =>
-           by rewrite (bv2z_vars_subset_atomic H)
-       | |- is_true (zDSL.VS.subset (zDSL.VS.union ?vs1 ?vs2) ?vs3) =>
-         apply: zDSL.VSLemmas.subset_union3; tac
-       | |- is_true (zDSL.VS.subset zDSL.VS.empty _) =>
-         exact: zDSL.VSLemmas.subset_empty
        | H : is_true (?x != ?y) |- is_true (?x != ?y) => exact: H
-       | |- is_true (zDSL.VS.subset (zDSL.VS.singleton _) _) =>
-         apply: zDSL.VSLemmas.subset_singleton2; tac
-       | H : is_true (VS.mem ?v ?vs) |-
-         is_true (zDSL.VS.mem ?v (bv2z_vars ?vs)) =>
-           by rewrite -bv2z_vars_mem
-       | |- is_true (zDSL.VS.mem ?v (zDSL.VS.union _ (zDSL.VS.add ?v _))) =>
-         apply: zDSL.VSLemmas.mem_union3; apply: zDSL.VSLemmas.mem_add2;
-         exact: eqxx
+       | |- is_true (zDSL.VS.subset _ _) => subset_to_bvdsl; VSLemmas.dp_subset
        | |- _ => idtac
        end in
    tac).

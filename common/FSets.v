@@ -881,6 +881,69 @@ Module FSetLemmas (S : FSetInterface.S).
     rewrite -OP.P.union_add. reflexivity.
   Qed.
 
+  Ltac dp_mem :=
+    match goal with
+    | |- S.mem _ _ = true => apply/idP; dp_mem
+    (* *)
+    | H : is_true (S.mem ?x ?s) |- is_true (S.mem ?x ?s) => exact: H
+    | H : ?x = ?y |- ?x = ?y => exact: H
+    | H : ?x = ?y |- is_true (?x == ?y) => apply/eqP; exact: H
+    | H : is_true (?x == ?y) |- ?x = ?y => exact: (eqP H)
+    | H : is_true (?x == ?y) |- is_true (?x == ?y) => exact: H
+    | H : S.E.eq ?x ?y |- S.E.eq ?x ?y => exact: H
+    | |- ?x = ?x => reflexivity
+    | |- is_true (?x == ?x) => exact: eqxx
+    | |- S.E.eq ?x ?x => exact: S.E.eq_refl
+    (* *)
+    | H : is_true (S.mem ?x (S.singleton ?y)) |- is_true (S.mem ?x _) =>
+      move: (mem_singleton1 H) => {H} H; dp_mem
+    | H : is_true (S.mem ?x (S.add ?y ?s)) |- is_true (S.mem ?x _) =>
+      move: (mem_add1 H) => {H} [] H; dp_mem
+    | H : is_true (S.mem ?x (S.union ?s1 ?s2)) |- is_true (S.mem ?x _) =>
+      move: (mem_union1 H) => {H} [] H; dp_mem
+    (* *)
+    | |- is_true (S.mem ?x (S.singleton ?y)) =>
+      apply: mem_singleton2; dp_mem
+    | |- is_true (S.mem ?x (S.add ?y ?s)) =>
+      first [ apply: mem_add2; by dp_mem | apply: mem_add3; by dp_mem ]
+    | |- is_true (S.mem ?x (S.union ?s1 ?s2)) =>
+      first [ apply: mem_union2; by dp_mem | apply: mem_union3; by dp_mem ]
+    end.
+
+  Ltac dp_subset :=
+    match goal with
+    (* *)
+    | |- S.subset _ _ = true => apply/idP; dp_subset
+    | |- is_true (S.subset S.empty _) => exact: subset_empty
+    | H : is_true (S.subset ?x ?y) |- is_true (S.subset ?x ?y) => exact: H
+    | |- is_true (S.subset ?x ?x) => exact: subset_refl
+    (* *)
+    | H : is_true (S.subset (S.singleton _) _) |- _ =>
+      move: (subset_singleton1 H) => {H} H; dp_subset
+    | H : is_true (S.subset (S.add _ _) _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: (subset_add4 H) (subset_add5 H) => {H} H1 H2; dp_subset
+    | H : is_true (S.subset (S.union _ _) _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: (subset_union4 H) (subset_union5 H) => {H} H1 H2; dp_subset
+    (* *)
+    | |- is_true (S.subset (S.singleton _) _) =>
+      apply: subset_singleton2; dp_mem
+    | |- is_true (S.subset (S.add _ _) _) =>
+      apply: subset_add3; [ dp_mem | dp_subset ]
+    | |- is_true (S.subset (S.union _ _) _) =>
+      apply: subset_union3; dp_subset
+    (* *)
+    | |- is_true (S.subset _ (S.add _ _)) =>
+      apply: subset_add2; dp_subset
+    | |- is_true (S.subset _ (S.union _ _)) =>
+      first [ apply: subset_union1; by dp_subset |
+              apply: subset_union2; by dp_subset ]
+    end.
+
+  Ltac dp_Equal :=
+    apply: OP.P.subset_antisym; apply: S.subset_2; dp_subset.
+
 End FSetLemmas.
 
 Module Make (V : SsrOrderedType).

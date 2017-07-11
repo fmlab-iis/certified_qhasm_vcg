@@ -1004,20 +1004,6 @@ Proof.
   exact: (M2.map2_subset bv2z_vars_well).
 Qed.
 
-Lemma bv2z_atomic_vars_subset vs a :
-  VS.subset (vars_atomic a) vs ->
-  zSSA.VS.subset (zSSA.vars_exp (bv2z_atomic a)) (bv2z_vars vs).
-Proof.
-  case: a => /=.
-  - move=> v Hsubset.
-    move: (VSLemmas.subset_singleton1 Hsubset) => {Hsubset} Hmem.
-    apply: zSSA.VSLemmas.subset_singleton2.
-    rewrite -bv2z_vars_mem.
-    exact: Hmem.
-  - move=> _ _.
-    exact: zSSA.VSLemmas.subset_empty.
-Qed.
-
 Lemma bv2z_atomic_vars a :
   zSSA.VS.Equal (zSSA.vars_exp (bv2z_atomic a))
                 (bv2z_vars (vars_atomic a)).
@@ -1027,6 +1013,52 @@ Proof.
   - reflexivity.
 Qed.
 
+Lemma bv2z_eexp_vars (e : eexp) :
+  zSSA.VS.Equal (zSSA.vars_exp (bv2z_eexp e)) (bv2z_vars (vars_eexp e)).
+Proof.
+  elim: e => /=.
+  - move=> a. exact: bv2z_vars_singleton.
+  - reflexivity.
+  - move=> _ e IH. rewrite IH. reflexivity.
+  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2 bv2z_vars_union. reflexivity.
+Qed.
+
+(* Convert (zSSA.VS.subset _ _) containing bv2z_vars to
+   (VS.subset _ _). *)
+Ltac subset_to_bvssa :=
+  match goal with
+  | |- context f [zSSA.VS.union _ zSSA.VS.empty] =>
+    rewrite zSSA.VSLemmas.union_emptyr; subset_to_bvssa
+  | |- context f [vars_exp (bv2z_atomic _)] =>
+    rewrite !bv2z_atomic_vars; subset_to_bvssa
+  | |- context f [vars_exp (bv2z_eexp _)] =>
+    rewrite !bv2z_eexp_vars; subset_to_bvssa
+  | |- context f [zSSA.VS.singleton _] =>
+    rewrite bv2z_vars_singleton; subset_to_bvssa
+  | |- context f [zSSA.VS.add _ (bv2z_vars _)] =>
+    rewrite -bv2z_vars_add; subset_to_bvssa
+  | |- context f [zSSA.VS.union (bv2z_vars _) (bv2z_vars _)] =>
+    rewrite -!bv2z_vars_union; subset_to_bvssa
+  | |- is_true (zSSA.VS.subset (bv2z_vars _) (bv2z_vars ?vs)) =>
+    rewrite bv2z_vars_subset; subset_to_bvssa
+  | |- _ => idtac
+  end.
+
+Ltac push_bv2z_vars :=
+  match goal with
+  | |- context f [bv2z_vars (vars_atomic _)] =>
+    rewrite -!bv2z_atomic_vars; push_bv2z_vars
+  | |- context f [bv2z_vars (vars_eexp _)] =>
+    rewrite -!bv2z_eexp_vars; push_bv2z_vars
+  | |- context f [bv2z_vars (VS.singleton _)] =>
+    rewrite -!bv2z_vars_singleton; push_bv2z_vars
+  | |- context f [bv2z_vars (VS.add _ _)] =>
+    rewrite !bv2z_vars_add; push_bv2z_vars
+  | |- context f [bv2z_vars (VS.union _ _)] =>
+    rewrite !bv2z_vars_union; push_bv2z_vars
+  | |- _ => idtac
+  end.
+
 Lemma bv2z_instr_lvs_subset tmp idx1 idx2 i zi :
   (idx2, zi) = bv2z_instr tmp idx1 i ->
   zSSA.VS.subset (bv2z_vars (lvs_instr i)) (zSSA.lvs_program zi).
@@ -1035,21 +1067,7 @@ Proof.
   (let rec tac :=
        match goal with
        | H : (_, _) = (_, _) |- _ => case: H => _ -> /=; tac
-       | |- context f [zSSA.VS.union _ zSSA.VS.empty] =>
-         rewrite zSSA.VSLemmas.union_emptyr; tac
-       | |- is_true (zSSA.VS.subset (bv2z_vars (VS.singleton ?v))
-                                    (zSSA.VS.singleton ?v)) =>
-         rewrite bv2z_vars_singleton; exact: zSSA.VSLemmas.subset_refl
-       | |- is_true (zSSA.VS.subset (bv2z_vars (VS.add ?v1 (VS.singleton ?v2)))
-                                    (zSSA.VS.add ?v1 (zSSA.VS.singleton ?v2))) =>
-         rewrite bv2z_vars_add_singleton; exact: zSSA.VSLemmas.subset_refl
-       | |- is_true (zSSA.VS.subset
-                       (bv2z_vars (VS.add ?v1 (VS.singleton ?v2)))
-                       (zSSA.VS.union (zSSA.VS.add _ (zSSA.VS.singleton ?v2))
-                                      (zSSA.VS.singleton ?v1))) =>
-         rewrite zSSA.VSLemmas.union_add1; apply: zSSA.VSLemmas.subset_add2;
-         rewrite -zSSA.VSLemmas.add_union_singleton2; tac
-       | |- _ => idtac
+       | |- _ => push_bv2z_vars; zSSA.VSLemmas.dp_subset
        end in
    tac).
 Qed.
@@ -1076,34 +1094,10 @@ Proof.
   (let rec tac :=
        match goal with
        | H : (_, _) = (_, _) |- _ => case: H => _ -> /=; tac
-       | |- context f [zSSA.VS.union _ zSSA.VS.empty] =>
-         rewrite zSSA.VSLemmas.union_emptyr; tac
-       | |- context f [bv2z_vars (VS.add _ _)] =>
-         rewrite bv2z_vars_add; tac
-       | |- context f [bv2z_vars (VS.union _ _)] =>
-         rewrite bv2z_vars_union; tac
-       | |- is_true (zSSA.VS.subset (zSSA.VS.add _ _) _) =>
-         apply: zSSA.VSLemmas.subset_add3; tac
-       | |- context f [zSSA.vars_exp (bv2z_atomic _)] =>
-         repeat rewrite bv2z_atomic_vars; tac
-       | |- context f [zSSA.VS.union _ (zSSA.VS.singleton _)] =>
-         rewrite -zSSA.VSLemmas.add_union_singleton2; tac
-
-       | |- is_true (zSSA.VS.subset ?vs (zSSA.VS.add _ _)) =>
-         apply: zSSA.VSLemmas.subset_add; tac
-       | |- is_true (zSSA.VS.subset ?vs ?vs) =>
-         exact: zSSA.VSLemmas.subset_refl
-       | |- is_true (zSSA.VS.subset _ (zSSA.VS.union _ _)) =>
-         apply: zSSA.VSLemmas.subset_union1; tac
-
-       | |- is_true (zSSA.VS.mem ?v (zSSA.VS.add ?v _)) =>
-         by apply: zSSA.VSLemmas.mem_add2
-       | |- is_true (zSSA.VS.mem ?v (zSSA.VS.add _ _)) =>
-         apply: zSSA.VSLemmas.mem_add3; tac
-       | |- is_true (zSSA.VS.mem ?t (zSSA.VS.union _ (zSSA.VS.add ?t _))) =>
-         apply: zSSA.VSLemmas.mem_union3; tac
-       | |- is_true (zSSA.VS.mem ?t (zSSA.VS.union _ _)) =>
-         apply: zSSA.VSLemmas.mem_union2; tac
+       | |- is_true (zSSA.VS.mem _ _) =>
+         push_bv2z_vars; zSSA.VSLemmas.dp_mem
+       | |- is_true (zSSA.VS.subset _ _) =>
+         push_bv2z_vars; zSSA.VSLemmas.dp_subset
        | |- _ => idtac
        end in
    tac).
@@ -1123,58 +1117,13 @@ Proof.
     + exact: (IH _ _ _ _ Hzp).
 Qed.
 
-Lemma bv2z_eexp_vars (e : eexp) :
-  zSSA.VS.Equal (zSSA.vars_exp (bv2z_eexp e)) (bv2z_vars (vars_eexp e)).
-Proof.
-  elim: e => /=.
-  - move=> a. exact: bv2z_vars_singleton.
-  - reflexivity.
-  - move=> _ e IH. rewrite IH. reflexivity.
-  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2 bv2z_vars_union. reflexivity.
-Qed.
-
 Lemma bv2z_ebexp_vars_subset f :
   zSSA.VS.subset (zSSA.vars_bexp (bv2z_ebexp (eqn_bexp f)))
                  (bv2z_vars (vars_bexp f)).
 Proof.
   case: f => e r /=. rewrite bv2z_vars_union /=.
   apply: zSSA.VSLemmas.subset_union1 => {r}.
-  elim: e => /=; intros;
-  (let rec tac :=
-       match goal with
-       | |- is_true (zSSA.VS.subset zSSA.VS.empty _) =>
-         exact: zSSA.VSLemmas.subset_empty
-       | |- is_true (zSSA.VS.subset _ (bv2z_vars (VS.union _ _))) =>
-         rewrite !bv2z_vars_union;
-         repeat (apply: zSSA.VSLemmas.subset_union3);
-         tac
-       | |- is_true (zSSA.VS.subset
-                       (zSSA.vars_exp (bv2z_eexp ?e))
-                       (zSSA.VS.union (bv2z_vars (vars_eexp ?e)) _)) =>
-         apply: zSSA.VSLemmas.subset_union1;
-         rewrite bv2z_eexp_vars;
-         exact: zSSA.VSLemmas.subset_refl
-       | |- is_true (zSSA.VS.subset
-                       (zSSA.vars_exp (bv2z_eexp ?e))
-                       (zSSA.VS.union _ (bv2z_vars (vars_eexp ?e)))) =>
-         apply: zSSA.VSLemmas.subset_union2;
-         rewrite bv2z_eexp_vars;
-         exact: zSSA.VSLemmas.subset_refl
-       | |- is_true (zSSA.VS.subset
-                       (zSSA.vars_exp (bv2z_eexp ?e))
-                       (zSSA.VS.union _ (zSSA.VS.union _ _))) =>
-         apply: zSSA.VSLemmas.subset_union2; tac
-       | H : is_true (zSSA.VS.subset ?vs1 ?vs2) |-
-         is_true (zSSA.VS.subset ?vs1 (zSSA.VS.union ?vs2 _)) =>
-         apply: zSSA.VSLemmas.subset_union1;
-         assumption
-       | H : is_true (zSSA.VS.subset ?vs1 ?vs2) |-
-         is_true (zSSA.VS.subset ?vs1 (zSSA.VS.union _ ?vs2)) =>
-         apply: zSSA.VSLemmas.subset_union2;
-         assumption
-       | |- _ => idtac
-       end in
-  tac).
+  elim: e => /=; intros; push_bv2z_vars; zSSA.VSLemmas.dp_subset.
 Qed.
 
 Lemma svar_notin_bv2z_vars tmp idx vs :
@@ -1208,30 +1157,19 @@ Proof.
   (let rec tac :=
        match goal with
        | |- is_true true => done
+       | H : ?p |- ?p => exact: H
+       | H : is_true (?x != svar ?y) |- is_true ((?x, _) != ?y) =>
+         apply: svar_ne; exact: H
+       (* *)
        | H : (_, _) = (_, _) |- _ => case: H => _ -> /=; tac
        | |- is_true (_ && _) => apply/andP; split; tac
        | H : is_true (_ && _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move/andP: H => [H1 H2]; tac
-       | |- is_true (zSSA.VS.subset (zSSA.VS.union _ _) _) =>
-         apply: zSSA.VSLemmas.subset_union3; tac
-       | H : is_true (VS.subset (vars_atomic ?a) ?vs) |-
-         is_true (zSSA.VS.subset
-                    (zSSA.vars_exp (bv2z_atomic ?a)) (bv2z_vars ?vs)) =>
-           by rewrite (bv2z_atomic_vars_subset H)
-       | H : is_true (?x != ?y) |- is_true (?x != ?y) => exact: H
-       | H : is_true (VS.mem ?v ?vs)
-         |- is_true (zSSA.VS.subset (zSSA.VS.singleton ?v) (bv2z_vars ?vs)) =>
-         apply: zSSA.VSLemmas.subset_singleton2;
-         exact: (bv2z_vars_mem1 H)
-       | H : is_true (?x != svar ?y) |- is_true ((?x, _) != ?y) =>
-         apply: svar_ne; exact: H
-       | |- is_true (zSSA.VS.subset zSSA.VS.empty _) =>
-         exact: zSSA.VSLemmas.subset_empty
-       | |- is_true (zSSA.VS.subset (zSSA.VS.singleton ?v)
-                                    (zSSA.VS.union _ (zSSA.VS.add ?v _))) =>
-         apply: zSSA.VSLemmas.subset_singleton2; apply: zSSA.VSLemmas.mem_union3;
-         apply: zSSA.VSLemmas.mem_add2; exact: eqxx
+       (* We have VS.subset _ _ in the assumption. *)
+       | |- is_true (zSSA.VS.subset _ _) => subset_to_bvssa; tac
+       (* *)
+       | |- is_true (VS.subset _ _) => VSLemmas.dp_subset
        | |- _ => idtac
        end in
    tac).
@@ -1252,9 +1190,8 @@ Proof.
     apply: (@zSSA.well_formed_program_subset
               (bv2z_vars (VS.union vs (lvs_instr hd)))).
     + exact: (IH _ _ _ _ _ (svar_notin_union2 Hnotin) Hwelltl Hzp).
-    + rewrite bv2z_vars_union. apply: zSSA.VSLemmas.subset_union3.
-      * apply: zSSA.VSLemmas.subset_union1. exact: zSSA.VSLemmas.subset_refl.
-      * apply: zSSA.VSLemmas.subset_union2. exact: (bv2z_instr_lvs_subset Hzi).
+    + move: (bv2z_instr_lvs_subset Hzi) => Hsubset.
+      push_bv2z_vars; zSSA.VSLemmas.dp_subset.
 Qed.
 
 Lemma bv2z_var_unchanged_instr tmp idx1 idx2 vs v i zi :
@@ -1584,10 +1521,9 @@ Proof.
     apply: (@zSSA.VSLemmas.subset_trans _ (zSSA.VS.union
                                              (bv2z_vars vs)
                                              (bv2z_vars (vars_program p)))).
-    + rewrite -bv2z_vars_union bv2z_vars_subset. exact: Hg.
-    + apply: zSSA.VSLemmas.union_subsets.
-      * exact: zSSA.VSLemmas.subset_refl.
-      * exact: (bv2z_program_vars_subset Hzp).
+    + subset_to_bvssa. exact: Hg.
+    + move: (bv2z_program_vars_subset Hzp) => /= Hsubset.
+      zSSA.VSLemmas.dp_subset.
 Qed.
 
 Theorem bv2z_spec_eqn_well_formed_ssa vs sp :
