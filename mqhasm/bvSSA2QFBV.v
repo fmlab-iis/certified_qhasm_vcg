@@ -54,6 +54,16 @@ Definition extAdc n a1 a2 v :=
                   (QFBV64.bvZeroExtend n (exp_atomic a2)))
     (QFBV64.bvZeroExtend n (QFBV64.bvVar v)).
 
+Definition extSub n a1 a2 :=
+  QFBV64.bvSub (QFBV64.bvZeroExtend n (exp_atomic a1))
+               (QFBV64.bvZeroExtend n (exp_atomic a2)).
+
+Definition extSbb n a1 a2 v :=
+  QFBV64.bvSub
+    (QFBV64.bvSub (QFBV64.bvZeroExtend n (exp_atomic a1))
+                  (QFBV64.bvZeroExtend n (exp_atomic a2)))
+    (QFBV64.bvZeroExtend n (QFBV64.bvVar v)).
+
 Definition extMul n a1 a2 :=
   QFBV64.bvMul (QFBV64.bvZeroExtend n (exp_atomic a1))
                (QFBV64.bvZeroExtend n (exp_atomic a2)).
@@ -76,18 +86,39 @@ Definition bexp_instr (i : instr) : QFBV64.bexp :=
                    (@QFBV64.bvHigh _ wordsize (extAdd wordsize a1 a2)))
       (QFBV64.bvEq (QFBV64.bvVar v)
                    (@QFBV64.bvLow wordsize _ (extAdd wordsize a1 a2)))
-  | bvAdc v a1 a2 c =>
+  | bvAdc v a1 a2 y =>
     QFBV64.bvEq (QFBV64.bvVar v)
-                (@QFBV64.bvLow wordsize _ (extAdc wordsize a1 a2 c))
-  | bvAdcC c v a1 a2 a =>
+                (QFBV64.bvAdd
+                   (QFBV64.bvAdd (exp_atomic a1) (exp_atomic a2))
+                   (QFBV64.bvVar y))
+  | bvAdcC c v a1 a2 y =>
     QFBV64.bvConj
       (QFBV64.bvEq (QFBV64.bvVar c)
-                   (@QFBV64.bvHigh _ wordsize (extAdc wordsize a1 a2 a)))
+                   (@QFBV64.bvHigh _ wordsize (extAdc wordsize a1 a2 y)))
       (QFBV64.bvEq (QFBV64.bvVar v)
-                   (@QFBV64.bvLow wordsize _ (extAdc wordsize a1 a2 a)))
+                   (@QFBV64.bvLow wordsize _ (extAdc wordsize a1 a2 y)))
   | bvSub v a1 a2 => QFBV64.bvEq (QFBV64.bvVar v)
                                  (QFBV64.bvSub (exp_atomic a1)
                                                (exp_atomic a2))
+  | bvSubC c v a1 a2 =>
+    QFBV64.bvConj
+      (QFBV64.bvEq (QFBV64.bvVar c)
+                   (QFBV64.bvNeg
+                      (@QFBV64.bvHigh _ wordsize (extSub wordsize a1 a2))))
+      (QFBV64.bvEq (QFBV64.bvVar v)
+                   (@QFBV64.bvLow wordsize _ (extSub wordsize a1 a2)))
+  | bvSbb v a1 a2 y =>
+    QFBV64.bvEq (QFBV64.bvVar v)
+                (QFBV64.bvSub
+                   (QFBV64.bvSub (exp_atomic a1) (exp_atomic a2))
+                   (QFBV64.bvVar y))
+  | bvSbbC c v a1 a2 y =>
+    QFBV64.bvConj
+      (QFBV64.bvEq (QFBV64.bvVar c)
+                   (QFBV64.bvNeg
+                      (@QFBV64.bvHigh _ wordsize (extSbb wordsize a1 a2 y))))
+      (QFBV64.bvEq (QFBV64.bvVar v)
+                   (@QFBV64.bvLow wordsize _ (extSbb wordsize a1 a2 y)))
   | bvMul v a1 a2 => QFBV64.bvEq (QFBV64.bvVar v)
                                  (QFBV64.bvMul (exp_atomic a1)
                                                (exp_atomic a2))
@@ -319,13 +350,15 @@ Ltac qfbv64_store_acc :=
     rewrite -Hupd; qfbv64_store_acc
   | |- context f [QFBV64.Store.acc ?v (State.upd ?v _ ?s1)] =>
     rewrite (QFBV64.Store.acc_upd_eq _ _ (eqxx v))
-  | Hne : is_true (?vh != ?vl) |-
-    context f [QFBV64.Store.acc ?vh (State.upd2 ?vh _ ?vl _ ?s1)] =>
+  | Hne : is_true (?vh != ?vl) |- context f [State.upd2 ?vl _ ?vh _ ?s] =>
+    rewrite eq_sym in Hne; qfbv64_store_acc
+  | Hne : is_true (?vl != ?vh) |-
+    context f [QFBV64.Store.acc ?vl (State.upd2 ?vl _ ?vh _ ?s1)] =>
     rewrite (QFBV64.Store.acc_upd_neq _ _ Hne)
-            (QFBV64.Store.acc_upd_eq _ _ (eqxx vh))
-  | Hne : is_true (?vh != ?vl) |-
-    context f [QFBV64.Store.acc ?vl (State.upd2 ?vh _ ?vl _ ?s1)] =>
-    rewrite (QFBV64.Store.acc_upd_eq _ _ (eqxx vl))
+            (QFBV64.Store.acc_upd_eq _ _ (eqxx vl))
+  | Hne : is_true (?vl != ?vh) |-
+    context f [QFBV64.Store.acc ?vh (State.upd2 ?vl _ ?vh _ ?s1)] =>
+    rewrite (QFBV64.Store.acc_upd_eq _ _ (eqxx vh))
   end.
 
 Lemma bexp_instr_eval vs i s1 s2 :
@@ -351,7 +384,8 @@ Proof.
     move=> v a1 a2 c /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     have Hcv: (c != v).
-    { move: (ssa_unchanged_instr_mem Hun Hne). rewrite /ssa_var_unchanged_instr /=.
+    { move: (ssa_unchanged_instr_mem Hun Hne).
+      rewrite /ssa_var_unchanged_instr /=.
       move/negP => Hmem. apply/negP=> Heq. apply: Hmem.
       exact: (VSLemmas.mem_singleton2 Heq). }
     rewrite (QFBV64.Store.acc_upd_neq _ _ Hcv). reflexivity.
@@ -359,44 +393,66 @@ Proof.
     move=> c v a1 a2 a /andP [/andP [/andP [Hne Hmem] Hsub1] Hsub2] Hun Hupd.
     repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     have Havc: (a != v) && (a != c).
-    { move: (ssa_unchanged_instr_mem Hun Hmem). rewrite /ssa_var_unchanged_instr /=.
+    { move: (ssa_unchanged_instr_mem Hun Hmem).
+      rewrite /ssa_var_unchanged_instr /=.
       move=> H. move: (VSLemmas.not_mem_add1 H) => [/idP H1 H2].
       move: (VSLemmas.not_mem_singleton1 H2) => {H2} /idP H2.
       by rewrite H1 H2. }
     move/andP: Havc => [Hav Hac].
-    rewrite (QFBV64.Store.acc_upd_neq _ _ Hav) (QFBV64.Store.acc_upd_neq _ _ Hac).
+    rewrite (QFBV64.Store.acc_upd_neq _ _ Hac)
+            (QFBV64.Store.acc_upd_neq _ _ Hav).
     split; reflexivity.
   - (* bvSub *)
     move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     reflexivity.
+  - (* bvSubC *)
+    move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    split; reflexivity.
+  - (* bvSbb *)
+    move=> v a1 a2 c /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    have Hcv: (c != v).
+    { move: (ssa_unchanged_instr_mem Hun Hne).
+      rewrite /ssa_var_unchanged_instr /=.
+      move/negP => Hmem. apply/negP=> Heq. apply: Hmem.
+      exact: (VSLemmas.mem_singleton2 Heq). }
+    rewrite (QFBV64.Store.acc_upd_neq _ _ Hcv). reflexivity.
+  - (* bvSbbC *)
+    move=> c v a1 a2 a /andP [/andP [/andP [Hne Hmem] Hsub1] Hsub2] Hun Hupd.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
+    have Havc: (a != v) && (a != c).
+    { move: (ssa_unchanged_instr_mem Hun Hmem).
+      rewrite /ssa_var_unchanged_instr /=.
+      move=> H. move: (VSLemmas.not_mem_add1 H) => [/idP H1 H2].
+      move: (VSLemmas.not_mem_singleton1 H2) => {H2} /idP H2.
+      by rewrite H1 H2. }
+    move/andP: Havc => [Hav Hac].
+    rewrite (QFBV64.Store.acc_upd_neq _ _ Hac)
+            (QFBV64.Store.acc_upd_neq _ _ Hav).
+    split; reflexivity.
   - (* bvMul *)
     move=> v a1 a2 /andP [Hsub1 Hsub2] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     reflexivity.
   - (* bvMulf *)
     move=> vh vl a1 a2 /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     by rewrite mulB_zeroExtend_fullmulB.
   - (* bvShl *)
     move=> v a n Hsub Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     reflexivity.
   - (* bvSplit *)
     move=> vh vl a n /andP [Hne Hsub] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     split; first by reflexivity.
     rewrite fromNatK; first by reflexivity.
     exact: bv_width_sub_bounded.
   - (* bvConcatShl *)
     move=> vh vl a1 a2 n /andP [/andP [Hne Hsub1] Hsub2] Hun Hupd.
-    repeat eval_exp_exp_atomic_to_pred_state.
-    repeat qfbv64_store_acc.
+    repeat eval_exp_exp_atomic_to_pred_state. repeat qfbv64_store_acc.
     rewrite fromNatK; first by done.
     apply: (ltn_leq_trans (toNatBounded n)).
     apply: leq_exp_plus.
@@ -522,15 +578,22 @@ Qed.
 Definition bexp_atomic_addB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvAddo (exp_atomic a1) (exp_atomic a2)).
 
-Definition bexp_atomic_adcB_safe (a1 a2 : atomic) (c : var) : QFBV64.bexp :=
+Definition bexp_atomic_adcB_safe (a1 a2 : atomic) (y : var) : QFBV64.bexp :=
   QFBV64.bvConj
     (QFBV64.bvLneg (QFBV64.bvAddo (exp_atomic a1) (exp_atomic a2)))
     (QFBV64.bvLneg (QFBV64.bvAddo
                       (QFBV64.bvAdd (exp_atomic a1) (exp_atomic a2))
-                      (exp_var c))).
+                      (exp_var y))).
 
 Definition bexp_atomic_subB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvSubo (exp_atomic a1) (exp_atomic a2)).
+
+Definition bexp_atomic_sbbB_safe (a1 a2 : atomic) (y : var) : QFBV64.bexp :=
+  QFBV64.bvConj
+    (QFBV64.bvLneg (QFBV64.bvSubo (exp_atomic a1) (exp_atomic a2)))
+    (QFBV64.bvLneg (QFBV64.bvSubo
+                      (QFBV64.bvSub (exp_atomic a1) (exp_atomic a2))
+                      (exp_var y))).
 
 Definition bexp_atomic_mulB_safe (a1 a2 : atomic) : QFBV64.bexp :=
   QFBV64.bvLneg (QFBV64.bvMulo (exp_atomic a1) (exp_atomic a2)).
@@ -550,9 +613,12 @@ Definition bexp_instr_safe (i : instr) : QFBV64.bexp :=
   | bvAssign _ _ => QFBV64.bvTrue
   | bvAdd _ a1 a2 => bexp_atomic_addB_safe a1 a2
   | bvAddC _ _ _ _ => QFBV64.bvTrue
-  | bvAdc _ a1 a2 c => bexp_atomic_adcB_safe a1 a2 c
+  | bvAdc _ a1 a2 y => bexp_atomic_adcB_safe a1 a2 y
   | bvAdcC _ _ _ _ _ => QFBV64.bvTrue
   | bvSub _ a1 a2 => bexp_atomic_subB_safe a1 a2
+  | bvSubC _ _ _ _ => QFBV64.bvTrue
+  | bvSbb _ a1 a2 y => bexp_atomic_sbbB_safe a1 a2 y
+  | bvSbbC _ _ _ _ _ => QFBV64.bvTrue
   | bvMul _ a1 a2 => bexp_atomic_mulB_safe a1 a2
   | bvMulf _ _ _ _ => QFBV64.bvTrue
   | bvShl _ a n => bexp_atomic_shlBn_safe a n
@@ -614,6 +680,22 @@ Lemma eval_bexp_atomic_subB_safe2 a1 a2 s :
   QFBV64.eval_bexp (bexp_atomic_subB_safe a1 a2) s.
 Proof.
   rewrite /subB_safe /= !eval_exp_atomic. move/negP=> H. exact: H.
+Qed.
+
+Lemma eval_bexp_atomic_sbbB_safe1 a1 a2 c s :
+  QFBV64.eval_bexp (bexp_atomic_sbbB_safe a1 a2 c) s ->
+  sbbB_safe (eval_atomic a1 s) (eval_atomic a2 s) (State.acc c s).
+Proof.
+  rewrite /sbbB_safe /= !eval_exp_atomic store_state_acc.
+  move=> [/negP H1 /negP H2]. rewrite H1 H2. done.
+Qed.
+
+Lemma eval_bexp_atomic_sbbB_safe2 a1 a2 c s :
+  sbbB_safe (eval_atomic a1 s) (eval_atomic a2 s) (State.acc c s) ->
+  QFBV64.eval_bexp (bexp_atomic_sbbB_safe a1 a2 c) s.
+Proof.
+  rewrite /adcB_safe /= !eval_exp_atomic store_state_acc.
+  move=> /andP [H1 H2]. split; apply/negP; assumption.
 Qed.
 
 Lemma eval_bexp_atomic_mulB_safe1 a1 a2 s :
@@ -681,6 +763,9 @@ Proof.
   - exact: eval_bexp_atomic_adcB_safe1.
   - done.
   - exact: eval_bexp_atomic_subB_safe1.
+  - done.
+  - exact: eval_bexp_atomic_sbbB_safe1.
+  - done.
   - exact: eval_bexp_atomic_mulB_safe1.
   - done.
   - exact: eval_bexp_atomic_shlBn_safe1.
@@ -703,6 +788,9 @@ Proof.
   - done.
   - exact: (eval_bexp_atomic_subB_safe2 H).
     (* exact: (eval_bexp_subB_safe2) is much slower. *)
+  - done.
+    exact: (eval_bexp_atomic_sbbB_safe2 H).
+  - done.
   - exact: (eval_bexp_atomic_mulB_safe2 H).
   - done.
   - exact: (eval_bexp_atomic_shlBn_safe2 H).

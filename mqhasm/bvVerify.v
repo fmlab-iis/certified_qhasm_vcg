@@ -115,14 +115,13 @@ Ltac rewrite_bv2z_consts :=
   repeat rewrite_toNatfromNat.
 
 (* Convert bv2z_spec_poly to polynomials. *)
-Ltac bv2zspec_to_poly_with o vs :=
+Ltac bv2zspec_to_poly_with o :=
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
   let tac _ :=
       lazymatch goal with
-      | |- zSSA.valid_spec (bv2z_spec_eqn (bvSSA.ssa_spec ?spec)) =>
-        apply: (zPoly.bexp_spec_sound
-                  (vs:=zSSA.ssa_vars zSSA.empty_vmap (bvdsl2zdsl_vars vs)));
+      | |- zSSA.valid_spec (bv2z_spec_eqn ?ssa_vs (bvSSA.ssa_spec ?spec)) =>
+        apply: (@zPoly.bexp_spec_sound (bv2z_vars ssa_vs));
         [ (* well_formed_ssa_spec *)
           done
         | bvzsimpl; rewrite_bv2z_consts; intros;
@@ -135,29 +134,30 @@ Ltac bv2zspec_to_poly_with o vs :=
   | false => tac unit
   end.
 
-Tactic Notation "bv2zspec_to_poly" constr(vs) :=
-  bv2zspec_to_poly_with default_options vs.
+Tactic Notation "bv2zspec_to_poly" :=
+  bv2zspec_to_poly_with default_options.
 
 (* zVerify does not accept Zpower_nat. *)
 Ltac rewrite_zpower_nat := gen_eqs; rewrite !Zpower_nat_Z; simplZ; intros.
 
-Ltac verify_bv2zssa_with o vs :=
-  bv2zspec_to_poly_with o vs; to_assign_with o;
+Ltac verify_bv2zssa_with o :=
+  bv2zspec_to_poly_with o; to_assign_with o;
   rewrite_assign_with o; rewrite_equality_with o;
   rewrite_zpower_nat; solve_zspec_with o.
 
-Tactic Notation "verify_bv2zssa" constr(vs) :=
-  verify_bv2zssa_with default_options vs.
+Tactic Notation "verify_bv2zssa" :=
+  verify_bv2zssa_with default_options.
 
 Ltac verify_bvdsl_with o vs :=
   let b := constr:(opt_profiling o) in
   let b := eval compute in b in
+  let ssa_vs := constr:(bvSSA.ssa_vars bvSSA.empty_vmap vs) in
   lazymatch goal with
   | |- bv64DSL.valid_spec ?sp =>
-    apply: ssa_spec_sound; apply: bv2z_spec_sound;
+    apply: ssa_spec_sound; apply: (@bv2z_spec_sound ssa_vs);
     [
       (* bv2z_spec_safe *)
-      apply: (bv2z_spec_safe_qfbv1 (vs := (bvSSA.ssa_vars bvSSA.empty_vmap vs)));
+      apply: (@bv2z_spec_safe_qfbv1 ssa_vs);
       [
         (* well_formed_ssa_spec *)
         done
@@ -173,7 +173,7 @@ Ltac verify_bvdsl_with o vs :=
       verify_spec_rng_with o vs
     |
       (* valid_spec on the zSSA side *)
-      verify_bv2zssa_with o vs
+      verify_bv2zssa_with o
     ]
   | |- _ => fail 100 "Tactic verify_bvdsl_with fails: goal does not match"
   end.

@@ -716,6 +716,12 @@ Section ZLemmas.
       reflexivity.
   Qed.
 
+  Corollary Nat2Z_inj_expn (n m : nat) :
+    Z.of_nat (ssrnat.expn n m) = Z.pow (Z.of_nat n) (Z.of_nat m).
+  Proof.
+    rewrite expn_pow. exact: Nat2Z_inj_pow.
+  Qed.
+
   Import ssrnat div.
 
   Lemma Nat2Z_inj_modn (n m : nat) :
@@ -749,6 +755,15 @@ Section ZLemmas.
         * exact: Hm0.
   Qed.
 
+  Corollary Nat2Z_inj_mod (n m : nat) :
+    Z.of_nat (Nat.modulo n m) = (Z.of_nat n) mod (Z.of_nat m).
+  Proof.
+    case H: (m == 0)%N.
+    - rewrite (eqP H) Zmod_0_r /=. reflexivity.
+    - move/negP/idP: H => H. rewrite -(Nats.modn_mod _ H).
+      exact: (Nat2Z_inj_modn _ H).
+  Qed.
+
   Lemma Nat2Z_inj_divn (n m : nat) :
     Z.of_nat (div.divn n m) = (Z.of_nat n) / (Z.of_nat m).
   Proof.
@@ -777,6 +792,12 @@ Section ZLemmas.
         rewrite Z.add_comm Z.mul_comm -Z_div_mod_eq; first reflexivity.
         change 0 with (Z.of_nat 0). apply: (proj1 (Nat2Z.inj_gt _ _)).
         apply: gtn_gt. rewrite lt0n. exact: Hm0.
+  Qed.
+
+  Corollary Nat2Z_inj_div (n m : nat) :
+    Z.of_nat (n / m) = (Z.of_nat n) / (Z.of_nat m).
+  Proof.
+    rewrite -divn_div. exact: Nat2Z_inj_divn.
   Qed.
 
   Local Close Scope Z_scope.
