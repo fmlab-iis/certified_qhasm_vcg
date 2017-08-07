@@ -40,6 +40,8 @@ Module Type TSTORE.
 
     Parameter Upd : var -> value -> t value -> t value -> Prop.
 
+    Parameter Equal : t value -> t value -> Prop.
+
     Parameter Upd_upd :
       forall x v s,
         Upd x v s (upd x v s).
@@ -55,8 +57,29 @@ Module Type TSTORE.
         x != y ->
         Upd y v s1 s2 ->
         acc x s2 = acc x s1.
+    Parameter Equal_refl : forall s, Equal s s.
 
-    End TStore.
+    Parameter Equal_sym : forall s1 s2, Equal s1 s2 -> Equal s2 s1.
+
+    Parameter Equal_trans : forall s1 s2 s3, Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
+
+    Parameter Equal_ST : RelationClasses.Equivalence Equal.
+
+    Parameter Equal_upd_Equal : forall v e s1 s2,
+        Equal s1 s2 ->
+        Equal (upd v e s1) (upd v e s2).
+
+    Parameter Equal_Upd_Equal : forall v e s1 s2 s3 s4,
+        Upd v e s1 s2 -> Upd v e s3 s4 ->
+        Equal s1 s3 -> Equal s2 s4.
+
+    Parameter Upd_pred_Equal : forall v e s1 s2 s,
+        Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
+
+    Parameter Upd_succ_Equal : forall v e s1 s2 s,
+        Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
+
+  End TStore.
 
 End TSTORE.
 
@@ -98,6 +121,9 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
     Definition Upd x v (s1 s2 : t) : Prop :=
       forall y, acc y s2 = acc y (upd x v s1).
 
+    Definition Equal (s1 s2 : t) : Prop :=
+      forall v, acc v s1 = acc v s2.
+
     Lemma Upd_upd :
       forall x v s,
         Upd x v s (upd x v s).
@@ -130,6 +156,59 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
       assumption.
     Qed.
 
+    Lemma Equal_refl s : Equal s s.
+    Proof.
+      done.
+    Qed.
+
+    Lemma Equal_sym s1 s2 : Equal s1 s2 -> Equal s2 s1.
+    Proof.
+      move=> H v; rewrite (H v); reflexivity.
+    Qed.
+
+    Lemma Equal_trans s1 s2 s3 : Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
+    Proof.
+      move=> H1 H2 v. rewrite (H1 v) (H2 v). reflexivity.
+    Qed.
+
+    Instance Equal_ST : RelationClasses.Equivalence Equal :=
+      { Equivalence_Reflexive := Equal_refl;
+        Equivalence_Symmetric := Equal_sym;
+        Equivalence_Transitive := Equal_trans }.
+
+    Lemma Equal_upd_Equal v e s1 s2 :
+      Equal s1 s2 ->
+      Equal (upd v e s1) (upd v e s2).
+    Proof.
+      move=> H x. case Hxv: (x == v).
+      - rewrite !(acc_upd_eq _ _ Hxv). reflexivity.
+      - move/idP/negP: Hxv => Hxv. rewrite !(acc_upd_neq _ _ Hxv). exact: (H x).
+    Qed.
+
+    Lemma Equal_Upd_Equal v e s1 s2 s3 s4 :
+      Upd v e s1 s2 -> Upd v e s3 s4 ->
+      Equal s1 s3 -> Equal s2 s4.
+    Proof.
+      move=> Hupd1 Hupd2 Heq x. rewrite (Hupd1 x) (Hupd2 x).
+      exact: Equal_upd_Equal.
+    Qed.
+
+    Lemma Upd_pred_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
+    Proof.
+      move=> Hupd Heq x. case Hxv: (x == v).
+      - rewrite (acc_Upd_eq Hxv Hupd) (acc_upd_eq _ _ Hxv). reflexivity.
+      - move/idP/negP: Hxv => Hxv.
+        rewrite (acc_Upd_neq Hxv Hupd) (acc_upd_neq _ _ Hxv). exact: (Heq x).
+    Qed.
+
+    Lemma Upd_succ_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
+    Proof.
+      move=> Hupd Heq x. rewrite -(Heq x). case Hxv: (x == v).
+      - rewrite (acc_Upd_eq Hxv Hupd) (acc_upd_eq _ _ Hxv). reflexivity.
+      - move/idP/negP: Hxv => Hxv.
+        rewrite (acc_Upd_neq Hxv Hupd) (acc_upd_neq _ _ Hxv). reflexivity.
+    Qed.
+
   End TStore.
 
 End MakeTStore.
@@ -158,6 +237,7 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
     exact: S.acc_upd_neq.
   Qed.
   Definition Upd x v (s1 s2 : t) := S.Upd x v s1 s2.
+  Definition Equal (s1 s2 : t) := S.Equal s1 s2.
   Lemma Upd_upd :
     forall x v s,
       Upd x v s (upd x v s).
@@ -182,6 +262,39 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Proof.
     move=> x y v s1 s2.
     exact: S.acc_Upd_neq.
+  Qed.
+  Lemma Equal_refl s : Equal s s.
+  Proof.
+    exact: S.Equal_refl.
+  Qed.
+  Lemma Equal_sym s1 s2 : Equal s1 s2 -> Equal s2 s1.
+  Proof.
+    exact: S.Equal_sym.
+  Qed.
+  Lemma Equal_trans s1 s2 s3 : Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
+  Proof.
+    exact: S.Equal_trans.
+  Qed.
+  Instance Equal_ST : RelationClasses.Equivalence Equal := S.Equal_ST value.
+  Lemma Equal_upd_Equal v e s1 s2 :
+    Equal s1 s2 ->
+    Equal (upd v e s1) (upd v e s2).
+  Proof.
+    exact: S.Equal_upd_Equal.
+  Qed.
+  Lemma Equal_Upd_Equal v e s1 s2 s3 s4 :
+    Upd v e s1 s2 -> Upd v e s3 s4 ->
+    Equal s1 s3 -> Equal s2 s4.
+  Proof.
+    exact: S.Equal_Upd_Equal.
+  Qed.
+  Lemma Upd_pred_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
+  Proof.
+    exact: S.Upd_pred_Equal.
+  Qed.
+  Lemma Upd_succ_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
+  Proof.
+    exact: S.Upd_succ_Equal.
   Qed.
 End TStoreAdapter.
 
@@ -236,6 +349,8 @@ Module Type PSTORE.
 
     Parameter Unset : var -> t value -> t value -> Prop.
 
+    Parameter Equal : t value -> t value -> Prop.
+
     Parameter Empty_acc :
       forall x s,
         Empty s ->
@@ -272,6 +387,28 @@ Module Type PSTORE.
         x != y ->
         Unset y s1 s2 ->
         acc x s2 = acc x s1.
+
+    Parameter Equal_refl : forall s, Equal s s.
+
+    Parameter Equal_sym : forall s1 s2, Equal s1 s2 -> Equal s2 s1.
+
+    Parameter Equal_trans : forall s1 s2 s3, Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
+
+    Parameter Equal_ST : RelationClasses.Equivalence Equal.
+
+    Parameter Equal_upd_Equal : forall v e s1 s2,
+        Equal s1 s2 ->
+        Equal (upd v e s1) (upd v e s2).
+
+    Parameter Equal_Upd_Equal : forall v e s1 s2 s3 s4,
+        Upd v e s1 s2 -> Upd v e s3 s4 ->
+        Equal s1 s3 -> Equal s2 s4.
+
+    Parameter Upd_pred_Equal : forall v e s1 s2 s,
+        Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
+
+    Parameter Upd_succ_Equal : forall v e s1 s2 s,
+        Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
 
   End PStore.
 
@@ -354,6 +491,9 @@ Module MakePStore (X : SsrOrderedType) <: PSTORE.
     Definition Unset x s1 s2 : Prop :=
       forall y, acc y s2 = acc y (unset x s1).
 
+    Definition Equal (s1 s2 : t) : Prop :=
+      forall v, acc v s1 = acc v s2.
+
     Lemma Empty_acc :
       forall x s,
         Empty s ->
@@ -427,6 +567,59 @@ Module MakePStore (X : SsrOrderedType) <: PSTORE.
       by apply.
     Qed.
 
+    Lemma Equal_refl s : Equal s s.
+    Proof.
+      done.
+    Qed.
+
+    Lemma Equal_sym s1 s2 : Equal s1 s2 -> Equal s2 s1.
+    Proof.
+      move=> H v; rewrite (H v); reflexivity.
+    Qed.
+
+    Lemma Equal_trans s1 s2 s3 : Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
+    Proof.
+      move=> H1 H2 v. rewrite (H1 v) (H2 v). reflexivity.
+    Qed.
+
+    Instance Equal_ST : RelationClasses.Equivalence Equal :=
+      { Equivalence_Reflexive := Equal_refl;
+        Equivalence_Symmetric := Equal_sym;
+        Equivalence_Transitive := Equal_trans }.
+
+    Lemma Equal_upd_Equal v e s1 s2 :
+      Equal s1 s2 ->
+      Equal (upd v e s1) (upd v e s2).
+    Proof.
+      move=> H x. case Hxv: (x == v).
+      - rewrite !(acc_upd_eq _ _ Hxv). reflexivity.
+      - move/idP/negP: Hxv => Hxv. rewrite !(acc_upd_neq _ _ Hxv). exact: (H x).
+    Qed.
+
+    Lemma Equal_Upd_Equal v e s1 s2 s3 s4 :
+      Upd v e s1 s2 -> Upd v e s3 s4 ->
+      Equal s1 s3 -> Equal s2 s4.
+    Proof.
+      move=> Hupd1 Hupd2 Heq x. rewrite (Hupd1 x) (Hupd2 x).
+      exact: Equal_upd_Equal.
+    Qed.
+
+    Lemma Upd_pred_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
+    Proof.
+      move=> Hupd Heq x. case Hxv: (x == v).
+      - rewrite (acc_Upd_eq Hxv Hupd) (acc_upd_eq _ _ Hxv). reflexivity.
+      - move/idP/negP: Hxv => Hxv.
+        rewrite (acc_Upd_neq Hxv Hupd) (acc_upd_neq _ _ Hxv). exact: (Heq x).
+    Qed.
+
+    Lemma Upd_succ_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
+    Proof.
+      move=> Hupd Heq x. rewrite -(Heq x). case Hxv: (x == v).
+      - rewrite (acc_Upd_eq Hxv Hupd) (acc_upd_eq _ _ Hxv). reflexivity.
+      - move/idP/negP: Hxv => Hxv.
+        rewrite (acc_Upd_neq Hxv Hupd) (acc_upd_neq _ _ Hxv). reflexivity.
+    Qed.
+
   End PStore.
 
 End MakePStore.
@@ -478,6 +671,7 @@ Module PStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Definition Empty (s : t) : Prop := S.Empty s.
   Definition Upd x v (s1 s2 : t) : Prop := S.Upd x v s1 s2.
   Definition Unset x (s1 s2 : t) : Prop := S.Unset x s1 s2.
+  Definition Equal (s1 s2 : t) := S.Equal s1 s2.
   Lemma Empty_acc :
     forall x s,
       Empty s ->
@@ -528,6 +722,39 @@ Module PStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
       acc x s2 = acc x s1.
   Proof.
     exact: S.acc_Unset_neq.
+  Qed.
+  Lemma Equal_refl s : Equal s s.
+  Proof.
+    exact: S.Equal_refl.
+  Qed.
+  Lemma Equal_sym s1 s2 : Equal s1 s2 -> Equal s2 s1.
+  Proof.
+    exact: S.Equal_sym.
+  Qed.
+  Lemma Equal_trans s1 s2 s3 : Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
+  Proof.
+    exact: S.Equal_trans.
+  Qed.
+  Instance Equal_ST : RelationClasses.Equivalence Equal := S.Equal_ST value.
+  Lemma Equal_upd_Equal v e s1 s2 :
+    Equal s1 s2 ->
+    Equal (upd v e s1) (upd v e s2).
+  Proof.
+    exact: S.Equal_upd_Equal.
+  Qed.
+  Lemma Equal_Upd_Equal v e s1 s2 s3 s4 :
+    Upd v e s1 s2 -> Upd v e s3 s4 ->
+    Equal s1 s3 -> Equal s2 s4.
+  Proof.
+    exact: S.Equal_Upd_Equal.
+  Qed.
+  Lemma Upd_pred_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
+  Proof.
+    exact: S.Upd_pred_Equal.
+  Qed.
+  Lemma Upd_succ_Equal v e s1 s2 s : Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
+  Proof.
+    exact: S.Upd_succ_Equal.
   Qed.
 End PStoreAdapter.
 
