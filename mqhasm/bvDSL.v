@@ -169,48 +169,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Lemma vars_instr_split i :
     VS.Equal (vars_instr i) (VS.union (lvs_instr i) (rvs_instr i)).
   Proof.
-    elim : i => /=; move=> *;
-    match goal with
-    | |- VS.Equal (VS.add ?v (vars_atomic ?e)) (VS.union (VS.singleton ?v) (vars_atomic ?e)) =>
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))
-                  (VS.union (VS.singleton ?v)
-                            (VS.union (vars_atomic ?e1) (vars_atomic ?e2))) =>
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal (VS.add ?vh (VS.add ?vl (vars_atomic ?e)))
-                  (VS.union (VS.add ?vh (VS.singleton ?vl)) (vars_atomic ?e)) =>
-      rewrite VSLemmas.OP.P.union_add;
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal
-           (VS.add ?vh (VS.add ?vl (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))
-           (VS.union (VS.add ?vh (VS.singleton ?vl))
-                     (VS.union (vars_atomic ?e1) (vars_atomic ?e2))) =>
-      rewrite VSLemmas.OP.P.union_add;
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal
-           (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))
-           (VS.union (VS.singleton ?v)
-                     (VS.add ?c (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))) =>
-      rewrite VSLemmas.OP.P.add_add;
-      rewrite VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal
-           (VS.add ?a
-                   (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))))
-           (VS.union (VS.add ?c (VS.singleton ?v))
-                     (VS.add ?a (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))) =>
-      rewrite (VSLemmas.OP.P.union_sym (VS.add _ _) (VS.add _ _))
-              VSLemmas.OP.P.union_add
-              (VSLemmas.OP.P.union_sym (VS.union _ _) (VS.add _ _))
-              VSLemmas.OP.P.union_add
-              -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- _ => idtac "not matched"
-    end.
+    elim : i => /=; move=> *; by VSLemmas.dp_Equal.
   Qed.
 
   Lemma mem_vars_instr1 v i :
@@ -260,14 +219,12 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     - rewrite VSLemmas.union_emptyl.
       reflexivity.
     - move=> hd tl IH.
-      rewrite VSLemmas.OP.P.union_assoc.
-      rewrite (VSLemmas.OP.P.union_sym (rvs_instr hd) (rvs_program tl)).
-      rewrite -(VSLemmas.OP.P.union_assoc (lvs_program tl)).
-      rewrite (VSLemmas.OP.P.union_sym _ (rvs_instr hd)).
-      rewrite -VSLemmas.OP.P.union_assoc.
-      rewrite -IH.
-      rewrite -vars_instr_split.
-      reflexivity.
+      have: VS.Equal (VS.union (VS.union (lvs_instr hd) (lvs_program tl))
+                               (VS.union (rvs_instr hd) (rvs_program tl)))
+                     (VS.union (VS.union (lvs_instr hd) (rvs_instr hd))
+                               (VS.union (lvs_program tl) (rvs_program tl))) by
+          VSLemmas.dp_Equal.
+      move=> ->. rewrite -IH. rewrite -vars_instr_split. reflexivity.
   Qed.
 
   Lemma mem_vars_program1 v p :
@@ -514,39 +471,6 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvVar v => State.acc v s
     | bvConst n => n
     end.
-
-  Program Definition high_ext (n : nat) (x : BITS n) (p : nat) : BITS n :=
-    (if Program.Utils.dec (p < n)
-     then zeroExtend (n - p) (@high p (n - p) x)
-     else zero n)%GEN_IF.
-  Next Obligation.
-    apply: Logic.eq_sym.
-    apply: subnK.
-    exact: ltnW.
-  Qed.
-  Next Obligation.
-    apply: subnKC.
-    exact: ltnW.
-  Qed.
-
-  Program Definition low_ext (n : nat) (x : BITS n) (p : nat) : BITS n :=
-    (if Program.Utils.dec (p < n)
-     then zeroExtend (n - p) (@low (n - p) p x)
-     else x)%GEN_IF.
-  Next Obligation.
-    apply: Logic.eq_sym.
-    apply: subnKC.
-    exact: ltnW.
-  Qed.
-  Next Obligation.
-    apply: subnKC.
-    exact: ltnW.
-  Qed.
-
-  (*
-  Definition split_ext (n : nat) (x : BITS n) (p : nat) :=
-    (high_ext x (n - p), low_ext x p).
-   *)
 
   Definition split_ext (n : nat) (x : BITS n) (p : nat) :=
     (shrBn x p,
