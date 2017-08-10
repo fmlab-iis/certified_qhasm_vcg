@@ -14,13 +14,12 @@ Delimit Scope zssa_scope with zssa.
 
 Local Open Scope zssa_scope.
 
-Module MakeZSSA (VO : SsrOrderedType) (IO : SsrOrderedType).
-  Module V := MakeProdOrdered VO IO.
-  Module Q := MakeZDSL V.
+Module MakeZSSA (VO : SsrOrderedType) (IO : SsrOrderedType) (V : SsrOrderedType with Definition T := prod_eqType VO.T IO.T) (Import VS : SsrFSet with Module E := V).
+  Module Q := MakeZDSL V VS.
   Include Q.
 End MakeZSSA.
 
-Module zSSA := MakeZSSA VarOrder NOrder.
+Module zSSA := MakeZSSA VarOrder NOrder SSAVarOrder SSAVS.
 
 Arguments zSSA.zVar v%N.
 
@@ -39,11 +38,11 @@ Notation "f ===> g" := (zSSA.entails f g) (at level 82, no associativity) : zssa
 Notation "{{ f }} p {{ g }}" := ({| zSSA.spre := f; zSSA.sprog := p; zSSA.spost := g |}) (at level 82, no associativity) : zssa_scope.
 Notation "|= s" := (zSSA.valid_spec s) (at level 83, no associativity) : zssa_scope.
 
-Definition svar (x : zSSA.V.t) := fst x.
-Definition sidx (x : zSSA.V.t) := snd x.
+Definition svar (x : zSSA.var) := fst x.
+Definition sidx (x : zSSA.var) := snd x.
 Hint Unfold svar sidx.
 
-Module M2 := Map2 VS zSSA.VS.
+Module M2 := Map2 VS SSAVS.
 
 Lemma svar_ne v1 v2 : svar v1 != svar v2 -> v1 != v2.
 Proof.
@@ -115,7 +114,7 @@ Qed.
 Definition ssa_var_well m :=
   M2.mkWellMap2 (ssa_var_preserve m) (ssa_var_injective (m:=m)).
 
-Definition ssa_vars (m : vmap) (vs : VS.t) : zSSA.VS.t :=
+Definition ssa_vars (m : vmap) (vs : VS.t) : SSAVS.t :=
   M2.map2 (ssa_var m) vs.
 
 Definition ssa_unop (op : unop) : zSSA.unop :=
@@ -412,10 +411,10 @@ Proof.
 Qed.
 
 Lemma ssa_vars_mem_elements m v vs :
-  zSSA.VS.mem v (ssa_vars m vs) = (v \in (zSSA.VS.elements (ssa_vars m vs))).
+  SSAVS.mem v (ssa_vars m vs) = (v \in (SSAVS.elements (ssa_vars m vs))).
 Proof.
   move: (zSSA.VSLemmas.F.elements_iff (ssa_vars m vs) v) => [HinA Hin].
-  case Hv: (v \in zSSA.VS.elements (ssa_vars m vs)).
+  case Hv: (v \in SSAVS.elements (ssa_vars m vs)).
   - move/InAP: Hv => Hv.
     apply/zSSA.VSLemmas.memP.
     apply: Hin.
@@ -430,19 +429,19 @@ Qed.
 
 Lemma ssa_vars_Empty m vs :
   VS.Empty vs ->
-  zSSA.VS.Empty (ssa_vars m vs).
+  SSAVS.Empty (ssa_vars m vs).
 Proof.
   exact: M2.map2_Empty1.
 Qed.
 
 Lemma ssa_vars_mem1 m v vs :
-  zSSA.VS.mem (ssa_var m v) (ssa_vars m vs) = VS.mem v vs.
+  SSAVS.mem (ssa_var m v) (ssa_vars m vs) = VS.mem v vs.
 Proof.
   exact: (M2.map2_mem1 (ssa_var_well m)).
 Qed.
 
 Lemma ssa_vars_mem2 m v vs :
-  zSSA.VS.mem v (ssa_vars m vs) ->
+  SSAVS.mem v (ssa_vars m vs) ->
   exists x, v = ssa_var m x /\ VS.mem x vs.
 Proof.
   move=> Hmem; move: (M2.map2_mem2 Hmem) => [y [/eqP Hy Hmemy]].
@@ -453,7 +452,7 @@ Qed.
 Lemma ssa_vars_mem3 m v i vs :
   VS.mem v vs ->
   i = get_index v m ->
-  zSSA.VS.mem (v, i) (ssa_vars m vs).
+  SSAVS.mem (v, i) (ssa_vars m vs).
 Proof.
   move=> Hmem Hidx.
   rewrite Hidx.
@@ -462,7 +461,7 @@ Proof.
 Qed.
 
 Lemma ssa_vars_mem_2vmap m1 m2 v vs :
-  zSSA.VS.mem (ssa_var m1 v) (ssa_vars m2 vs) = VS.mem v vs && (get_index v m1 == get_index v m2).
+  SSAVS.mem (ssa_var m1 v) (ssa_vars m2 vs) = VS.mem v vs && (get_index v m1 == get_index v m2).
 Proof.
   case Hmem: (VS.mem v vs) => /=.
   - case Hidx: (get_index v m1 == get_index v m2) => /=.
@@ -479,17 +478,17 @@ Proof.
 Qed.
 
 Lemma ssa_vars_add m v vs :
-  zSSA.VS.Equal (ssa_vars m (VS.add v vs))
-               (zSSA.VS.add (ssa_var m v) (ssa_vars m vs)).
+  SSAVS.Equal (ssa_vars m (VS.add v vs))
+               (SSAVS.add (ssa_var m v) (ssa_vars m vs)).
 Proof.
   rewrite /ssa_vars (M2.map2_add (ssa_var_well m)).
   reflexivity.
 Qed.
 
 Lemma ssa_vars_upd_mem1 m x v vs :
-  zSSA.VS.mem x (ssa_vars (upd_index v m) vs) ->
+  SSAVS.mem x (ssa_vars (upd_index v m) vs) ->
   x == ssa_var (upd_index v m) v \/
-  svar x != v /\ zSSA.VS.mem x (ssa_vars m vs).
+  svar x != v /\ SSAVS.mem x (ssa_vars m vs).
 Proof.
   move=> Hmem.
   move: (ssa_vars_mem2 Hmem) => [y [Hxy Hy]].
@@ -505,7 +504,7 @@ Qed.
 Lemma ssa_vars_upd_mem2 m x v vs :
   x == ssa_var (upd_index v m) v ->
   VS.mem v vs ->
-  zSSA.VS.mem x (ssa_vars (upd_index v m) vs).
+  SSAVS.mem x (ssa_vars (upd_index v m) vs).
 Proof.
   move=> /eqP Heq Hmem.
   rewrite Heq ssa_vars_mem1.
@@ -514,8 +513,8 @@ Qed.
 
 Lemma ssa_vars_upd_mem3 m x v vs :
   svar x != v ->
-  zSSA.VS.mem x (ssa_vars m vs) ->
-  zSSA.VS.mem x (ssa_vars (upd_index v m) vs).
+  SSAVS.mem x (ssa_vars m vs) ->
+  SSAVS.mem x (ssa_vars (upd_index v m) vs).
 Proof.
   destruct x as [x i] => /=.
   move=> Hneq Hmem.
@@ -531,15 +530,15 @@ Proof.
 Qed.
 
 Lemma ssa_vars_union m vs1 vs2 :
-  zSSA.VS.Equal (ssa_vars m (VS.union vs1 vs2))
-               (zSSA.VS.union (ssa_vars m vs1) (ssa_vars m vs2)).
+  SSAVS.Equal (ssa_vars m (VS.union vs1 vs2))
+               (SSAVS.union (ssa_vars m vs1) (ssa_vars m vs2)).
 Proof.
   rewrite /ssa_vars (M2.map2_union (ssa_var_well m)).
   reflexivity.
 Qed.
 
 Lemma ssa_vars_exp_comm m e :
-  zSSA.VS.Equal (ssa_vars m (vars_exp e)) (zSSA.vars_exp (ssa_exp m e)).
+  SSAVS.Equal (ssa_vars m (vars_exp e)) (zSSA.vars_exp (ssa_exp m e)).
 Proof.
   elim: e => /=.
   - move=> v.
@@ -556,8 +555,8 @@ Proof.
 Qed.
 
 Lemma ssa_vars_exp_union m e1 e2 :
- zSSA.VS.Equal (ssa_vars m (VS.union (vars_exp e1) (vars_exp e2)))
-              (zSSA.VS.union (zSSA.vars_exp (ssa_exp m e1))
+ SSAVS.Equal (ssa_vars m (VS.union (vars_exp e1) (vars_exp e2)))
+              (SSAVS.union (zSSA.vars_exp (ssa_exp m e1))
                             (zSSA.vars_exp (ssa_exp m e2))).
 Proof.
   rewrite ssa_vars_union -2!ssa_vars_exp_comm.
@@ -565,10 +564,10 @@ Proof.
 Qed.
 
 Lemma ssa_vars_subset m s1 s2 :
-  zSSA.VS.subset (ssa_vars m s1) (ssa_vars m s2) = VS.subset s1 s2.
+  SSAVS.subset (ssa_vars m s1) (ssa_vars m s2) = VS.subset s1 s2.
 Proof.
   case Hsub: (VS.subset s1 s2).
-  - apply: zSSA.VS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
+  - apply: SSAVS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
     apply/zSSA.VSLemmas.memP.
     move: (ssa_vars_mem2 Hmem) => [y [Hxy Hmemy]].
     rewrite Hxy ssa_vars_mem1.
@@ -582,7 +581,7 @@ Proof.
 Qed.
 
 Lemma ssa_vars_bexp_comm m e :
-  zSSA.VS.Equal (ssa_vars m (vars_bexp e)) (zSSA.vars_bexp (ssa_bexp m e)).
+  SSAVS.Equal (ssa_vars m (vars_bexp e)) (zSSA.vars_bexp (ssa_bexp m e)).
 Proof.
   elim: e => /=.
   - move=> x; split => H; by inversion H.
@@ -599,8 +598,8 @@ Proof.
 Qed.
 
 Lemma ssa_vars_bexp_union m e1 e2 :
- zSSA.VS.Equal (ssa_vars m (VS.union (vars_bexp e1) (vars_bexp e2)))
-              (zSSA.VS.union (zSSA.vars_bexp (ssa_bexp m e1))
+ SSAVS.Equal (ssa_vars m (VS.union (vars_bexp e1) (vars_bexp e2)))
+              (SSAVS.union (zSSA.vars_bexp (ssa_bexp m e1))
                             (zSSA.vars_bexp (ssa_bexp m e2))).
 Proof.
   rewrite ssa_vars_union -2!ssa_vars_bexp_comm.
@@ -608,11 +607,11 @@ Proof.
 Qed.
 
 Lemma ssa_vars_exp_subset m e vs :
-  zSSA.VS.subset (zSSA.vars_exp (ssa_exp m e)) (ssa_vars m vs) =
+  SSAVS.subset (zSSA.vars_exp (ssa_exp m e)) (ssa_vars m vs) =
   VS.subset (vars_exp e) vs.
 Proof.
   case Hsub: (VS.subset (vars_exp e) vs).
-  - apply: zSSA.VS.subset_1 => x.
+  - apply: SSAVS.subset_1 => x.
     rewrite -ssa_vars_exp_comm => /zSSA.VSLemmas.memP Hx.
     move: (ssa_vars_mem2 Hx) => [v [Hv Hmemv]].
     apply/zSSA.VSLemmas.memP.
@@ -630,11 +629,11 @@ Proof.
 Qed.
 
 Lemma ssa_vars_bexp_subset m e vs :
-  zSSA.VS.subset (zSSA.vars_bexp (ssa_bexp m e)) (ssa_vars m vs) =
+  SSAVS.subset (zSSA.vars_bexp (ssa_bexp m e)) (ssa_vars m vs) =
   VS.subset (vars_bexp e) vs.
 Proof.
   case Hsub: (VS.subset (vars_bexp e) vs).
-  - apply: zSSA.VS.subset_1 => x.
+  - apply: SSAVS.subset_1 => x.
     rewrite -ssa_vars_bexp_comm => /zSSA.VSLemmas.memP Hx.
     move: (ssa_vars_mem2 Hx) => [v [Hv Hmemv]].
     apply/zSSA.VSLemmas.memP.
@@ -652,10 +651,10 @@ Proof.
 Qed.
 
 Lemma ssa_vars_upd_index_subset1 m v vs :
-  zSSA.VS.subset (ssa_vars (upd_index v m) vs)
-                (zSSA.VS.add (ssa_var (upd_index v m) v) (ssa_vars m vs)).
+  SSAVS.subset (ssa_vars (upd_index v m) vs)
+                (SSAVS.add (ssa_var (upd_index v m) v) (ssa_vars m vs)).
 Proof.
-  apply: zSSA.VS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
+  apply: SSAVS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
   apply/zSSA.VSLemmas.memP.
   move: (ssa_vars_mem2 Hmem) => [y [Hxy Hy]].
   rewrite Hxy.
@@ -673,14 +672,14 @@ Proof.
 Qed.
 
 Lemma ssa_vars_upd_index_subset2 m vh vl vs :
-  zSSA.VS.subset
+  SSAVS.subset
     (ssa_vars (upd_index vh (upd_index vl m)) vs)
-    (zSSA.VS.add
+    (SSAVS.add
        (ssa_var (upd_index vh (upd_index vl m)) vh)
-       (zSSA.VS.add
+       (SSAVS.add
           (ssa_var (upd_index vl m) vl) (ssa_vars m vs))).
 Proof.
-  apply: zSSA.VS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
+  apply: SSAVS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
   apply/zSSA.VSLemmas.memP.
   move: (ssa_vars_mem2 Hmem) => [y [Hxy Hy]].
   rewrite Hxy.
@@ -697,17 +696,17 @@ Qed.
 
 Lemma ssa_vars_instr_subset vs m1 m2 i si :
   ssa_instr m1 i = (m2, si) ->
-  zSSA.VS.subset (ssa_vars m2 (VS.union vs (vars_instr i)))
-                (zSSA.VS.union (ssa_vars m1 vs) (zSSA.vars_instr si)).
+  SSAVS.subset (ssa_vars m2 (VS.union vs (vars_instr i)))
+                (SSAVS.union (ssa_vars m1 vs) (zSSA.vars_instr si)).
 Proof.
   elim: i vs m1 m2 si => /=.
   - move=> v e vs m1 m2 si [] Hm Hsi.
     rewrite -Hsi -Hm /= => {Hm Hsi si m2}.
     move: (ssa_vars_upd_index_subset1 m1 v vs) => Hsub1.
     move: (ssa_vars_upd_index_subset1 m1 v (vars_exp e)) => Hsub2.
-    have: zSSA.VS.mem
+    have: SSAVS.mem
             (ssa_var (upd_index v m1) v)
-            (zSSA.VS.add
+            (SSAVS.add
                (ssa_var (upd_index v m1) v) (ssa_vars m1 vs))
       by apply: zSSA.VSLemmas.mem_add2; exact: eqxx.
     move=> Hmem.
@@ -715,20 +714,20 @@ Proof.
     move: (zSSA.VSLemmas.union_subsets Hsub1 Hsub2) => {Hsub1 Hsub2}.
     set m2 := upd_index v m1.
     rewrite -{1}ssa_vars_add -{1}ssa_vars_union => Hsub.
-    have: zSSA.VS.subset (ssa_vars m2 (VS.union vs (VS.add v (vars_exp e))))
+    have: SSAVS.subset (ssa_vars m2 (VS.union vs (VS.add v (vars_exp e))))
                         (ssa_vars m2 (VS.union (VS.add v vs) (vars_exp e))).
     + rewrite ssa_vars_subset VSLemmas.OP.P.union_sym VSLemmas.OP.P.union_add
               VSLemmas.OP.P.union_sym -VSLemmas.OP.P.union_add.
       exact: VSLemmas.subset_refl.
     + move=> Hsub1.
       move: (zSSA.VSLemmas.subset_trans Hsub1 Hsub) => {Hsub1 Hsub} Hsub.
-      have: zSSA.VS.subset
-              (zSSA.VS.union
-                 (zSSA.VS.add (ssa_var m2 v) (ssa_vars m1 vs))
-                 (zSSA.VS.add (ssa_var m2 v) (ssa_vars m1 (vars_exp e))))
-              (zSSA.VS.union
+      have: SSAVS.subset
+              (SSAVS.union
+                 (SSAVS.add (ssa_var m2 v) (ssa_vars m1 vs))
+                 (SSAVS.add (ssa_var m2 v) (ssa_vars m1 (vars_exp e))))
+              (SSAVS.union
                  (ssa_vars m1 vs)
-                 (zSSA.VS.add (ssa_var m2 v) (zSSA.vars_exp (ssa_exp m1 e)))).
+                 (SSAVS.add (ssa_var m2 v) (zSSA.vars_exp (ssa_exp m1 e)))).
       * rewrite zSSA.VSLemmas.OP.P.union_add.
         apply: zSSA.VSLemmas.subset_add3.
         -- apply: zSSA.VSLemmas.mem_union3.
@@ -743,11 +742,11 @@ Proof.
     rewrite -Hsi -Hm /= => {Hm Hsi si m2}.
     move: (ssa_vars_upd_index_subset2 m1 vh vl vs) => Hsub1.
     move: (ssa_vars_upd_index_subset2 m1 vh vl (vars_exp e)) => Hsub2.
-    have: zSSA.VS.mem
+    have: SSAVS.mem
             (ssa_var (upd_index vh (upd_index vl m1)) vl)
-            (zSSA.VS.add
+            (SSAVS.add
                (ssa_var (upd_index vh (upd_index vl m1)) vh)
-               (zSSA.VS.add
+               (SSAVS.add
                   (ssa_var (upd_index vl m1) vl)
                   (ssa_vars m1 vs))).
     { case Hhl: (vl == vh).
@@ -755,11 +754,11 @@ Proof.
       - move/idP/negP: Hhl => Hhl. rewrite (ssa_var_upd_neq _ Hhl).
         apply: zSSA.VSLemmas.mem_add3. apply: zSSA.VSLemmas.mem_add2.
         exact: eqxx. }
-    have: zSSA.VS.mem
+    have: SSAVS.mem
             (ssa_var (upd_index vh (upd_index vl m1)) vh)
-            (zSSA.VS.add
+            (SSAVS.add
                (ssa_var (upd_index vh (upd_index vl m1)) vh)
-               (zSSA.VS.add
+               (SSAVS.add
                   (ssa_var (upd_index vl m1) vl)
                   (ssa_vars m1 vs))).
     { apply: zSSA.VSLemmas.mem_add2. exact: eqxx. }
@@ -769,39 +768,39 @@ Proof.
     move: (zSSA.VSLemmas.union_subsets Hsub1 Hsub2) => {Hsub1 Hsub2}.
     set m2 := upd_index vl m1. set m3 := upd_index vh m2.
     rewrite -2!{1}ssa_vars_add -{1}ssa_vars_union => Hsub.
-    have: zSSA.VS.subset
-            (zSSA.VS.union
-               (zSSA.VS.add
+    have: SSAVS.subset
+            (SSAVS.union
+               (SSAVS.add
                   (ssa_var m3 vh)
-                  (zSSA.VS.add (ssa_var m2 vl) (ssa_vars m1 vs)))
-               (zSSA.VS.add
+                  (SSAVS.add (ssa_var m2 vl) (ssa_vars m1 vs)))
+               (SSAVS.add
                   (ssa_var m3 vh)
-                  (zSSA.VS.add (ssa_var m2 vl) (ssa_vars m1 (vars_exp e)))))
-            (zSSA.VS.union
+                  (SSAVS.add (ssa_var m2 vl) (ssa_vars m1 (vars_exp e)))))
+            (SSAVS.union
                (ssa_vars m1 vs)
-               (zSSA.VS.add
+               (SSAVS.add
                   (ssa_var m3 vh)
-                  (zSSA.VS.add (ssa_var m2 vl) (zSSA.vars_exp (ssa_exp m1 e))))).
+                  (SSAVS.add (ssa_var m2 vl) (zSSA.vars_exp (ssa_exp m1 e))))).
     { set vh3 := ssa_var m3 vh. set vl2 := ssa_var m2 vl.
       set vs1 := ssa_vars m1 vs. rewrite -ssa_vars_exp_comm.
       set e1 := ssa_vars m1 (vars_exp e). rewrite zSSA.VSLemmas.OP.P.union_add.
-      have: zSSA.VS.mem
+      have: SSAVS.mem
               vh3
-              (zSSA.VS.union vs1 (zSSA.VS.add vh3 (zSSA.VS.add vl2 e1)))
+              (SSAVS.union vs1 (SSAVS.add vh3 (SSAVS.add vl2 e1)))
         by apply: zSSA.VSLemmas.mem_union3;
         apply: zSSA.VSLemmas.mem_add2; exact: eqxx.
       move=> Hmem; apply: (zSSA.VSLemmas.subset_add3 Hmem) => {Hmem}.
       rewrite zSSA.VSLemmas.OP.P.union_add.
-      have: zSSA.VS.mem
+      have: SSAVS.mem
               vl2
-              (zSSA.VS.union vs1 (zSSA.VS.add vh3 (zSSA.VS.add vl2 e1)))
+              (SSAVS.union vs1 (SSAVS.add vh3 (SSAVS.add vl2 e1)))
         by apply: zSSA.VSLemmas.mem_union3; apply: zSSA.VSLemmas.mem_add3;
         apply: zSSA.VSLemmas.mem_add2; exact: eqxx.
       move=> Hmem; apply: (zSSA.VSLemmas.subset_add3 Hmem) => {Hmem}.
       exact: zSSA.VSLemmas.subset_refl. }
     move=> Hsub1.
     move: (zSSA.VSLemmas.subset_trans Hsub Hsub1) => {Hsub1 Hsub} Hsub.
-    have: zSSA.VS.subset
+    have: SSAVS.subset
             (ssa_vars m3 (VS.union vs (VS.add vh (VS.add vl (vars_exp e)))))
             (ssa_vars m3 (VS.union (VS.add vh (VS.add vl vs)) (vars_exp e))).
     { rewrite ssa_vars_subset VSLemmas.OP.P.union_sym
@@ -815,12 +814,12 @@ Qed.
 Lemma ssa_vars_post_subset vs m1 m2 p sp g :
   VS.subset (vars_bexp g) (VS.union vs (vars_program p)) ->
   ssa_program m1 p = (m2, sp) ->
-  zSSA.VS.subset (zSSA.vars_bexp (ssa_bexp m2 g)) (zSSA.VS.union (ssa_vars m1 vs) (zSSA.vars_program sp)).
+  SSAVS.subset (zSSA.vars_bexp (ssa_bexp m2 g)) (SSAVS.union (ssa_vars m1 vs) (zSSA.vars_program sp)).
 Proof.
   elim: p vs m1 m2 sp g => /=.
   - move=> vs m1 m2 sp g Hsub [] Hm Hsp.
     rewrite -Hsp -Hm /=.
-    rewrite (zSSA.VSLemmas.OP.P.empty_union_2 _ zSSA.VS.empty_1).
+    rewrite (zSSA.VSLemmas.OP.P.empty_union_2 _ SSAVS.empty_1).
     rewrite ssa_vars_bexp_subset.
     rewrite -(VSLemmas.OP.P.empty_union_2 vs VS.empty_1).
     assumption.
@@ -829,13 +828,13 @@ Proof.
     rewrite Hsp /= => {Hsp}.
     move: Hsub; rewrite -VSLemmas.OP.P.union_assoc => Hsub.
     move: (IH _ _ _ _ _ Hsub Hstl) => {IH Hsub Hstl} H0.
-    move: (zSSA.VS.subset_2 H0) => {H0} H0.
+    move: (SSAVS.subset_2 H0) => {H0} H0.
     move: (ssa_vars_instr_subset vs Hshd) => {Hshd} H1.
-    move: (zSSA.VS.subset_2 H1) => {H1} H1.
+    move: (SSAVS.subset_2 H1) => {H1} H1.
     move: (zSSA.VSLemmas.OP.P.union_subset_4 (s'':=zSSA.vars_program stl) H1) => {H1} H1.
     rewrite -zSSA.VSLemmas.OP.P.union_assoc.
     move: (zSSA.VSLemmas.OP.P.subset_trans H0 H1) => {H0 H1} H2.
-    apply: zSSA.VS.subset_1.
+    apply: SSAVS.subset_1.
     assumption.
 Qed.
 
@@ -1069,7 +1068,7 @@ Lemma acc_ssa_state_eq :
     zSSA.State.acc (v, i) (ssa_state m s) = State.acc v s.
 Proof.
   move=> m s v i Heq.
-  rewrite /ssa_state /zSSA.State.acc /zSSA.Store.acc /=.
+  rewrite /ssa_state /zSSA.State.acc /zSSA.State.S.acc.
   rewrite Heq.
   reflexivity.
 Qed.
@@ -1156,13 +1155,13 @@ Qed.
 (** Well-formed SSA *)
 
 Definition ssa_var_unchanged_instr (v : zSSA.var) (i : zSSA.instr) : bool :=
-  ~~ (zSSA.VS.mem v (zSSA.lvs_instr i)).
+  ~~ (SSAVS.mem v (zSSA.lvs_instr i)).
 
 Definition ssa_unchanged_instr_var (i : zSSA.instr) (v : zSSA.var) : bool :=
-  ~~ (zSSA.VS.mem v (zSSA.lvs_instr i)).
+  ~~ (SSAVS.mem v (zSSA.lvs_instr i)).
 
-Definition ssa_vars_unchanged_instr (vs : zSSA.VS.t) (i : zSSA.instr) : bool :=
-  zSSA.VS.for_all (ssa_unchanged_instr_var i) vs.
+Definition ssa_vars_unchanged_instr (vs : SSAVS.t) (i : zSSA.instr) : bool :=
+  SSAVS.for_all (ssa_unchanged_instr_var i) vs.
 
 Definition ssa_var_unchanged_program (v : zSSA.var) (p : zSSA.program) : bool :=
   all (ssa_var_unchanged_instr v) p.
@@ -1170,8 +1169,8 @@ Definition ssa_var_unchanged_program (v : zSSA.var) (p : zSSA.program) : bool :=
 Definition ssa_unchanged_program_var (p : zSSA.program) (v : zSSA.var) : bool :=
   ssa_var_unchanged_program v p.
 
-Definition ssa_vars_unchanged_program (vs : zSSA.VS.t) (p : zSSA.program) : bool :=
-  zSSA.VS.for_all (ssa_unchanged_program_var p) vs.
+Definition ssa_vars_unchanged_program (vs : SSAVS.t) (p : zSSA.program) : bool :=
+  SSAVS.for_all (ssa_unchanged_program_var p) vs.
 
 Fixpoint ssa_single_assignment (p : zSSA.program) : bool :=
   match p with
@@ -1181,12 +1180,12 @@ Fixpoint ssa_single_assignment (p : zSSA.program) : bool :=
     (ssa_single_assignment tl)
   end.
 
-Definition well_formed_ssa_program (vs : zSSA.VS.t) (p : zSSA.program) : bool :=
+Definition well_formed_ssa_program (vs : SSAVS.t) (p : zSSA.program) : bool :=
   zSSA.well_formed_program vs p &&
   ssa_vars_unchanged_program vs p &&
   ssa_single_assignment p.
 
-Definition well_formed_ssa_spec (vs : zSSA.VS.t) (s : zSSA.spec) : bool :=
+Definition well_formed_ssa_spec (vs : SSAVS.t) (s : zSSA.spec) : bool :=
   zSSA.well_formed_spec vs s &&
   ssa_vars_unchanged_program vs (zSSA.sprog s) &&
   ssa_single_assignment (zSSA.sprog s).
@@ -1332,7 +1331,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_instr_var_compat i :
-  SetoidList.compat_bool zSSA.VS.E.eq (ssa_unchanged_instr_var i).
+  SetoidList.compat_bool SSAVS.E.eq (ssa_unchanged_instr_var i).
 Proof.
   move=> x y Heq.
   rewrite (eqP Heq).
@@ -1340,7 +1339,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_program_var_compat p :
-  SetoidList.compat_bool zSSA.VS.E.eq (ssa_unchanged_program_var p).
+  SetoidList.compat_bool SSAVS.E.eq (ssa_unchanged_program_var p).
 Proof.
   move=> x y Heq.
   rewrite (eqP Heq).
@@ -1349,36 +1348,36 @@ Qed.
 
 Lemma ssa_unchanged_instr_mem v vs i :
   ssa_vars_unchanged_instr vs i ->
-  zSSA.VS.mem v vs ->
+  SSAVS.mem v vs ->
   ssa_var_unchanged_instr v i.
 Proof.
   move=> Hun Hmem.
-  apply: (zSSA.VS.for_all_2 (ssa_unchanged_instr_var_compat i) Hun).
+  apply: (SSAVS.for_all_2 (ssa_unchanged_instr_var_compat i) Hun).
   apply/zSSA.VSLemmas.memP; assumption.
 Qed.
 
 Lemma ssa_unchanged_program_mem v vs p :
   ssa_vars_unchanged_program vs p ->
-  zSSA.VS.mem v vs ->
+  SSAVS.mem v vs ->
   ssa_var_unchanged_program v p.
 Proof.
   move=> Hun Hmem.
-  apply: (zSSA.VS.for_all_2 (ssa_unchanged_program_var_compat p) Hun).
+  apply: (SSAVS.for_all_2 (ssa_unchanged_program_var_compat p) Hun).
   apply/zSSA.VSLemmas.memP; assumption.
 Qed.
 
 Lemma ssa_var_unchanged_instr_not_mem v i :
-  ssa_var_unchanged_instr v i = ~~ zSSA.VS.mem v (zSSA.lvs_instr i).
+  ssa_var_unchanged_instr v i = ~~ SSAVS.mem v (zSSA.lvs_instr i).
 Proof.
-  case Hmem: (zSSA.VS.mem v (zSSA.lvs_instr i)) => /=.
+  case Hmem: (SSAVS.mem v (zSSA.lvs_instr i)) => /=.
   - apply/negPn. exact: Hmem.
   - move/negP/idP: Hmem. by apply.
 Qed.
 
 Lemma ssa_var_unchanged_program_not_mem v p :
-  ssa_var_unchanged_program v p = ~~ zSSA.VS.mem v (zSSA.lvs_program p).
+  ssa_var_unchanged_program v p = ~~ SSAVS.mem v (zSSA.lvs_program p).
 Proof.
-  case Hmem: (zSSA.VS.mem v (zSSA.lvs_program p)) => /=.
+  case Hmem: (SSAVS.mem v (zSSA.lvs_program p)) => /=.
   - elim: p Hmem => /=.
     + done.
     + move=> hd tl IH Hmem. case: (zSSA.VSLemmas.mem_union1 Hmem) =>
@@ -1393,37 +1392,37 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_instr_global vs i :
-  (forall v, zSSA.VS.mem v vs -> ssa_var_unchanged_instr v i) ->
+  (forall v, SSAVS.mem v vs -> ssa_var_unchanged_instr v i) ->
   ssa_vars_unchanged_instr vs i.
 Proof.
   move=> H.
-  apply: (zSSA.VS.for_all_1 (ssa_unchanged_instr_var_compat i)).
+  apply: (SSAVS.for_all_1 (ssa_unchanged_instr_var_compat i)).
   move=> v Hin.
   apply: H; apply/zSSA.VSLemmas.memP; assumption.
 Qed.
 
 Lemma ssa_unchanged_program_global vs p :
-  (forall v, zSSA.VS.mem v vs -> ssa_var_unchanged_program v p) ->
+  (forall v, SSAVS.mem v vs -> ssa_var_unchanged_program v p) ->
   ssa_vars_unchanged_program vs p.
 Proof.
   move=> H.
-  apply: (zSSA.VS.for_all_1 (ssa_unchanged_program_var_compat p)).
+  apply: (SSAVS.for_all_1 (ssa_unchanged_program_var_compat p)).
   move=> v Hin.
   apply: H; apply/zSSA.VSLemmas.memP; assumption.
 Qed.
 
 Lemma ssa_unchanged_instr_local vs i :
   ssa_vars_unchanged_instr vs i ->
-  (forall v, zSSA.VS.mem v vs -> ssa_var_unchanged_instr v i).
+  (forall v, SSAVS.mem v vs -> ssa_var_unchanged_instr v i).
 Proof.
   move=> H v Hmem.
-  apply: (zSSA.VS.for_all_2 (ssa_unchanged_instr_var_compat i) H).
+  apply: (SSAVS.for_all_2 (ssa_unchanged_instr_var_compat i) H).
   apply/zSSA.VSLemmas.memP; assumption.
 Qed.
 
 Lemma ssa_unchanged_program_local vs p :
   ssa_vars_unchanged_program vs p ->
-  (forall v, zSSA.VS.mem v vs -> ssa_var_unchanged_program v p).
+  (forall v, SSAVS.mem v vs -> ssa_var_unchanged_program v p).
 Proof.
   move=> H v Hmem.
   exact: (ssa_unchanged_program_mem H Hmem).
@@ -1490,7 +1489,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_instr_singleton1 v i :
-  ssa_vars_unchanged_instr (zSSA.VS.singleton v) i ->
+  ssa_vars_unchanged_instr (SSAVS.singleton v) i ->
   ssa_var_unchanged_instr v i.
 Proof.
   move=> Hun.
@@ -1500,7 +1499,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_program_singleton1 v p :
-  ssa_vars_unchanged_program (zSSA.VS.singleton v) p ->
+  ssa_vars_unchanged_program (SSAVS.singleton v) p ->
   ssa_var_unchanged_program v p.
 Proof.
   move=> Hun.
@@ -1511,7 +1510,7 @@ Qed.
 
 Lemma ssa_unchanged_instr_singleton2 v i :
   ssa_var_unchanged_instr v i ->
-  ssa_vars_unchanged_instr (zSSA.VS.singleton v) i.
+  ssa_vars_unchanged_instr (SSAVS.singleton v) i.
 Proof.
   move=> Hun.
   apply: ssa_unchanged_instr_global => x Hmem.
@@ -1521,7 +1520,7 @@ Qed.
 
 Lemma ssa_unchanged_program_singleton2 v p :
   ssa_var_unchanged_program v p ->
-  ssa_vars_unchanged_program (zSSA.VS.singleton v) p.
+  ssa_vars_unchanged_program (SSAVS.singleton v) p.
 Proof.
   move=> Hun.
   apply: ssa_unchanged_program_global => x Hmem.
@@ -1530,7 +1529,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_instr_union1 s1 s2 i :
-  ssa_vars_unchanged_instr (zSSA.VS.union s1 s2) i ->
+  ssa_vars_unchanged_instr (SSAVS.union s1 s2) i ->
   ssa_vars_unchanged_instr s1 i /\ ssa_vars_unchanged_instr s2 i.
 Proof.
   move=> Hun.
@@ -1543,7 +1542,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_program_union1 s1 s2 p :
-  ssa_vars_unchanged_program (zSSA.VS.union s1 s2) p ->
+  ssa_vars_unchanged_program (SSAVS.union s1 s2) p ->
   ssa_vars_unchanged_program s1 p /\ ssa_vars_unchanged_program s2 p.
 Proof.
   move=> Hun.
@@ -1557,7 +1556,7 @@ Qed.
 
 Lemma ssa_unchanged_instr_union2 s1 s2 i :
   ssa_vars_unchanged_instr s1 i -> ssa_vars_unchanged_instr s2 i ->
-  ssa_vars_unchanged_instr (zSSA.VS.union s1 s2) i.
+  ssa_vars_unchanged_instr (SSAVS.union s1 s2) i.
 Proof.
   move=> Hun1 Hun2.
   apply: ssa_unchanged_instr_global => x Hmem.
@@ -1568,7 +1567,7 @@ Qed.
 
 Lemma ssa_unchanged_program_union2 s1 s2 p :
   ssa_vars_unchanged_program s1 p -> ssa_vars_unchanged_program s2 p ->
-  ssa_vars_unchanged_program (zSSA.VS.union s1 s2) p.
+  ssa_vars_unchanged_program (SSAVS.union s1 s2) p.
 Proof.
   move=> Hun1 Hun2.
   apply: ssa_unchanged_program_global => x Hmem.
@@ -1579,7 +1578,7 @@ Qed.
 
 Lemma ssa_unchanged_instr_subset vs1 vs2 i :
   ssa_vars_unchanged_instr vs2 i ->
-  zSSA.VS.subset vs1 vs2 ->
+  SSAVS.subset vs1 vs2 ->
   ssa_vars_unchanged_instr vs1 i.
 Proof.
   move=> Hun Hsub.
@@ -1591,7 +1590,7 @@ Qed.
 
 Lemma ssa_unchanged_program_subset vs1 vs2 p :
   ssa_vars_unchanged_program vs2 p ->
-  zSSA.VS.subset vs1 vs2 ->
+  SSAVS.subset vs1 vs2 ->
   ssa_vars_unchanged_program vs1 p.
 Proof.
   move=> Hun Hsub.
@@ -1602,19 +1601,20 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_instr_add1 v s p :
-  ssa_vars_unchanged_instr (zSSA.VS.add v s) p ->
+  ssa_vars_unchanged_instr (SSAVS.add v s) p ->
   ssa_var_unchanged_instr v p /\ ssa_vars_unchanged_instr s p.
 Proof.
   move=> H; split.
   - apply: (ssa_unchanged_instr_mem H).
-    exact: zSSA.VSLemmas.mem_add2.
+    apply: zSSA.VSLemmas.mem_add2.
+    exact: SSAVS.E.eq_refl.
   - apply: (ssa_unchanged_instr_subset H).
     exact: (zSSA.VSLemmas.subset_add _ (zSSA.VSLemmas.subset_refl s)).
 Qed.
 
 Lemma ssa_unchanged_instr_add2 v s p :
   ssa_var_unchanged_instr v p /\ ssa_vars_unchanged_instr s p ->
-  ssa_vars_unchanged_instr (zSSA.VS.add v s) p.
+  ssa_vars_unchanged_instr (SSAVS.add v s) p.
 Proof.
   move=> [H1 H2].
   apply: ssa_unchanged_instr_global => x Hmem.
@@ -1624,19 +1624,20 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_program_add1 v s p :
-  ssa_vars_unchanged_program (zSSA.VS.add v s) p ->
+  ssa_vars_unchanged_program (SSAVS.add v s) p ->
   ssa_var_unchanged_program v p /\ ssa_vars_unchanged_program s p.
 Proof.
   move=> H; split.
   - apply: (ssa_unchanged_program_mem H).
-    exact: zSSA.VSLemmas.mem_add2.
+    apply: zSSA.VSLemmas.mem_add2.
+    exact: SSAVS.E.eq_refl.
   - apply: (ssa_unchanged_program_subset H).
     exact: (zSSA.VSLemmas.subset_add _ (zSSA.VSLemmas.subset_refl s)).
 Qed.
 
 Lemma ssa_unchanged_program_add2 v s p :
   ssa_var_unchanged_program v p /\ ssa_vars_unchanged_program s p ->
-  ssa_vars_unchanged_program (zSSA.VS.add v s) p.
+  ssa_vars_unchanged_program (SSAVS.add v s) p.
 Proof.
   move=> [H1 H2].
   apply: ssa_unchanged_program_global => x Hmem.
@@ -1684,7 +1685,7 @@ Proof.
 Qed.
 
 Lemma ssa_unchanged_program_replace vs1 vs2 p :
-  zSSA.VS.Equal vs1 vs2 ->
+  SSAVS.Equal vs1 vs2 ->
   ssa_vars_unchanged_program vs1 p ->
   ssa_vars_unchanged_program vs2 p.
 Proof.
@@ -1751,7 +1752,7 @@ Lemma well_formed_ssa_vars_unchanged_hd vs hd tl :
 Proof.
   move => /andP [/andP [Hwf Huc] Hssa].
   apply: (@ssa_unchanged_program_replace
-            (zSSA.VS.union (zSSA.lvs_instr hd) (zSSA.rvs_instr hd))).
+            (SSAVS.union (zSSA.lvs_instr hd) (zSSA.rvs_instr hd))).
   - rewrite -zSSA.vars_instr_split.
     reflexivity.
   - apply: ssa_unchanged_program_union2.
@@ -1765,7 +1766,7 @@ Qed.
 
 Lemma well_formed_ssa_tl vs hd tl :
   well_formed_ssa_program vs (hd::tl) ->
-  well_formed_ssa_program (zSSA.VS.union vs (zSSA.lvs_instr hd)) tl.
+  well_formed_ssa_program (SSAVS.union vs (zSSA.lvs_instr hd)) tl.
 Proof.
   move=> Hwfssa.
   move: (Hwfssa) => /andP [/andP [Hwf Huc] Hssa].
@@ -1983,7 +1984,7 @@ Definition dclosed m ivs lvs svs : Prop :=
   (* The index of a variable in lvs should start from 1. *)
   (forall v, VS.mem v lvs -> 0 <? get_index v m) /\
   (* svs contains all versions of ivs and lvs. *)
-  (forall v i, zSSA.VS.mem (v, i) svs = (VS.mem v ivs) && (i <=? get_index v m) || (VS.mem v lvs) && (0 <? i <=? get_index v m)).
+  (forall v i, SSAVS.mem (v, i) svs = (VS.mem v ivs) && (i <=? get_index v m) || (VS.mem v lvs) && (0 <? i <=? get_index v m)).
 
 Lemma dclosed_not_mem m ivs lvs svs v :
   dclosed m ivs lvs svs ->
@@ -1996,7 +1997,7 @@ Qed.
 
 Lemma dclosed_mem1 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
-  zSSA.VS.mem (v, i) svs ->
+  SSAVS.mem (v, i) svs ->
   (VS.mem v ivs) /\ (i <=? get_index v m) \/
                     (VS.mem v lvs) /\ (0 <? i <=? get_index v m).
 Proof.
@@ -2010,7 +2011,7 @@ Qed.
 Lemma dclosed_mem2 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
   VS.mem v ivs -> i <=? get_index v m ->
-  zSSA.VS.mem (v, i) svs.
+  SSAVS.mem (v, i) svs.
 Proof.
   move=> [_ [_ Hd]] Hmem Hi.
   rewrite Hd.
@@ -2020,7 +2021,7 @@ Qed.
 Lemma dclosed_mem3 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
   VS.mem v lvs -> 0 <? i <=? get_index v m ->
-  zSSA.VS.mem (v, i) svs.
+  SSAVS.mem (v, i) svs.
 Proof.
   move=> [_ [_ Hd]] Hmem Hi.
   rewrite Hd.
@@ -2038,7 +2039,7 @@ Qed.
 Lemma dclosed_mem5 m ivs lvs svs v i :
   dclosed m ivs lvs svs ->
   0 <? i <=? get_index v m ->
-  zSSA.VS.mem (v, i) svs.
+  SSAVS.mem (v, i) svs.
 Proof.
   move=> Hd Hi.
   case Hmem: (VS.mem v (VS.union ivs lvs)).
@@ -2077,10 +2078,10 @@ Qed.
 
 Lemma dclosed_subset m ivs lvs svs :
   dclosed m ivs lvs svs ->
-  zSSA.VS.subset (ssa_vars m (VS.union ivs lvs)) svs.
+  SSAVS.subset (ssa_vars m (VS.union ivs lvs)) svs.
 Proof.
   move=> [Hd1 [Hd2 Hd3]].
-  apply: zSSA.VS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
+  apply: SSAVS.subset_1 => x /zSSA.VSLemmas.memP Hmem.
   apply/zSSA.VSLemmas.memP.
   move: Hmem; rewrite ssa_vars_union => Hmem.
   destruct x as [x i].
@@ -2127,7 +2128,7 @@ Lemma dclosed_upd1 m ivs lvs svs v x i :
   dclosed m ivs lvs svs ->
   VS.mem x ivs ->
   i <=? get_index x (upd_index v m) ->
-  zSSA.VS.mem (x, i) (zSSA.VS.add (ssa_var (upd_index v m) v) svs).
+  SSAVS.mem (x, i) (SSAVS.add (ssa_var (upd_index v m) v) svs).
 Proof.
   move=> Hd Hmem Hi.
   case Hxv: (x == v).
@@ -2135,7 +2136,8 @@ Proof.
     rewrite Nleq_eqVlt in Hi.
     case: (orP Hi) => {Hi} Hi.
     + rewrite /ssa_var -(eqP Hi).
-      exact: zSSA.VSLemmas.mem_add2.
+      apply: zSSA.VSLemmas.mem_add2.
+      exact: SSAVS.E.eq_refl.
     + rewrite get_upd_index_eq NltnS in Hi.
       apply: zSSA.VSLemmas.mem_add3.
       exact: (dclosed_mem2 Hd Hmem Hi).
@@ -2148,7 +2150,7 @@ Qed.
 Lemma dclosed_upd2 m ivs lvs svs v x i :
   dclosed m ivs lvs svs ->
   0 <? i <=? get_index x (upd_index v m) ->
-  zSSA.VS.mem (x, i) (zSSA.VS.add (ssa_var (upd_index v m) v) svs).
+  SSAVS.mem (x, i) (SSAVS.add (ssa_var (upd_index v m) v) svs).
 Proof.
   move=> Hd /andP [Hi1 Hi2].
   case Hxv: (x == v).
@@ -2175,9 +2177,9 @@ Lemma dclosed_upd3 m ivs lvs svs vh vl x i :
   dclosed m ivs lvs svs ->
   VS.mem x ivs ->
   i <=? get_index x (upd_index vh (upd_index vl m)) ->
-  zSSA.VS.mem (x, i)
-              (zSSA.VS.add (ssa_var (upd_index vh (upd_index vl m)) vh)
-                           (zSSA.VS.add
+  SSAVS.mem (x, i)
+              (SSAVS.add (ssa_var (upd_index vh (upd_index vl m)) vh)
+                           (SSAVS.add
                               (ssa_var (upd_index vl m) vl) svs)).
 Proof.
   move=> Hd Hmem Hi. case Hxh: (x == vh).
@@ -2193,9 +2195,9 @@ Qed.
 Lemma dclosed_upd4 m ivs lvs svs vh vl x i :
   dclosed m ivs lvs svs ->
   0 <? i <=? get_index x (upd_index vh (upd_index vl m)) ->
-  zSSA.VS.mem (x, i)
-              (zSSA.VS.add (ssa_var (upd_index vh (upd_index vl m)) vh)
-                           (zSSA.VS.add
+  SSAVS.mem (x, i)
+              (SSAVS.add (ssa_var (upd_index vh (upd_index vl m)) vh)
+                           (SSAVS.add
                               (ssa_var (upd_index vl m) vl) svs)).
 Proof.
   move=> Hd /andP [Hi1 Hi2]. case Hxh: (x == vh).
@@ -2211,12 +2213,12 @@ Proof.
 Qed.
 
 Lemma dclosed_zassign_succ :
-  forall (v : var) (e : exp) (ivs lvs : VS.t) (svs : zSSA.VS.t)
+  forall (v : var) (e : exp) (ivs lvs : VS.t) (svs : SSAVS.t)
          (m1 m2 : vmap) (si : zSSA.instr),
     dclosed m1 ivs lvs svs ->
     (upd_index v m1, ssa_var (upd_index v m1) v @:= ssa_exp m1 e) = (m2, si) ->
     dclosed m2 ivs (VS.union lvs (VS.singleton v))
-            (zSSA.VS.union svs (zSSA.lvs_instr si)).
+            (SSAVS.union svs (zSSA.lvs_instr si)).
 Proof.
   move=> v e ivs lvs svs m1 m2 si Hd [Hm Hsi].
   rewrite -Hsi /= => {Hsi}.
@@ -2271,14 +2273,14 @@ Qed.
 
 Lemma dclosed_zsplit_succ :
   forall (v1 v2 : var) (e : exp) (p : nat) (ivs lvs : VS.t)
-         (svs : zSSA.VS.t) (m1 m2 : vmap) (si : zSSA.instr),
+         (svs : SSAVS.t) (m1 m2 : vmap) (si : zSSA.instr),
     dclosed m1 ivs lvs svs ->
     (upd_index v1 (upd_index v2 m1),
      zSSA.zSplit (ssa_var (upd_index v1 (upd_index v2 m1)) v1)
                  (ssa_var (upd_index v2 m1) v2)
                  (ssa_exp m1 e) p) = (m2, si) ->
     dclosed m2 ivs (VS.union lvs (VS.add v1 (VS.singleton v2)))
-            (zSSA.VS.union svs (zSSA.lvs_instr si)).
+            (SSAVS.union svs (zSSA.lvs_instr si)).
 Proof.
   move=> vh vl e p ivs lvs svs m1 m2 si Hd [Hm Hsi]. rewrite -Hsi /= => {Hsi}.
   split; [idtac | split].
@@ -2305,10 +2307,10 @@ Proof.
       exact: (Nltn_leq_trans Hlt Hle).
   - move=> v i.
     rewrite zSSA.VSLemmas.OP.P.add_union_singleton.
-    rewrite (zSSA.VSLemmas.OP.P.union_sym (zSSA.VS.singleton _)).
+    rewrite (zSSA.VSLemmas.OP.P.union_sym (SSAVS.singleton _)).
     rewrite -zSSA.VSLemmas.OP.P.union_assoc.
     rewrite (zSSA.VSLemmas.OP.P.union_sym svs).
-    rewrite (zSSA.VSLemmas.OP.P.union_sym _ (zSSA.VS.singleton _)).
+    rewrite (zSSA.VSLemmas.OP.P.union_sym _ (SSAVS.singleton _)).
     rewrite -zSSA.VSLemmas.OP.P.add_union_singleton.
     rewrite -zSSA.VSLemmas.OP.P.add_union_singleton.
     case H: (VS.mem v ivs && (i <=? get_index v m2) ||
@@ -2356,7 +2358,7 @@ Corollary dclosed_instr_succ ivs lvs svs m1 m2 i si :
   dclosed m1 ivs lvs svs ->
   ssa_instr m1 i = (m2, si) ->
   dclosed m2 ivs (VS.union lvs (lvs_instr i))
-          (zSSA.VS.union svs (zSSA.lvs_instr si)).
+          (SSAVS.union svs (zSSA.lvs_instr si)).
 Proof.
   elim: i ivs lvs svs m1 m2 si => /=.
   - exact: dclosed_zassign_succ.
@@ -2412,13 +2414,13 @@ Proof.
 Qed.
 
 Lemma ssa_exp_var_index m e v i :
-  zSSA.VS.mem (v, i) (zSSA.vars_exp (ssa_exp m e)) ->
+  SSAVS.mem (v, i) (zSSA.vars_exp (ssa_exp m e)) ->
   get_index v m = i.
 Proof.
   elim: e m v i.
   - move=> v m x i Hmem.
     move/zSSA.VSLemmas.memP: Hmem => Hin.
-    move: (zSSA.VS.singleton_1 Hin) => /eqP [] Hv Hi.
+    move: (SSAVS.singleton_1 Hin) => /eqP [] Hv Hi.
     rewrite -Hv; exact: Hi.
   - move=> c m x i Hmem.
     discriminate.
@@ -2426,7 +2428,7 @@ Proof.
     exact: (IH _ _ _ Hmem).
   - move=> op e1 IH1 e2 IH2 m x i Hmem.
     move/zSSA.VSLemmas.memP: Hmem => Hin.
-    move: {Hin} (zSSA.VS.union_1 Hin); case => /zSSA.VSLemmas.memP Hmem.
+    move: {Hin} (SSAVS.union_1 Hin); case => /zSSA.VSLemmas.memP Hmem.
     + apply: (IH1 _ _ _ Hmem); reflexivity.
     + apply: (IH2 _ _ _ Hmem); reflexivity.
   - move=> e IH p n v i /= Hmem.
@@ -2434,7 +2436,7 @@ Proof.
 Qed.
 
 Lemma ssa_bexp_var_index m e v i :
-  zSSA.VS.mem (v, i) (zSSA.vars_bexp (ssa_bexp m e)) ->
+  SSAVS.mem (v, i) (zSSA.vars_bexp (ssa_bexp m e)) ->
   get_index v m = i.
 Proof.
   elim: e m v i => /=.
@@ -2456,7 +2458,7 @@ Proof.
 Qed.
 
 Lemma ssa_spec_in_pre_unchanged s v :
-  zSSA.VS.mem v (zSSA.vars_bexp (zSSA.spre (ssa_spec s))) ->
+  SSAVS.mem v (zSSA.vars_bexp (zSSA.spre (ssa_spec s))) ->
   ssa_var_unchanged_program v (zSSA.sprog (ssa_spec s)).
 Proof.
   move: (ssa_spec_unfold s) => [m [Hpre [Hprog Hpost]]].

@@ -14,19 +14,21 @@ Import Prenex Implicits.
 
 (** Stores as total maps from variables to values of a single type. *)
 
-Module Type TSTORE.
+Module Type TSTORE (V : SsrOrderedType).
+
+  Local Notation var := V.t.
 
   Section TStore.
 
     Variable value : Type.
-
-    Parameter var : eqType.
 
     Parameter t : Type -> Type.
 
     Parameter acc : var -> t value -> value.
 
     Parameter upd : var -> value -> t value -> t value.
+
+    Parameter upd2 : var -> value -> var -> value -> t value -> t value.
 
     Parameter acc_upd_eq :
       forall x y v s,
@@ -38,13 +40,41 @@ Module Type TSTORE.
         x != y ->
         acc x (upd y v s) = acc x s.
 
+    Parameter acc_upd2_eq1 :
+      forall x y1 v1 y2 v2 (s : t value),
+        x == y1 ->
+        x != y2 ->
+        acc x (upd2 y1 v1 y2 v2 s) = v1.
+
+    Parameter acc_upd2_eq2 :
+      forall x y1 v1 y2 v2 (s : t value),
+        x == y2 ->
+        acc x (upd2 y1 v1 y2 v2 s) = v2.
+
+    Parameter acc_upd2_neq :
+      forall x y1 v1 y2 v2 s,
+        x != y1 ->
+        x != y2 ->
+        acc x (upd2 y1 v1 y2 v2 s) = acc x s.
+
     Parameter Upd : var -> value -> t value -> t value -> Prop.
+
+    Definition Upd2 x1 v1 x2 v2 (s1 s2 : t value) : Prop :=
+      forall y, acc y s2 = acc y (upd x2 v2 (upd x1 v1 s1)).
 
     Parameter Equal : t value -> t value -> Prop.
 
     Parameter Upd_upd :
       forall x v s,
         Upd x v s (upd x v s).
+
+    Parameter Upd2_upd :
+      forall x1 v1 x2 v2 s,
+        Upd2 x1 v1 x2 v2 s (upd x2 v2 (upd x1 v1 s)).
+
+    Parameter Upd2_upd2 :
+      forall x1 v1 x2 v2 s,
+        Upd2 x1 v1 x2 v2 s (upd2 x1 v1 x2 v2 s).
 
     Parameter acc_Upd_eq :
       forall x y v s1 s2,
@@ -57,6 +87,27 @@ Module Type TSTORE.
         x != y ->
         Upd y v s1 s2 ->
         acc x s2 = acc x s1.
+
+    Parameter acc_Upd2_eq1 :
+      forall x y1 v1 y2 v2 s1 s2,
+        x == y1 ->
+        x != y2 ->
+        Upd2 y1 v1 y2 v2 s1 s2 ->
+        acc x s2 = v1.
+
+    Parameter acc_Upd2_eq2 :
+      forall x y1 v1 y2 v2 s1 s2,
+        x == y2 ->
+        Upd2 y1 v1 y2 v2 s1 s2 ->
+        acc x s2 = v2.
+
+    Parameter acc_Upd2_neq :
+      forall x y1 v1 y2 v2 s1 s2,
+        x != y1 ->
+        x != y2 ->
+        Upd2 y1 v1 y2 v2 s1 s2 ->
+        acc x s2 = acc x s1.
+
     Parameter Equal_refl : forall s, Equal s s.
 
     Parameter Equal_sym : forall s1 s2, Equal s1 s2 -> Equal s2 s1.
@@ -83,7 +134,7 @@ Module Type TSTORE.
 
 End TSTORE.
 
-Module MakeTStore (X : SsrOrderedType) <: TSTORE.
+Module MakeTStore (X : SsrOrderedType) <: TSTORE X.
 
   Section TStore.
 
@@ -99,6 +150,9 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
 
     Definition upd (x : var) (v : value) (s : t) :=
       fun (y : var) => if y == x then v else acc y s.
+
+    Definition upd2 x1 v1 x2 v2 (s : t) : t :=
+      upd x2 v2 (upd x1 v1 s).
 
     Lemma acc_upd_eq x y v s :
       x == y ->
@@ -118,8 +172,43 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
       reflexivity.
     Qed.
 
+    Lemma acc_upd2_eq1 :
+      forall x y1 v1 y2 v2 (s : t),
+        x == y1 ->
+        x != y2 ->
+        acc x (upd2 y1 v1 y2 v2 s) = v1.
+    Proof.
+      move=> x y1 v1 y2 v2 s Hx1 Hx2.
+      rewrite /upd2 (acc_upd_neq _ _ Hx2) (acc_upd_eq _ _ Hx1).
+      reflexivity.
+    Qed.
+
+    Lemma acc_upd2_eq2 :
+      forall x y1 v1 y2 v2 (s : t),
+        x == y2 ->
+        acc x (upd2 y1 v1 y2 v2 s) = v2.
+    Proof.
+      move=> x y1 v1 y2 v2 s Hx2.
+      rewrite /upd2 (acc_upd_eq _ _ Hx2).
+      reflexivity.
+    Qed.
+
+    Lemma acc_upd2_neq :
+      forall x y1 v1 y2 v2 s,
+        x != y1 ->
+        x != y2 ->
+        acc x (upd2 y1 v1 y2 v2 s) = acc x s.
+    Proof.
+      move=> x y1 v1 y2 v2 s Hx1 Hx2.
+      rewrite /upd2 (acc_upd_neq _ _ Hx2) (acc_upd_neq _ _ Hx1).
+      reflexivity.
+    Qed.
+
     Definition Upd x v (s1 s2 : t) : Prop :=
       forall y, acc y s2 = acc y (upd x v s1).
+
+    Definition Upd2 x1 v1 x2 v2 (s1 s2 : t) : Prop :=
+      forall y, acc y s2 = acc y (upd x2 v2 (upd x1 v1 s1)).
 
     Definition Equal (s1 s2 : t) : Prop :=
       forall v, acc v s1 = acc v s2.
@@ -130,6 +219,21 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
     Proof.
       move=> x v s y.
       reflexivity.
+    Qed.
+
+    Lemma Upd2_upd :
+      forall x1 v1 x2 v2 s,
+        Upd2 x1 v1 x2 v2 s (upd x2 v2 (upd x1 v1 s)).
+    Proof.
+      move=> x1 v1 x2 v2 s y.
+      reflexivity.
+    Qed.
+
+    Lemma Upd2_upd2 :
+      forall x1 v1 x2 v2 s,
+        Upd2 x1 v1 x2 v2 s (upd2 x1 v1 x2 v2 s).
+    Proof.
+      exact: Upd2_upd.
     Qed.
 
     Lemma acc_Upd_eq :
@@ -154,6 +258,41 @@ Module MakeTStore (X : SsrOrderedType) <: TSTORE.
       move: (Hupd x) => Hx.
       rewrite (acc_upd_neq _ _ Hxy) in Hx.
       assumption.
+    Qed.
+
+    Lemma acc_Upd2_eq1 :
+      forall x y1 v1 y2 v2 s1 s2,
+        x == y1 ->
+        x != y2 ->
+        Upd2 y1 v1 y2 v2 s1 s2 ->
+        acc x s2 = v1.
+    Proof.
+      move=> x y1 v1 y2 v2 s1 s2 Heq Hne Hupd.
+      rewrite (Hupd x).
+      exact: acc_upd2_eq1.
+    Qed.
+
+    Lemma acc_Upd2_eq2 :
+      forall x y1 v1 y2 v2 s1 s2,
+        x == y2 ->
+        Upd2 y1 v1 y2 v2 s1 s2 ->
+        acc x s2 = v2.
+    Proof.
+      move=> x y1 v1 y2 v2 s1 s2 Heq Hupd.
+      rewrite (Hupd x).
+      exact: acc_upd2_eq2.
+    Qed.
+
+    Lemma acc_Upd2_neq :
+      forall x y1 v1 y2 v2 s1 s2,
+        x != y1 ->
+        x != y2 ->
+        Upd2 y1 v1 y2 v2 s1 s2 ->
+        acc x s2 = acc x s1.
+    Proof.
+      move=> x y1 v1 y2 v2 s1 s2 Hne1 Hne2 Hupd.
+      rewrite (Hupd x).
+      exact: acc_upd2_neq.
     Qed.
 
     Lemma Equal_refl s : Equal s s.
@@ -218,8 +357,10 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Definition value := V.t.
   Definition var := S.var.
   Definition t := S.t value.
+  Definition empty : t := S.empty value.
   Definition acc x (s : t) := S.acc x s.
   Definition upd x v (s : t) := S.upd x v s.
+  Definition upd2 x1 v1 x2 v2 (s : t) := S.upd2 x1 v1 x2 v2 s.
   Lemma acc_upd_eq :
     forall x y v (s : t),
       x == y ->
@@ -236,7 +377,34 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
     move=> x y v s.
     exact: S.acc_upd_neq.
   Qed.
+  Lemma acc_upd2_eq1 :
+    forall x y1 v1 y2 v2 (s : t),
+      x == y1 ->
+      x != y2 ->
+      acc x (upd2 y1 v1 y2 v2 s) = v1.
+  Proof.
+    move=> x y1 v1 y2 v2 s Hx1 Hx2.
+    exact: S.acc_upd2_eq1.
+  Qed.
+  Lemma acc_upd2_eq2 :
+    forall x y1 v1 y2 v2 (s : t),
+      x == y2 ->
+      acc x (upd2 y1 v1 y2 v2 s) = v2.
+  Proof.
+    move=> x y1 v1 y2 v2 s Hx2.
+    exact: S.acc_upd2_eq2.
+  Qed.
+  Lemma acc_upd2_neq :
+    forall x y1 v1 y2 v2 s,
+      x != y1 ->
+      x != y2 ->
+      acc x (upd2 y1 v1 y2 v2 s) = acc x s.
+  Proof.
+    move=> x y1 v1 y2 v2 s Hx1 Hx2.
+    exact: S.acc_upd2_neq.
+  Qed.
   Definition Upd x v (s1 s2 : t) := S.Upd x v s1 s2.
+  Definition Upd2 x1 v1 x2 v2 (s1 s2 : t) := S.Upd2 x1 v1 x2 v2 s1 s2.
   Definition Equal (s1 s2 : t) := S.Equal s1 s2.
   Lemma Upd_upd :
     forall x v s,
@@ -244,6 +412,20 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Proof.
     move=> x v s y.
     exact: S.Upd_upd.
+  Qed.
+  Lemma Upd2_upd :
+    forall x1 v1 x2 v2 s,
+      Upd2 x1 v1 x2 v2 s (upd x2 v2 (upd x1 v1 s)).
+  Proof.
+    move=> x1 v1 x2 v2 s y.
+    exact: S.Upd2_upd.
+  Qed.
+  Lemma Upd2_upd2 :
+    forall x1 v1 x2 v2 s,
+      Upd2 x1 v1 x2 v2 s (upd2 x1 v1 x2 v2 s).
+  Proof.
+    move=> x1 v1 x2 v2 s.
+    exact: S.Upd2_upd2.
   Qed.
   Lemma acc_Upd_eq :
     forall x y v s1 s2,
@@ -262,6 +444,35 @@ Module TStoreAdapter (X : SsrOrderedType) (V : Equalities.Typ).
   Proof.
     move=> x y v s1 s2.
     exact: S.acc_Upd_neq.
+  Qed.
+  Lemma acc_Upd2_eq1 :
+    forall x y1 v1 y2 v2 s1 s2,
+      x == y1 ->
+      x != y2 ->
+      Upd2 y1 v1 y2 v2 s1 s2 ->
+      acc x s2 = v1.
+  Proof.
+    move=> x y1 v1 y2 v2 s1 s2.
+    exact: S.acc_Upd2_eq1.
+  Qed.
+  Lemma acc_Upd2_eq2 :
+    forall x y1 v1 y2 v2 s1 s2,
+      x == y2 ->
+      Upd2 y1 v1 y2 v2 s1 s2 ->
+      acc x s2 = v2.
+  Proof.
+    move=> x y1 v1 y2 v2 s1 s2.
+    exact: S.acc_Upd2_eq2.
+  Qed.
+  Lemma acc_Upd2_neq :
+    forall x y1 v1 y2 v2 s1 s2,
+      x != y1 ->
+      x != y2 ->
+      Upd2 y1 v1 y2 v2 s1 s2 ->
+      acc x s2 = acc x s1.
+  Proof.
+    move=> x y1 v1 y2 v2 s1 s2.
+    exact: S.acc_Upd2_neq.
   Qed.
   Lemma Equal_refl s : Equal s s.
   Proof.
@@ -302,13 +513,13 @@ End TStoreAdapter.
 
 (** Stores as partial maps from variables to values of a single type. *)
 
-Module Type PSTORE.
+Module Type PSTORE (V : SsrOrderedType).
+
+  Local Notation var := V.t.
 
   Section PStore.
 
     Variable value : Type.
-
-    Parameter var : eqType.
 
     Parameter t : Type -> Type.
 
@@ -414,7 +625,7 @@ Module Type PSTORE.
 
 End PSTORE.
 
-Module MakePStore (X : SsrOrderedType) <: PSTORE.
+Module MakePStore (X : SsrOrderedType) <: PSTORE X.
 
   Module M := FMapList.Make(X).
   Module L := FMapLemmas(M).
@@ -892,3 +1103,106 @@ Module MakeHStore (H : HETEROGENEOUS) <: HSTORE.
   Qed.
 
 End MakeHStore.
+
+
+
+(** State equality modulo values of a set of variables *)
+
+From Common Require Import FSets.
+
+Module TStateEqmod
+       (X : SsrOrderedType)
+       (Store : TSTORE X) (VS : SsrFSet with Module E := X).
+
+  Section SEQM1.
+
+    Variable vs : VS.t.
+
+    Variable value : Type.
+
+    Definition state_eqmod (s1 s2 : Store.t value) : Prop :=
+      forall v, VS.mem v vs -> Store.acc v s1 = Store.acc v s2.
+
+    Lemma state_eqmod_refl (s : Store.t value) : state_eqmod s s.
+    Proof.
+      move=> v Hmem; reflexivity.
+    Qed.
+
+    Lemma state_eqmod_sym (s1 s2 : Store.t value) :
+      state_eqmod s1 s2 -> state_eqmod s2 s1.
+    Proof.
+      move=> Heqm v Hmem. rewrite (Heqm v Hmem). reflexivity.
+    Qed.
+
+    Lemma state_eqmod_trans (s1 s2 s3 : Store.t value) :
+      state_eqmod s1 s2 -> state_eqmod s2 s3 -> state_eqmod s1 s3.
+    Proof.
+      move=> Heqm12 Heqm23 v Hmem. rewrite (Heqm12 v Hmem) (Heqm23 v Hmem).
+      reflexivity.
+    Qed.
+
+    Global Instance state_eqmod_equiv : RelationClasses.Equivalence state_eqmod.
+    Proof.
+      split.
+      - exact: state_eqmod_refl.
+      - exact: state_eqmod_sym.
+      - exact: state_eqmod_trans.
+    Defined.
+
+  End SEQM1.
+
+  Module VSLemmas := FSetLemmas VS.
+
+  Section SEQM2.
+
+    Variable value : Type.
+
+    Lemma state_eqmod_subset (vs1 vs2 : VS.t) (s1 s2 : Store.t value) :
+      state_eqmod vs1 s1 s2 ->
+      VS.subset vs2 vs1 ->
+      state_eqmod vs2 s1 s2.
+    Proof.
+      move=> Heqm Hsub v Hmem. exact: (Heqm v (VSLemmas.mem_subset Hmem Hsub)).
+    Qed.
+
+    Lemma state_eqmod_add1 v (vs : VS.t) (s1 s2 : Store.t value) :
+      state_eqmod (VS.add v vs) s1 s2 ->
+      Store.acc v s1 = Store.acc v s2 /\ state_eqmod vs s1 s2.
+    Proof.
+      move=> Heqm; split.
+      - apply: Heqm. apply: VSLemmas.mem_add2. exact: VS.E.eq_refl.
+      - move=> x Hmem; apply: Heqm. apply: VSLemmas.mem_add3. assumption.
+    Qed.
+
+    Lemma state_eqmod_add2 v (vs : VS.t) (s1 s2 : Store.t value) :
+      state_eqmod vs s1 s2 ->
+      Store.acc v s1 = Store.acc v s2 ->
+      state_eqmod (VS.add v vs) s1 s2.
+    Proof.
+      move=> Heqm Hv x Hmem. case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
+      - by rewrite (eqP Hmem).
+      - exact: (Heqm x Hmem).
+    Qed.
+
+    Lemma state_eqmod_union1 (vs1 vs2 : VS.t) (s1 s2 : Store.t value) :
+      state_eqmod (VS.union vs1 vs2) s1 s2 ->
+      state_eqmod vs1 s1 s2 /\ state_eqmod vs2 s1 s2.
+    Proof.
+      move=> Heqm; split; move=> v Hmem; apply: Heqm.
+      - apply: VSLemmas.mem_union2. assumption.
+      - apply: VSLemmas.mem_union3. assumption.
+    Qed.
+
+    Lemma state_eqmod_union2 (vs1 vs2 : VS.t) (s1 s2 : Store.t value) :
+      state_eqmod vs1 s1 s2 ->
+      state_eqmod vs2 s1 s2 ->
+      state_eqmod (VS.union vs1 vs2) s1 s2.
+    Proof.
+      move=> Heqm1 Heqm2 v Hmem. case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
+      - exact: (Heqm1 v Hmem).
+      - exact: (Heqm2 v Hmem).
+    Qed.
+
+  End SEQM2.
+
+End TStateEqmod.

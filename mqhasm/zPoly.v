@@ -37,15 +37,15 @@ Section SSAPoly.
        bpost := spost s |}.
 
   Lemma bexp_instr_vars i :
-    VS.Equal (vars_bexp (bexp_instr i)) (vars_instr i).
+    SSAVS.Equal (vars_bexp (bexp_instr i)) (vars_instr i).
   Proof.
     elim: i => /=.
     - move=> v e.
       rewrite -VSLemmas.OP.P.add_union_singleton.
       reflexivity.
     - move=> vh vl e _.
-      rewrite (VSLemmas.OP.P.empty_union_2 (VS.singleton vh) VS.empty_1).
-      rewrite (VSLemmas.OP.P.union_sym (VS.singleton vl) _).
+      rewrite (VSLemmas.OP.P.empty_union_2 (SSAVS.singleton vh) SSAVS.empty_1).
+      rewrite (VSLemmas.OP.P.union_sym (SSAVS.singleton vl) _).
       rewrite VSLemmas.OP.P.union_assoc.
       rewrite -VSLemmas.OP.P.add_union_singleton.
       rewrite -VSLemmas.OP.P.add_union_singleton.
@@ -122,7 +122,7 @@ Section SSAPoly.
       eval_bexps_conj (bprog s) st ->
       eval_bexp (bpost s) st.
 
-  Lemma bexp_spec_sound_conj (vs : VS.t) (s : spec) :
+  Lemma bexp_spec_sound_conj (vs : SSAVS.t) (s : spec) :
     well_formed_ssa_spec vs s ->
     valid_bexp_spec_conj (bexp_of_spec s) -> valid_spec s.
   Proof.
@@ -176,7 +176,7 @@ Section SSAPoly.
       exact: (IH (Hi Hhd) Htl).
   Qed.
 
-  Lemma bexp_spec_sound_imp (vs : VS.t) (s : spec) :
+  Lemma bexp_spec_sound_imp (vs : SSAVS.t) (s : spec) :
     well_formed_ssa_spec vs s ->
     valid_bexp_spec_imp (bexp_of_spec s) -> valid_spec s.
   Proof.
@@ -189,7 +189,7 @@ Section SSAPoly.
 
   Definition valid_bexp_spec := valid_bexp_spec_imp.
 
-  Theorem bexp_spec_sound (vs : VS.t) (s : spec) :
+  Theorem bexp_spec_sound (vs : SSAVS.t) (s : spec) :
     well_formed_ssa_spec vs s ->
     valid_bexp_spec (bexp_of_spec s) -> valid_spec s.
   Proof.

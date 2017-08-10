@@ -1,6 +1,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool seq eqtype.
+From Common Require Import Var.
 From mQhasm Require Import zDSL zSSA zPoly Options.
 From GBArith Require Import GBCompute.
 From PolyOp Require Import Modp.

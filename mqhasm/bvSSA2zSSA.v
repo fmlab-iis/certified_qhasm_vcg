@@ -17,17 +17,18 @@ Import bv64SSA.
 
 
 
-Definition svar_notin v vs : Prop := forall i, ~~ VS.mem (v, i) vs.
+Definition svar_notin v vs : Prop := forall i, ~~ SSAVS.mem (v, i) vs.
 
 Lemma svar_notin_singleton1 v x :
-  svar_notin v (VS.singleton x) -> v != svar x.
+  svar_notin v (SSAVS.singleton x) -> v != svar x.
 Proof.
   destruct x as [x i]. move=> /= H; move: (VSLemmas.not_mem_singleton1 (H i)).
-  move=> Hne; apply/negP => Heq; apply: Hne. by rewrite (eqP Heq).
+  move=> Hne; apply/negP => Heq; apply: Hne. rewrite (eqP Heq).
+  exact: SSAVS.E.eq_refl.
 Qed.
 
 Lemma svar_notin_singleton2 v x :
-  v != svar x -> svar_notin v (VS.singleton x).
+  v != svar x -> svar_notin v (SSAVS.singleton x).
 Proof.
   move/negP=> Hne i. apply/negP => Heq; apply: Hne.
   move: (VSLemmas.mem_singleton1 Heq) => {Heq}. destruct x as [x j] => /=.
@@ -35,27 +36,27 @@ Proof.
 Qed.
 
 Lemma svar_notin_union1 v vs1 vs2 :
-  svar_notin v (VS.union vs1 vs2) -> svar_notin v vs1.
+  svar_notin v (SSAVS.union vs1 vs2) -> svar_notin v vs1.
 Proof.
   move=> H i. move: (H i) => {H} H. exact: (proj1 (VSLemmas.not_mem_union1 H)).
 Qed.
 
 Lemma svar_notin_union2 v vs1 vs2 :
-  svar_notin v (VS.union vs1 vs2) -> svar_notin v vs2.
+  svar_notin v (SSAVS.union vs1 vs2) -> svar_notin v vs2.
 Proof.
   move=> H i. move: (H i) => {H} H. exact: (proj2 (VSLemmas.not_mem_union1 H)).
 Qed.
 
 Lemma svar_notin_union3 v vs1 vs2 :
   svar_notin v vs1 -> svar_notin v vs2 ->
-  svar_notin v (VS.union vs1 vs2).
+  svar_notin v (SSAVS.union vs1 vs2).
 Proof.
   move=> H1 H2 i. move: (H1 i) (H2 i) => {H1 H2} H1 H2.
   exact: (VSLemmas.not_mem_union2 H1 H2).
 Qed.
 
 Lemma svar_notin_add1 v x vs :
-  svar_notin v (VS.add x vs) -> v != svar x.
+  svar_notin v (SSAVS.add x vs) -> v != svar x.
 Proof.
   destruct x as [x i] => /= H. move: (H i) => {H} H.
   move: (VSLemmas.not_mem_add1 H) => {H}. move=> [H _]; apply/negP => Heq.
@@ -63,20 +64,20 @@ Proof.
 Qed.
 
 Lemma svar_notin_add2 v x vs :
-  svar_notin v (VS.add x vs) -> svar_notin v vs.
+  svar_notin v (SSAVS.add x vs) -> svar_notin v vs.
 Proof.
   move=> H i. move: (H i) => {H} H. move: (VSLemmas.not_mem_add1 H) => {H}.
   move=> [_ H]; exact: H.
 Qed.
 
 Lemma svar_notin_replace v vs1 vs2 :
-  VS.Equal vs1 vs2 -> svar_notin v vs1 -> svar_notin v vs2.
+  SSAVS.Equal vs1 vs2 -> svar_notin v vs1 -> svar_notin v vs2.
 Proof.
   move=> H H1 x. rewrite -H. exact: H1.
 Qed.
 
 Lemma svar_notin_subset v vs1 vs2 :
-  VS.subset vs1 vs2 -> svar_notin v vs2 -> svar_notin v vs1.
+  SSAVS.subset vs1 vs2 -> svar_notin v vs2 -> svar_notin v vs1.
 Proof.
   move=> H H2 x. apply/negP => H1. move: (VSLemmas.mem_subset H1 H) => Hmem.
   move/negP: (H2 x). apply. exact: Hmem.
@@ -86,16 +87,16 @@ Qed.
 
 (** Generate new SSA variables *)
 
-Definition max_svar (vs : VS.t) : bv64SSA.V.M.E1.t :=
-  match VS.max_elt vs with
+Definition max_svar (vs : SSAVS.t) : VarOrder.t :=
+  match SSAVS.max_elt vs with
   | Some v => svar v
   | None => 0%num
   end.
 
-Definition new_svar (vs : VS.t) : bv64SSA.V.M.E1.t :=
+Definition new_svar (vs : SSAVS.t) : VarOrder.t :=
   N.succ (max_svar vs).
 
-Definition new_svar_program (p : program) : bv64SSA.V.M.E1.t :=
+Definition new_svar_program (p : program) : VarOrder.t :=
   N.succ (max_svar (vars_program p)).
 
 Lemma N_ltb_succ v : (v <? N.succ v)%num.
@@ -103,16 +104,16 @@ Proof.
   apply: (proj2 (N.ltb_lt v (N.succ v))). exact: N.lt_succ_diag_r.
 Qed.
 
-Lemma V_ltb_succ v i j : V.ltb (v, j) ((N.succ v), i).
+Lemma V_ltb_succ v i j : SSAVarOrder.ltb (v, j) ((N.succ v), i).
 Proof.
-  rewrite /V.ltb /V.M.lt /VarOrder.ltb /NOrderMinimal.lt /=.
+  rewrite /SSAVarOrder.ltb /SSAVarOrder.M.lt /VarOrder.ltb /NOrderMinimal.lt /=.
   rewrite N_ltb_succ. exact: is_true_true.
 Qed.
 
 Lemma new_svar_notin vs : svar_notin (new_svar vs) vs.
 Proof.
-  rewrite /new_svar /max_svar. set x := VS.max_elt vs.
-  have: VS.max_elt vs = x by reflexivity. case x.
+  rewrite /new_svar /max_svar. set x := SSAVS.max_elt vs.
+  have: SSAVS.max_elt vs = x by reflexivity. case x.
   - move=> v Hmax i. apply/negP => Hmem. apply: (VSLemmas.max_elt2 Hmax Hmem).
     exact: V_ltb_succ.
   - move=> Hnone i. apply: VSLemmas.is_empty_mem.
@@ -283,47 +284,49 @@ Qed.
 
 Lemma bv2z_instr_lvs_case tmp idx1 idx2 i zi v :
   (idx2, zi) = bv2z_instr tmp idx1 i ->
-  zSSA.VS.mem v (zSSA.lvs_program zi) ->
-  VS.mem v (lvs_instr i) \/
+  SSAVS.mem v (zSSA.lvs_program zi) ->
+  SSAVS.mem v (lvs_instr i) \/
   tmp = svar v /\ (idx1 <= sidx v)%num /\ (sidx v < idx2)%num.
 Proof.
   case: i => /=; intros;
   (let rec tac :=
        match goal with
        | H1 : (_, ?zi) = (_, _),
-         H2 : is_true (zSSA.VS.mem _ (zSSA.lvs_program ?zi)) |- _ =>
+         H2 : is_true (SSAVS.mem _ (zSSA.lvs_program ?zi)) |- _ =>
          let H := fresh in case: H1 => -> H; rewrite H /= in H2 => {H}; tac
-       | H : is_true (zSSA.VS.mem _ (zSSA.VS.singleton _)) |- _ =>
+       | H : is_true (SSAVS.mem _ (SSAVS.singleton _)) |- _ =>
          move: (zSSA.VSLemmas.mem_singleton1 H) => {H} H; tac
-       | H : is_true (zSSA.VS.mem _ (zSSA.VS.add _ _)) |- _ =>
+       | H : is_true (SSAVS.mem _ (SSAVS.add _ _)) |- _ =>
          case: (zSSA.VSLemmas.mem_add1 H) => {H} H; tac
-       | H : is_true (zSSA.VS.mem _ (zSSA.VS.union _ _)) |- _ =>
+       | H : is_true (SSAVS.mem _ (SSAVS.union _ _)) |- _ =>
          case: (zSSA.VSLemmas.mem_union1 H) => {H} H; tac
-       | H : is_true (?v == ?t) |- is_true (VS.mem ?v (VS.singleton ?t)) \/ _ =>
+       | H : SSAVS.E.eq ?v ?t |-
+         is_true (SSAVS.mem ?v (SSAVS.singleton ?t)) \/ _ =>
          left; apply: VSLemmas.mem_singleton2; exact: H
-       | H : is_true (?v == ?t) |- is_true (VS.mem ?v (VS.add ?t _)) \/ _ =>
+       | H : SSAVS.E.eq ?v ?t |-
+         is_true (SSAVS.mem ?v (SSAVS.add ?t _)) \/ _ =>
          left; apply: VSLemmas.mem_add2; exact: H
-       | H : is_true (?v == ?t) |-
-         is_true (VS.mem ?v (VS.add _ (VS.singleton ?t))) \/ _ =>
+       | H : SSAVS.E.eq ?v ?t |-
+         is_true (SSAVS.mem ?v (SSAVS.add _ (SSAVS.singleton ?t))) \/ _ =>
          left; apply: VSLemmas.mem_add3; apply: VSLemmas.mem_singleton2; exact: H
-       | H : is_true (zSSA.VS.mem _ zSSA.VS.empty) |- _ =>
+       | H : is_true (SSAVS.mem _ SSAVS.empty) |- _ =>
          apply: False_ind; rewrite zSSA.VSLemmas.mem_empty in H;
          exact: (not_false_is_true H)
-       | H : is_true (?v == (?tmp, _)) |- _ \/ (?tmp = svar ?v /\ _ /\ _) =>
+       | H : SSAVS.E.eq ?v (?tmp, _) |- _ \/ (?tmp = svar ?v /\ _ /\ _) =>
          right; repeat split; [by rewrite (eqP H) | tac | tac]
-       | H : is_true (?v == (_, ?i)) |- (?i <= sidx ?v)%num =>
+       | H : SSAVS.E.eq ?v (_, ?i) |- (?i <= sidx ?v)%num =>
          rewrite (eqP H) /=; exact: N.le_refl
-       | H : is_true (?v == (_, ?i)) |- (sidx ?v < N.succ ?i)%num =>
+       | H : SSAVS.E.eq ?v (_, ?i) |- (sidx ?v < N.succ ?i)%num =>
          rewrite (eqP H0) /=; exact: N.lt_succ_diag_r
        | |- _ => idtac
        end in
-   tac).
+      tac).
 Qed.
 
 Lemma bv2z_program_lvs_case tmp idx1 idx2 p zp v :
   (idx2, zp) = bv2z_program tmp idx1 p ->
-  zSSA.VS.mem v (zSSA.lvs_program zp) ->
-  VS.mem v (lvs_program p) \/
+  SSAVS.mem v (zSSA.lvs_program zp) ->
+  SSAVS.mem v (lvs_program p) \/
   tmp = svar v /\ (idx1 <= sidx v)%num /\ (sidx v < idx2)%num.
 Proof.
   elim: p tmp idx1 idx2 zp v => /=.
@@ -387,7 +390,7 @@ Qed.
 
 (** State equivalence except a set of variables. *)
 
-Definition bvz_eqm (tmp : V.M.E1.t) (sb : State.t) (sz : zSSA.State.t) : Prop :=
+Definition bvz_eqm (tmp : VarOrder.t) (sb : State.t) (sz : zSSA.State.t) : Prop :=
   forall x, tmp != svar x ->
             (toPosZ (State.acc x sb) = zSSA.State.acc x sz).
 
@@ -684,11 +687,11 @@ Definition bv2z_spec_rng s : rspec :=
 
 Definition initial_tmp_sidx : N := 1.
 
-Definition new_svar_spec_eqn vs s : bv64SSA.V.M.E1.t :=
-  new_svar (VS.union vs
-                     (VS.union
+Definition new_svar_spec_eqn vs s : VarOrder.t :=
+  new_svar (SSAVS.union vs
+                     (SSAVS.union
                         (vars_bexp (spre s))
-                        (VS.union (vars_program (sprog s))
+                        (SSAVS.union (vars_program (sprog s))
                                   (vars_bexp (spost s))))).
 
 (* vs: input variables
@@ -708,9 +711,9 @@ Lemma svar_notin_inputs vs s :
   svar_notin (new_svar_spec_eqn vs s) vs.
 Proof.
   rewrite /new_svar_spec_eqn.
-  set ss := (VS.union vs
-                     (VS.union (vars_bexp (spre s))
-                               (VS.union (vars_program (sprog s))
+  set ss := (SSAVS.union vs
+                     (SSAVS.union (vars_bexp (spre s))
+                               (SSAVS.union (vars_program (sprog s))
                                          (vars_bexp (spost s))))).
   move: (new_svar_notin ss) => H. exact: (svar_notin_union1 H).
 Qed.
@@ -719,9 +722,9 @@ Lemma svar_notin_spre vs s :
   svar_notin (new_svar_spec_eqn vs s) (vars_bexp (spre s)).
 Proof.
   rewrite /new_svar_spec_eqn.
-  set ss := (VS.union vs
-                     (VS.union (vars_bexp (spre s))
-                               (VS.union (vars_program (sprog s))
+  set ss := (SSAVS.union vs
+                     (SSAVS.union (vars_bexp (spre s))
+                               (SSAVS.union (vars_program (sprog s))
                                          (vars_bexp (spost s))))).
   move: (new_svar_notin ss) => H.
   exact: (svar_notin_union1 (svar_notin_union2 H)).
@@ -731,9 +734,9 @@ Lemma svar_notin_sprog vs s :
   svar_notin (new_svar_spec_eqn vs s) (vars_program (sprog s)).
 Proof.
   rewrite /new_svar_spec_eqn.
-  set ss := (VS.union vs
-                     (VS.union (vars_bexp (spre s))
-                               (VS.union (vars_program (sprog s))
+  set ss := (SSAVS.union vs
+                     (SSAVS.union (vars_bexp (spre s))
+                               (SSAVS.union (vars_program (sprog s))
                                          (vars_bexp (spost s))))).
   move: (new_svar_notin ss) => H.
   exact: (svar_notin_union1 (svar_notin_union2 (svar_notin_union2 H))).
@@ -743,9 +746,9 @@ Lemma svar_notin_spost vs s :
   svar_notin (new_svar_spec_eqn vs s) (vars_bexp (spost s)).
 Proof.
   rewrite /new_svar_spec_eqn.
-  set ss := (VS.union vs
-                     (VS.union (vars_bexp (spre s))
-                               (VS.union (vars_program (sprog s))
+  set ss := (SSAVS.union vs
+                     (SSAVS.union (vars_bexp (spre s))
+                               (SSAVS.union (vars_program (sprog s))
                                          (vars_bexp (spost s))))).
   move: (new_svar_notin ss) => H.
   exact: (svar_notin_union2 (svar_notin_union2 (svar_notin_union2 H))).
@@ -912,192 +915,72 @@ Proof.
 Qed.
 
 
-
 (** Well-formedness *)
 
-Module M2 := Map2 VS zSSA.VS.
-
-Definition bv2z_vars vs : zSSA.VS.t :=
-  M2.map2 id vs.
-
-Definition bv2z_vars_well : M2.well_map2 id.
-Proof.
-  split.
-  - move=> x y Heq.
-    rewrite (eqP Heq); exact: eqxx.
-  - move=> x y Heq.
-    exact: Heq.
-Qed.
-
-Lemma bv2z_vars_mem v vs :
-  VS.mem v vs = zSSA.VS.mem v (bv2z_vars vs).
-Proof.
-  rewrite (M2.map2_mem1 bv2z_vars_well).
-  reflexivity.
-Qed.
-
-Lemma bv2z_vars_mem1 v vs :
-  VS.mem v vs -> zSSA.VS.mem v (bv2z_vars vs).
-Proof.
-  by rewrite bv2z_vars_mem.
-Qed.
-
-Lemma bv2z_vars_mem2 v vs :
-  zSSA.VS.mem v (bv2z_vars vs) -> VS.mem v vs.
-Proof.
-  by rewrite bv2z_vars_mem.
-Qed.
-
-Lemma bv2z_vars_singleton v :
-  zSSA.VS.Equal (zSSA.VS.singleton v) (bv2z_vars (VS.singleton v)).
-Proof.
-  done.
-Qed.
-
-Lemma bv2z_vars_add v vs :
-  zSSA.VS.Equal (bv2z_vars (VS.add v vs)) (zSSA.VS.add v (bv2z_vars vs)).
-Proof.
-  rewrite /bv2z_vars (M2.map2_add bv2z_vars_well).
-  reflexivity.
-Qed.
-
-Lemma bv2z_vars_add_singleton v1 v2 :
-  zSSA.VS.Equal (zSSA.VS.add v1 (zSSA.VS.singleton v2))
-                (bv2z_vars (VS.add v1 (VS.singleton v2))).
-Proof.
-  move=> x; split => Hin;
-  move/zSSA.VSLemmas.memP: Hin => Hmem;
-  apply/zSSA.VSLemmas.memP.
-  - rewrite -bv2z_vars_mem.
-    case: (zSSA.VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
-    + apply: VSLemmas.mem_add2; assumption.
-    + apply: VSLemmas.mem_add3.
-      rewrite bv2z_vars_mem; assumption.
-  - rewrite -bv2z_vars_mem in Hmem.
-    case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
-    + apply: zSSA.VSLemmas.mem_add2; assumption.
-    + apply: zSSA.VSLemmas.mem_add3; assumption.
-Qed.
-
-Lemma bv2z_vars_union vs1 vs2 :
-  zSSA.VS.Equal (bv2z_vars (VS.union vs1 vs2))
-                (zSSA.VS.union (bv2z_vars vs1) (bv2z_vars vs2)).
-Proof.
-  move=> x; split => Hin;
-  move/zSSA.VSLemmas.memP: Hin => Hmem;
-  apply/zSSA.VSLemmas.memP.
-  - rewrite -bv2z_vars_mem in Hmem.
-    case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem;
-    rewrite bv2z_vars_mem in Hmem.
-    + apply: zSSA.VSLemmas.mem_union2; assumption.
-    + apply: zSSA.VSLemmas.mem_union3; assumption.
-  - rewrite -bv2z_vars_mem.
-    case: (zSSA.VSLemmas.mem_union1 Hmem) => {Hmem} Hmem;
-    rewrite -bv2z_vars_mem in Hmem.
-    + apply: VSLemmas.mem_union2; assumption.
-    + apply: VSLemmas.mem_union3; assumption.
-Qed.
-
-Lemma bv2z_vars_subset vs1 vs2 :
-  zSSA.VS.subset (bv2z_vars vs1) (bv2z_vars vs2) = VS.subset vs1 vs2.
-Proof.
-  exact: (M2.map2_subset bv2z_vars_well).
-Qed.
-
 Lemma bv2z_atomic_vars a :
-  zSSA.VS.Equal (zSSA.vars_exp (bv2z_atomic a))
-                (bv2z_vars (vars_atomic a)).
+  SSAVS.Equal (zSSA.vars_exp (bv2z_atomic a)) (bv64SSA.vars_atomic a).
 Proof.
-  case: a => /=.
-  - move=> v. exact: bv2z_vars_singleton.
-  - reflexivity.
+  case: a => /=; reflexivity.
 Qed.
 
 Lemma bv2z_eexp_vars (e : eexp) :
-  zSSA.VS.Equal (zSSA.vars_exp (bv2z_eexp e)) (bv2z_vars (vars_eexp e)).
+  SSAVS.Equal (zSSA.vars_exp (bv2z_eexp e)) (vars_eexp e).
 Proof.
   elim: e => /=.
-  - move=> a. exact: bv2z_vars_singleton.
   - reflexivity.
-  - move=> _ e IH. rewrite IH. reflexivity.
-  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2 bv2z_vars_union. reflexivity.
+  - reflexivity.
+  - move=> _ e IH. exact: IH.
+  - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2. reflexivity.
 Qed.
 
-(* Convert (zSSA.VS.subset _ _) containing bv2z_vars to
-   (VS.subset _ _). *)
-Ltac subset_to_bvssa :=
+(* Convert (vars_* (bv2z_* _)) to (vars_* _). *)
+Ltac vars_to_bvssa :=
   match goal with
-  | |- context f [zSSA.VS.union _ zSSA.VS.empty] =>
-    rewrite zSSA.VSLemmas.union_emptyr; subset_to_bvssa
+  | |- context f [SSAVS.union _ SSAVS.empty] =>
+    rewrite zSSA.VSLemmas.union_emptyr; vars_to_bvssa
   | |- context f [vars_exp (bv2z_atomic _)] =>
-    rewrite !bv2z_atomic_vars; subset_to_bvssa
+    rewrite !bv2z_atomic_vars; vars_to_bvssa
   | |- context f [vars_exp (bv2z_eexp _)] =>
-    rewrite !bv2z_eexp_vars; subset_to_bvssa
-  | |- context f [zSSA.VS.singleton _] =>
-    rewrite bv2z_vars_singleton; subset_to_bvssa
-  | |- context f [zSSA.VS.add _ (bv2z_vars _)] =>
-    rewrite -bv2z_vars_add; subset_to_bvssa
-  | |- context f [zSSA.VS.union (bv2z_vars _) (bv2z_vars _)] =>
-    rewrite -!bv2z_vars_union; subset_to_bvssa
-  | |- is_true (zSSA.VS.subset (bv2z_vars _) (bv2z_vars ?vs)) =>
-    rewrite bv2z_vars_subset; subset_to_bvssa
-  | |- _ => idtac
-  end.
-
-Ltac push_bv2z_vars :=
-  match goal with
-  | |- context f [bv2z_vars (vars_atomic _)] =>
-    rewrite -!bv2z_atomic_vars; push_bv2z_vars
-  | |- context f [bv2z_vars (vars_eexp _)] =>
-    rewrite -!bv2z_eexp_vars; push_bv2z_vars
-  | |- context f [bv2z_vars (VS.singleton _)] =>
-    rewrite -!bv2z_vars_singleton; push_bv2z_vars
-  | |- context f [bv2z_vars (VS.add _ _)] =>
-    rewrite !bv2z_vars_add; push_bv2z_vars
-  | |- context f [bv2z_vars (VS.union _ _)] =>
-    rewrite !bv2z_vars_union; push_bv2z_vars
+    rewrite !bv2z_eexp_vars; vars_to_bvssa
   | |- _ => idtac
   end.
 
 Lemma bv2z_instr_lvs_subset tmp idx1 idx2 i zi :
   (idx2, zi) = bv2z_instr tmp idx1 i ->
-  zSSA.VS.subset (bv2z_vars (lvs_instr i)) (zSSA.lvs_program zi).
+  SSAVS.subset (lvs_instr i) (zSSA.lvs_program zi).
 Proof.
   case: i => /=; intros;
   (let rec tac :=
        match goal with
        | H : (_, _) = (_, _) |- _ => case: H => _ -> /=; tac
-       | |- _ => push_bv2z_vars; zSSA.VSLemmas.dp_subset
+       | |- _ => zSSA.VSLemmas.dp_subset
        end in
    tac).
 Qed.
 
 Lemma bv2z_program_lvs_subset tmp idx1 idx2 p zp :
   (idx2, zp) = bv2z_program tmp idx1 p ->
-  zSSA.VS.subset (bv2z_vars (lvs_program p)) (zSSA.lvs_program zp).
+  SSAVS.subset (lvs_program p) (zSSA.lvs_program zp).
 Proof.
   elim: p tmp idx1 idx2 zp => /=.
   - move=> _ idx1 idx2 zp [] _ ->. done.
   - move=> i p IH tmp idx1 idx2 zip Hzip.
     move: (bv2z_program_cons Hzip) => {Hzip} [idx3 [zi [zp [Hzi [Hzp ->]]]]].
-    rewrite zSSA.lvs_program_concat. rewrite bv2z_vars_union.
-    apply: zSSA.VSLemmas.union_subsets.
+    rewrite zSSA.lvs_program_concat. apply: zSSA.VSLemmas.union_subsets.
     + exact: (bv2z_instr_lvs_subset Hzi).
     + exact: (IH _ _ _ _ Hzp).
 Qed.
 
 Lemma bv2z_instr_vars_subset tmp idx1 idx2 i zi :
   (idx2, zi) = bv2z_instr tmp idx1 i ->
-  zSSA.VS.subset (bv2z_vars (vars_instr i)) (zSSA.vars_program zi).
+  SSAVS.subset (vars_instr i) (zSSA.vars_program zi).
 Proof.
   case: i => /=; intros;
   (let rec tac :=
        match goal with
        | H : (_, _) = (_, _) |- _ => case: H => _ -> /=; tac
-       | |- is_true (zSSA.VS.mem _ _) =>
-         push_bv2z_vars; zSSA.VSLemmas.dp_mem
-       | |- is_true (zSSA.VS.subset _ _) =>
-         push_bv2z_vars; zSSA.VSLemmas.dp_subset
+       | |- is_true (SSAVS.mem _ _) => zSSA.VSLemmas.dp_mem
+       | |- is_true (SSAVS.subset _ _) => vars_to_bvssa; zSSA.VSLemmas.dp_subset
        | |- _ => idtac
        end in
    tac).
@@ -1105,42 +988,31 @@ Qed.
 
 Lemma bv2z_program_vars_subset tmp idx1 idx2 p zp :
   (idx2, zp) = bv2z_program tmp idx1 p ->
-  zSSA.VS.subset (bv2z_vars (vars_program p)) (zSSA.vars_program zp).
+  SSAVS.subset (vars_program p) (zSSA.vars_program zp).
 Proof.
   elim: p tmp idx1 idx2 zp => /=.
   - move=> _ idx1 idx2 zp [] _ ->. done.
   - move=> i p IH tmp idx1 idx2 zip Hzip.
     move: (bv2z_program_cons Hzip) => {Hzip} [idx3 [zi [zp [Hzi [Hzp ->]]]]].
-    rewrite zSSA.vars_program_concat. rewrite bv2z_vars_union.
-    apply: zSSA.VSLemmas.union_subsets.
+    rewrite zSSA.vars_program_concat. apply: zSSA.VSLemmas.union_subsets.
     + exact: (bv2z_instr_vars_subset Hzi).
     + exact: (IH _ _ _ _ Hzp).
 Qed.
 
 Lemma bv2z_ebexp_vars_subset f :
-  zSSA.VS.subset (zSSA.vars_bexp (bv2z_ebexp (eqn_bexp f)))
-                 (bv2z_vars (vars_bexp f)).
+  SSAVS.subset (zSSA.vars_bexp (bv2z_ebexp (eqn_bexp f))) (vars_bexp f).
 Proof.
-  case: f => e r /=. rewrite bv2z_vars_union /=.
-  apply: zSSA.VSLemmas.subset_union1 => {r}.
-  elim: e => /=; intros; push_bv2z_vars; zSSA.VSLemmas.dp_subset.
-Qed.
-
-Lemma svar_notin_bv2z_vars tmp idx vs :
-  svar_notin tmp vs ->
-  ~~ zSSA.VS.mem (tmp, idx) (bv2z_vars vs).
-Proof.
-  move=> Hnotin; move: (Hnotin idx). move/negP => H. apply/negP => Hmem.
-  apply: H. exact: (bv2z_vars_mem2 Hmem).
+  case: f => e r /=. apply: zSSA.VSLemmas.subset_union1 => /= {r}.
+  elim: e => /=; intros; vars_to_bvssa; zSSA.VSLemmas.dp_subset.
 Qed.
 
 Ltac split_svar_notin_hyp :=
   match goal with
-  | H : svar_notin _ (VS.add _ _) |- _ =>
+  | H : svar_notin _ (SSAVS.add _ _) |- _ =>
     let H1 := fresh in let H2 := fresh in
     move: (svar_notin_add1 H) (svar_notin_add2 H) => {H} H1 H2;
     split_svar_notin_hyp
-  | H : svar_notin _ (VS.union _ _) |- _ =>
+  | H : svar_notin _ (SSAVS.union _ _) |- _ =>
     let H1 := fresh in let H2 := fresh in
     move: (svar_notin_union1 H) (svar_notin_union2 H) => {H} H1 H2;
     split_svar_notin_hyp
@@ -1151,7 +1023,7 @@ Lemma bv2z_instr_well_formed tmp idx1 idx2 vs i zi :
   svar_notin tmp (vars_instr i) ->
   well_formed_instr vs i ->
   (idx2, zi) = bv2z_instr tmp idx1 i ->
-  zSSA.well_formed_program (bv2z_vars vs) zi.
+  zSSA.well_formed_program vs zi.
 Proof.
   case: i => /=; intros; split_svar_notin_hyp;
   (let rec tac :=
@@ -1166,10 +1038,8 @@ Proof.
        | H : is_true (_ && _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move/andP: H => [H1 H2]; tac
-       (* We have VS.subset _ _ in the assumption. *)
-       | |- is_true (zSSA.VS.subset _ _) => subset_to_bvssa; tac
        (* *)
-       | |- is_true (VS.subset _ _) => VSLemmas.dp_subset
+       | |- is_true (SSAVS.subset _ _) => vars_to_bvssa; VSLemmas.dp_subset
        | |- _ => idtac
        end in
    tac).
@@ -1179,7 +1049,7 @@ Lemma bv2z_program_well_formed tmp idx1 idx2 vs p zp :
   svar_notin tmp (vars_program p) ->
   well_formed_program vs p ->
   (idx2, zp) = bv2z_program tmp idx1 p ->
-  zSSA.well_formed_program (bv2z_vars vs) zp.
+  zSSA.well_formed_program vs zp.
 Proof.
   elim: p tmp idx1 idx2 vs zp => /=.
   - move=> tmp idx1 idx2 vs zp _ _ [] _ ->; done.
@@ -1187,17 +1057,15 @@ Proof.
     move: (bv2z_program_cons Hzip) => {Hzip} [idx3 [zi [zp [Hzi [Hzp ->]]]]].
     rewrite zSSA.well_formed_program_concat.
     rewrite (bv2z_instr_well_formed (svar_notin_union1 Hnotin) Hwellhd Hzi) /=.
-    apply: (@zSSA.well_formed_program_subset
-              (bv2z_vars (VS.union vs (lvs_instr hd)))).
+    apply: (@zSSA.well_formed_program_subset (SSAVS.union vs (lvs_instr hd))).
     + exact: (IH _ _ _ _ _ (svar_notin_union2 Hnotin) Hwelltl Hzp).
-    + move: (bv2z_instr_lvs_subset Hzi) => Hsubset.
-      push_bv2z_vars; zSSA.VSLemmas.dp_subset.
+    + move: (bv2z_instr_lvs_subset Hzi) => Hsubset. zSSA.VSLemmas.dp_subset.
 Qed.
 
 Lemma bv2z_var_unchanged_instr tmp idx1 idx2 vs v i zi :
   svar_notin tmp vs ->
   ssa_vars_unchanged_instr vs i ->
-  VS.mem v vs ->
+  SSAVS.mem v vs ->
   (idx2, zi) = bv2z_instr tmp idx1 i ->
   zSSA.ssa_var_unchanged_program v zi.
 Proof.
@@ -1209,22 +1077,22 @@ Proof.
        | |- is_true (zSSA.ssa_var_unchanged_instr _ _) =>
          rewrite /zSSA.ssa_var_unchanged_instr /=; tac
        | H1 : is_true (ssa_vars_unchanged_instr ?vs _),
-         H2 : is_true (VS.mem ?v ?vs) |- _ =>
+         H2 : is_true (SSAVS.mem ?v ?vs) |- _ =>
          move: (ssa_unchanged_instr_mem H1 H2);
          rewrite /ssa_var_unchanged_instr /= => {H1} H1; tac
-       | H : is_true (~~ VS.mem _ (VS.singleton _)) |- _ =>
+       | H : is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) |- _ =>
          move: (VSLemmas.not_mem_singleton1 H) => {H} H; tac
-       | H : is_true (~~ VS.mem _ (VS.add _ _)) |- _ =>
+       | H : is_true (~~ SSAVS.mem _ (SSAVS.add _ _)) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (VSLemmas.not_mem_add1 H) => {H} [H1 H2]; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.singleton _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) =>
          apply: zSSA.VSLemmas.not_mem_singleton2; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.add _ _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.add _ _)) =>
          apply: zSSA.VSLemmas.not_mem_add2; split; tac
        | |- is_true true => done
        | H : ?p |- ?p => exact: H
-       | H1 : svar_notin ?tmp ?vs, H2 : is_true (VS.mem ?v ?vs) |-
-         ~ (is_true (v == (?tmp, ?i))) =>
+       | H1 : svar_notin ?tmp ?vs, H2 : is_true (SSAVS.mem ?v ?vs) |-
+         ~ (SSAVS.E.eq v (?tmp, ?i)) =>
          let H := fresh in
          move=> H; rewrite (eqP H) in H2; move: (H1 i); rewrite H2; done
        | |- _ => idtac
@@ -1235,7 +1103,7 @@ Qed.
 Lemma bv2z_var_unchanged_program tmp idx1 idx2 vs v p zp :
   svar_notin tmp vs ->
   ssa_vars_unchanged_program vs p ->
-  VS.mem v vs ->
+  SSAVS.mem v vs ->
   (idx2, zp) = bv2z_program tmp idx1 p ->
   zSSA.ssa_var_unchanged_program v zp.
 Proof.
@@ -1255,7 +1123,7 @@ Lemma bv2z_vars_unchanged_instr tmp idx1 idx2 vs i zi :
   svar_notin tmp vs ->
   ssa_vars_unchanged_instr vs i ->
   (idx2, zi) = bv2z_instr tmp idx1 i ->
-  zSSA.ssa_vars_unchanged_program (bv2z_vars vs) zi.
+  zSSA.ssa_vars_unchanged_program vs zi.
 Proof.
   case: i => /=; intros; split_svar_notin_hyp;
   (let rec tac :=
@@ -1265,30 +1133,30 @@ Proof.
          let x := fresh in let Hx := fresh in
          apply: zSSA.ssa_unchanged_program_global => x Hx /=; tac
        | H1 : is_true (ssa_vars_unchanged_instr ?vs _),
-         H2 : is_true (zSSA.VS.mem ?x (bv2z_vars ?vs)) |- _ =>
+         H2 : is_true (SSAVS.mem ?x ?vs) |- _ =>
          let H := fresh in
-         move: (ssa_unchanged_instr_local H1 (bv2z_vars_mem2 H2)) => {H1} H; tac
+         move: (ssa_unchanged_instr_local H1 H2) => {H1} H; tac
        | H : is_true (ssa_var_unchanged_instr _ _) |- _ =>
          rewrite /ssa_var_unchanged_instr /= in H; tac
        | |- context f [zSSA.ssa_var_unchanged_instr _ _] =>
          rewrite /zSSA.ssa_var_unchanged_instr /=; tac
-       | H : is_true (~~ VS.mem _ (VS.singleton _)) |- _ =>
+       | H : is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) |- _ =>
          move: (VSLemmas.not_mem_singleton1 H) => {H} H; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.singleton _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) =>
          apply: zSSA.VSLemmas.not_mem_singleton2; tac
-       | H : is_true (~~ VS.mem _ (VS.add _ _)) |- _ =>
+       | H : is_true (~~ SSAVS.mem _ (SSAVS.add _ _)) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (VSLemmas.not_mem_add1 H) => {H} [H1 H2]; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.add _ _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.add _ _)) =>
          apply: zSSA.VSLemmas.not_mem_add2; split; tac
        | |- is_true (_ && _) => apply/andP; split; tac
        | |- is_true true => done
        | H : ?p |- ?p => exact: H
        | H1 : svar_notin ?tmp ?vs,
-         H2 : is_true (zSSA.VS.mem ?v (bv2z_vars ?vs)) |-
-         ~ (is_true (?v == (?tmp, ?idx))) =>
+         H2 : is_true (SSAVS.mem ?v ?vs) |-
+         ~ (SSAVS.E.eq ?v (?tmp, ?idx)) =>
          let H := fresh in
-         move=> H; move/negP: (svar_notin_bv2z_vars idx H1); apply;
+         move=> H; move/negP: (H1 idx); apply;
          rewrite -(eqP H); exact: H2
        | |- _ => idtac
        end in
@@ -1299,7 +1167,7 @@ Lemma bv2z_vars_unchanged_program tmp idx1 idx2 vs p zp :
   svar_notin tmp vs ->
   ssa_vars_unchanged_program vs p ->
   (idx2, zp) = bv2z_program tmp idx1 p ->
-  zSSA.ssa_vars_unchanged_program (bv2z_vars vs) zp.
+  zSSA.ssa_vars_unchanged_program vs zp.
 Proof.
   elim: p tmp idx1 idx2 vs zp => /=.
   - move=> tmp idx1 idx2 vs zp _ _ [] _ ->.
@@ -1326,11 +1194,11 @@ Proof.
        | |- context f [zSSA.ssa_var_unchanged_instr _ _] =>
          rewrite /zSSA.ssa_var_unchanged_instr /=; tac
        | |- is_true (_ && _) => apply/andP; split; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.singleton _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) =>
          apply: zSSA.VSLemmas.not_mem_singleton2; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.add _ _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.add _ _)) =>
          apply: zSSA.VSLemmas.not_mem_add2; split; tac
-       | |- ~ (is_true (_ == _)) => apply/idP; tac
+       | |- ~ (SSAVS.E.eq _ _) => apply/negP; tac
        | |- is_true true => done
        | H : is_true (?tmp != svar ?v) |- is_true ((?tmp, _) != ?v) =>
          apply: svar_ne; exact: H
@@ -1340,7 +1208,7 @@ Proof.
          exact: (N.lt_irrefl _ H)
        | |- _ => idtac
        end in
-   tac).
+    tac).
 Qed.
 
 Lemma bv2z_instr_idx_ge_unchanged tmp idx1 idx2 idx3 i zi :
@@ -1357,11 +1225,11 @@ Proof.
        | |- context f [zSSA.ssa_var_unchanged_instr _ _] =>
          rewrite /zSSA.ssa_var_unchanged_instr /=; tac
        | |- is_true (_ && _) => apply/andP; split; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.singleton _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) =>
          apply: zSSA.VSLemmas.not_mem_singleton2; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.add _ _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.add _ _)) =>
          apply: zSSA.VSLemmas.not_mem_add2; split; tac
-       | |- ~ (is_true (_ == _)) => apply/idP; tac
+       | |- ~ (SSAVS.E.eq _ _) => apply/negP; tac
        | |- is_true true => done
        | H : is_true (?tmp != svar ?v) |- is_true ((?tmp, _) != ?v) =>
          apply: svar_ne; exact: H
@@ -1436,13 +1304,13 @@ Proof.
        match goal with
        | H : (_, _) = (_, _) |- _ => case: H => _ -> /=; tac
        | |- is_true (_ && _) => splitb; tac
-       | |- is_true (zSSA.ssa_vars_unchanged_program (zSSA.VS.add _ _) _) =>
+       | |- is_true (zSSA.ssa_vars_unchanged_program (SSAVS.add _ _) _) =>
          apply: zSSA.ssa_unchanged_program_add2; rewrite /=; split; tac
-       | |- is_true (zSSA.ssa_vars_unchanged_program (zSSA.VS.singleton _) _) =>
+       | |- is_true (zSSA.ssa_vars_unchanged_program (SSAVS.singleton _) _) =>
          apply: zSSA.ssa_unchanged_program_singleton2; rewrite /=; tac
        | |- context f [zSSA.ssa_var_unchanged_instr _ _] =>
          rewrite /zSSA.ssa_var_unchanged_instr /=; tac
-       | |- is_true (~~ zSSA.VS.mem _ (zSSA.VS.singleton _)) =>
+       | |- is_true (~~ SSAVS.mem _ (SSAVS.singleton _)) =>
          apply: zSSA.VSLemmas.not_mem_singleton2; apply/negP; tac
        | |- is_true true => done
        | |- is_true (zSSA.ssa_vars_unchanged_program _ [::]) =>
@@ -1481,7 +1349,7 @@ Lemma bv2z_program_well_formed_ssa tmp idx1 idx2 vs p zp :
   svar_notin tmp (vars_program p) ->
   well_formed_ssa_program vs p ->
   (idx2, zp) = bv2z_program tmp idx1 p ->
-  zSSA.well_formed_ssa_program (bv2z_vars vs) zp.
+  zSSA.well_formed_ssa_program vs zp.
 Proof.
   move=> Hnvs Hnp /andP [/andP [Hwf Hun] Hssa] Hzp.
   apply/andP; split; first (apply/andP; split).
@@ -1504,7 +1372,7 @@ Qed.
 
 Lemma bv2z_spec_eqn_well_formed vs sp :
   well_formed_spec vs sp ->
-  zSSA.well_formed_spec (bv2z_vars vs) (bv2z_spec_eqn vs sp).
+  zSSA.well_formed_spec vs (bv2z_spec_eqn vs sp).
 Proof.
   destruct sp as [f p g]. move=> /andP /= [/andP [Hf Hp] Hg].
   rewrite /bv2z_spec_eqn. set tmp := new_svar_spec_eqn vs ({{f}} p {{g}})%bvssa.
@@ -1512,23 +1380,21 @@ Proof.
   sethave temp (bv2z_program tmp idx1 (sprog ({{f}} p {{g}})%bvssa)).
   destruct temp as [idx2 zp]. move=> Hzp /=.
   apply/andP => /=; split; first (apply/andP; split).
-  - apply: (@zSSA.VSLemmas.subset_trans _ (bv2z_vars (vars_bexp f))).
+  - apply: (@zSSA.VSLemmas.subset_trans _ (vars_bexp f)).
     + apply: bv2z_ebexp_vars_subset.
-    + rewrite bv2z_vars_subset; assumption.
+    + assumption.
   - exact: (bv2z_program_well_formed (svar_notin_sprog vs ({{f}} p {{g}})%bvssa)
                                      Hp Hzp).
   - apply: (zSSA.VSLemmas.subset_trans (bv2z_ebexp_vars_subset g)).
-    apply: (@zSSA.VSLemmas.subset_trans _ (zSSA.VS.union
-                                             (bv2z_vars vs)
-                                             (bv2z_vars (vars_program p)))).
-    + subset_to_bvssa. exact: Hg.
+    apply: (@zSSA.VSLemmas.subset_trans _ (SSAVS.union vs (vars_program p))).
+    + exact: Hg.
     + move: (bv2z_program_vars_subset Hzp) => /= Hsubset.
       zSSA.VSLemmas.dp_subset.
 Qed.
 
 Theorem bv2z_spec_eqn_well_formed_ssa vs sp :
   well_formed_ssa_spec vs sp ->
-  zSSA.well_formed_ssa_spec (bv2z_vars vs) (bv2z_spec_eqn vs sp).
+  zSSA.well_formed_ssa_spec vs (bv2z_spec_eqn vs sp).
 Proof.
   destruct sp as [f p g]. move=> /andP /= [/andP [Hwf Hun] Hssa].
   move: (bv2z_spec_eqn_well_formed Hwf).

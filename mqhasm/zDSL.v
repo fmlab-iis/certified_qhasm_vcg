@@ -29,9 +29,8 @@ Reserved Notation "f ===> g" (at level 82, no associativity).
 Reserved Notation "{{ f }} p {{ g }}" (at level 82, no associativity).
 Reserved Notation "|= s" (at level 83, no associativity).
 
-Module MakeZDSL (V : SsrOrderedType).
+Module MakeZDSL (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
 
-  Module VS := FSetList.Make V.
   Module VSLemmas := FSetLemmas VS.
 
 
@@ -293,146 +292,7 @@ Module MakeZDSL (V : SsrOrderedType).
 
   Notation value := Z.
 
-  Module Store := MakeTStore V.
-
-  Module State.
-
-    Definition t : Type := Store.t value.
-
-    Definition empty : t := Store.empty value.
-
-    Definition acc (x : var) (s : t) : value :=
-      Store.acc x s.
-
-    Definition upd (x : var) (v : value) (s : t) : t :=
-      Store.upd x v s.
-
-    Definition upd2 x1 v1 x2 v2 (s : t) : t :=
-      Store.upd x2 v2 (Store.upd x1 v1 s).
-
-    Lemma acc_upd_eq :
-      forall x y v (s : t),
-        x == y ->
-        acc x (upd y v s) = v.
-    Proof.
-      exact: Store.acc_upd_eq.
-    Qed.
-
-    Lemma acc_upd_neq :
-      forall x y v (s : t),
-        x != y ->
-        acc x (upd y v s) = acc x s.
-    Proof.
-      exact: Store.acc_upd_neq.
-    Qed.
-
-    Lemma acc_upd2_eq1 :
-      forall x y1 v1 y2 v2 (s : t),
-        x == y1 ->
-        x != y2 ->
-        acc x (upd2 y1 v1 y2 v2 s) = v1.
-    Proof.
-      move=> x y1 v1 y2 v2 s Hx1 Hx2.
-      rewrite /upd2 (acc_upd_neq _ _ Hx2) (acc_upd_eq _ _ Hx1).
-      reflexivity.
-    Qed.
-
-    Lemma acc_upd2_eq2 :
-      forall x y1 v1 y2 v2 (s : t),
-        x == y2 ->
-        acc x (upd2 y1 v1 y2 v2 s) = v2.
-    Proof.
-      move=> x y1 v1 y2 v2 s Hx2.
-      rewrite /upd2 (acc_upd_eq _ _ Hx2).
-      reflexivity.
-    Qed.
-
-    Lemma acc_upd2_neq :
-      forall x y1 v1 y2 v2 s,
-        x != y1 ->
-        x != y2 ->
-        acc x (upd2 y1 v1 y2 v2 s) = acc x s.
-    Proof.
-      move=> x y1 v1 y2 v2 s Hx1 Hx2.
-      rewrite /upd2 (acc_upd_neq _ _ Hx2) (acc_upd_neq _ _ Hx1).
-      reflexivity.
-    Qed.
-
-    Definition Upd x v (s1 s2 : t) : Prop :=
-      forall y, acc y s2 = acc y (upd x v s1).
-
-    Definition Upd2 x1 v1 x2 v2 (s1 s2 : t) : Prop :=
-      forall y, acc y s2 = acc y (upd x2 v2 (upd x1 v1 s1)).
-
-    Lemma Upd_upd :
-      forall x v s,
-        Upd x v s (upd x v s).
-    Proof.
-      exact: Store.Upd_upd.
-    Qed.
-
-    Lemma Upd2_upd :
-      forall x1 v1 x2 v2 s,
-        Upd2 x1 v1 x2 v2 s (upd x2 v2 (upd x1 v1 s)).
-    Proof.
-      move=> x1 v1 x2 v2 s y.
-      reflexivity.
-    Qed.
-
-    Lemma acc_Upd_eq :
-      forall x y v s1 s2,
-        x == y ->
-        Upd y v s1 s2 ->
-        acc x s2 = v.
-    Proof.
-      exact: Store.acc_Upd_eq.
-    Qed.
-
-    Lemma acc_Upd_neq :
-      forall x y v s1 s2,
-        x != y ->
-        Upd y v s1 s2 ->
-        acc x s2 = acc x s1.
-    Proof.
-      exact: Store.acc_Upd_neq.
-    Qed.
-
-    Lemma acc_Upd2_eq1 :
-      forall x y1 v1 y2 v2 s1 s2,
-        x == y1 ->
-        x != y2 ->
-        Upd2 y1 v1 y2 v2 s1 s2 ->
-        acc x s2 = v1.
-    Proof.
-      move=> x y1 v1 y2 v2 s1 s2 Heq Hne Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd2_eq1.
-    Qed.
-
-    Lemma acc_Upd2_eq2 :
-      forall x y1 v1 y2 v2 s1 s2,
-        x == y2 ->
-        Upd2 y1 v1 y2 v2 s1 s2 ->
-        acc x s2 = v2.
-    Proof.
-      move=> x y1 v1 y2 v2 s1 s2 Heq Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd2_eq2.
-    Qed.
-
-    Lemma acc_Upd2_neq :
-      forall x y1 v1 y2 v2 s1 s2,
-        x != y1 ->
-        x != y2 ->
-        Upd2 y1 v1 y2 v2 s1 s2 ->
-        acc x s2 = acc x s1.
-    Proof.
-      move=> x y1 v1 y2 v2 s1 s2 Hne1 Hne2 Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd2_neq.
-    Qed.
-
-  End State.
+  Module State := TStoreAdapter V ZType.
 
 
 
@@ -1025,102 +885,8 @@ Module MakeZDSL (V : SsrOrderedType).
 
   End BigIntegers.
 
-
-
-  (** State equality modulo values of a set of variables *)
-
-  Section StateEqmod.
-
-    Variable vs : VS.t.
-
-    Definition state_eqmod s1 s2 : Prop :=
-      forall v, VS.mem v vs -> State.acc v s1 = State.acc v s2.
-
-    Lemma state_eqmod_refl s :
-      state_eqmod s s.
-    Proof.
-      move=> v Hmem; reflexivity.
-    Qed.
-
-    Lemma state_eqmod_sym s1 s2 :
-      state_eqmod s1 s2 -> state_eqmod s2 s1.
-    Proof.
-      move=> Heqm v Hmem.
-      rewrite (Heqm v Hmem).
-      reflexivity.
-    Qed.
-
-    Lemma state_eqmod_trans s1 s2 s3 :
-      state_eqmod s1 s2 -> state_eqmod s2 s3 -> state_eqmod s1 s3.
-    Proof.
-      move=> Heqm12 Heqm23 v Hmem.
-      rewrite (Heqm12 v Hmem) (Heqm23 v Hmem).
-      reflexivity.
-    Qed.
-
-    Global Instance state_eqmod_equiv : RelationClasses.Equivalence state_eqmod.
-    Proof.
-      split.
-      - exact: state_eqmod_refl.
-      - exact: state_eqmod_sym.
-      - exact: state_eqmod_trans.
-    Defined.
-
-  End StateEqmod.
-
-  Lemma state_eqmod_subset vs1 vs2 s1 s2 :
-    state_eqmod vs1 s1 s2 ->
-    VS.subset vs2 vs1 ->
-    state_eqmod vs2 s1 s2.
-  Proof.
-    move=> Heqm Hsub v Hmem.
-    exact: (Heqm v (VSLemmas.mem_subset Hmem Hsub)).
-  Qed.
-
-  Lemma state_eqmod_add1 v vs s1 s2 :
-    state_eqmod (VS.add v vs) s1 s2 ->
-    State.acc v s1 = State.acc v s2 /\ state_eqmod vs s1 s2.
-  Proof.
-    move=> Heqm; split.
-    - apply: Heqm.
-      exact: VSLemmas.mem_add2.
-    - move=> x Hmem; apply: Heqm.
-      apply: VSLemmas.mem_add3.
-      assumption.
-  Qed.
-
-  Lemma state_eqmod_add2 v vs s1 s2 :
-    state_eqmod vs s1 s2 ->
-    State.acc v s1 = State.acc v s2 ->
-    state_eqmod (VS.add v vs) s1 s2.
-  Proof.
-    move=> Heqm Hv x Hmem.
-    case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
-    - by rewrite (eqP Hmem).
-    - exact: (Heqm x Hmem).
-  Qed.
-
-  Lemma state_eqmod_union1 vs1 vs2 s1 s2 :
-    state_eqmod (VS.union vs1 vs2) s1 s2 ->
-    state_eqmod vs1 s1 s2 /\ state_eqmod vs2 s1 s2.
-  Proof.
-    move=> Heqm; split; move=> v Hmem; apply: Heqm.
-    - apply: VSLemmas.mem_union2.
-      assumption.
-    - apply: VSLemmas.mem_union3.
-      assumption.
-  Qed.
-
-  Lemma state_eqmod_union2 vs1 vs2 s1 s2 :
-    state_eqmod vs1 s1 s2 ->
-    state_eqmod vs2 s1 s2 ->
-    state_eqmod (VS.union vs1 vs2) s1 s2.
-  Proof.
-    move=> Heqm1 Heqm2 v Hmem.
-    case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-    - exact: (Heqm1 v Hmem).
-    - exact: (Heqm2 v Hmem).
-  Qed.
+  Module TSEQM := TStateEqmod V State.S VS.
+  Import TSEQM.
 
   Lemma state_eqmod_exp s1 s2 e :
     state_eqmod (vars_exp e) s1 s2 ->
@@ -1129,7 +895,8 @@ Module MakeZDSL (V : SsrOrderedType).
     elim: e => /=.
     - move=> v Heqm.
       apply: Heqm.
-      exact: VSLemmas.mem_singleton2.
+      apply: VSLemmas.mem_singleton2.
+      exact: VS.E.eq_refl.
     - reflexivity.
     - move=> op e IH Heqm.
       rewrite (IH Heqm).
@@ -1170,7 +937,7 @@ Module MakeZDSL (V : SsrOrderedType).
     state_eqmod (VS.union vs (lvs_instr i)) (eval_instr s1 i) (eval_instr s2 i).
   Proof.
     elim: i => /=.
-    - move=> v e Heqm Hsub x Hmem.
+    - move=> v e Heqm Hsub x Hmem; rewrite -!/(State.acc _ _).
       case Hxv: (x == v).
       + rewrite 2!(State.acc_upd_eq _ _ Hxv).
         apply: state_eqmod_exp.
@@ -1189,7 +956,8 @@ Module MakeZDSL (V : SsrOrderedType).
       sethave tmp (Z.div_eucl (eval_exp e s2) (2 ^ Z.of_nat p)).
       destruct tmp as [q2 r2] => Hqr2.
       rewrite (state_eqmod_exp (state_eqmod_subset Heqm Hsub)) in Hqr1.
-      rewrite -Hqr2 in Hqr1. case: Hqr1 => -> -> {q1 r1}. move=> v Hmem.
+      rewrite -Hqr2 in Hqr1. case: Hqr1 => -> -> {q1 r1}.
+      move=> v Hmem; rewrite -!/(State.acc _ _).
       case Hvvh: (v == vh).
       + rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hvvh). reflexivity.
       + move/idP/negP: Hvvh => Hvvh. case Hvvl: (v == vl).
@@ -1586,7 +1354,8 @@ Module MakeZDSL (V : SsrOrderedType).
   Proof.
     elim: i1 vs1 vs2 i2 s1 s2 => /=.
     - move=> v e vs1 vs2 i2 s1 s2. case Hmemv: (VS.mem v vs1).
-      + move => [Hvs Hi2] Heqm. rewrite -{}Hi2 /= => x Hmemx. case Hxv: (x == v).
+      + move => [Hvs Hi2] Heqm.
+        rewrite -{}Hi2 /= => x Hmemx; rewrite -!/(State.acc _ _). case Hxv: (x == v).
         * rewrite 2!(State.acc_upd_eq _ _ Hxv). apply: state_eqmod_exp.
           apply: (state_eqmod_subset Heqm). rewrite -Hvs.
           exact: VSLemmas.union_subset_1.
@@ -1599,7 +1368,8 @@ Module MakeZDSL (V : SsrOrderedType).
       sethave tmp (Z.div_eucl (eval_exp e s1) (2 ^ Z.of_nat p)).
       destruct tmp as (q1, r1) => Hqr1.
       case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
-      + move=> [Hvs Hi2] Heqm. rewrite -{}Hi2 /= => x Hmemx.
+      + move=> [Hvs Hi2] Heqm.
+        rewrite -{}Hi2 /= => x Hmemx; rewrite -!/(State.acc _ _).
         have: (eval_exp e s1) = (eval_exp e s2) by
           apply: state_eqmod_exp; apply: (state_eqmod_subset Heqm);
           rewrite -Hvs; exact: VSLemmas.union_subset_1.
@@ -1624,7 +1394,7 @@ Module MakeZDSL (V : SsrOrderedType).
     - move=> v e vs1 vs2 s1 s2. case Hmemv: (VS.mem v vs1).
       + discriminate.
       + move => [Hvs] Heqm. rewrite -Hvs in Heqm => {Hvs vs2}.
-        move => x Hmemx. case Hxv: (x == v).
+        move => x Hmemx; rewrite -!/(State.acc _ _). case Hxv: (x == v).
         * rewrite (eqP Hxv) Hmemv in Hmemx. discriminate.
         * move/idP/negP: Hxv => Hxv. rewrite (State.acc_upd_neq _ _ Hxv).
           apply: Heqm. assumption.
@@ -1633,7 +1403,8 @@ Module MakeZDSL (V : SsrOrderedType).
       destruct tmp as (q1, r1) => Hqr1.
       case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
       + discriminate.
-      + move=> [Hvs] Heqm. rewrite -Hvs in Heqm => {Hvs vs2}. move => x Hmemx.
+      + move=> [Hvs] Heqm. rewrite -Hvs in Heqm => {Hvs vs2}.
+        move => x Hmemx; rewrite -!/(State.acc _ _).
         case Hxvh: (x == vh).
         * rewrite -(eqP Hxvh) Hmemx in Hmemhl. discriminate.
         * move/idP/negP: Hxvh => Hxvh.
@@ -2186,7 +1957,7 @@ Module MakeZDSL (V : SsrOrderedType).
 
 End MakeZDSL.
 
-Module zDSL := MakeZDSL VarOrder.
+Module zDSL := MakeZDSL VarOrder VS.
 Export zDSL.
 Arguments zDSL.zVar v%N.
 

@@ -20,8 +20,7 @@ Module VarOrder := NOrder.
 (* Variable sets. *)
 
 Module VS.
-  Module S := FSetList.Make(NOrder).
-  Module Lemmas := FSetLemmas(S).
+  Module S := FSets.Make(NOrder).
   Include S.
 
   (* Generate a new variable. *)
@@ -48,6 +47,8 @@ Module VS.
   Qed.
 
 End VS.
+
+Module VSLemmas := FSetLemmas VS.
 
 
 
@@ -76,9 +77,9 @@ Module VM.
          exact: (Lemmas.empty_mem Hempty Hmem).
        - move=> x e m E1 E2 _ _ Hadd Hind y Hmem.
          case Hyx: (y == x).
-         + exact: (VS.Lemmas.mem_add_eq _ Hyx).
+         + exact: (VSLemmas.mem_add_eq _ Hyx).
          + move/negP: Hyx => Hyx.
-           rewrite (VS.Lemmas.mem_add_neq _ Hyx).
+           rewrite (VSLemmas.mem_add_neq _ Hyx).
            apply: Hind.
            move: (Hadd y) => {Hadd}.
            rewrite (VM.Lemmas.find_add_neq _ _ Hyx) => {Hyx} Hfind.
@@ -132,3 +133,123 @@ Module VM.
 End VM.
 
 Close Scope N_scope.
+
+
+
+(** Variables for SSA *)
+
+From Common Require Import SsrOrdered.
+
+Module SSAVarOrder := (MakeProdOrdered VarOrder NOrder).
+
+Module SSAVS := FSets.Make SSAVarOrder.
+
+Module SSAVSLemmas := FSetLemmas SSAVS.
+
+Definition svar (x : SSAVarOrder.t) := fst x.
+
+Definition sidx (x : SSAVarOrder.t) := snd x.
+
+Hint Unfold svar sidx.
+
+Definition svar_notin v vs : Prop := forall i, ~~ SSAVS.mem (v, i) vs.
+
+Lemma svar_notin_singleton1 v x :
+  svar_notin v (SSAVS.singleton x) -> v != svar x.
+Proof.
+  destruct x as [x i]. move=> /= H; move: (SSAVSLemmas.not_mem_singleton1 (H i)).
+  move=> Hne; apply/negP => Heq; apply: Hne. rewrite (eqP Heq).
+  exact: SSAVS.E.eq_refl.
+Qed.
+
+Lemma svar_notin_singleton2 v x :
+  v != svar x -> svar_notin v (SSAVS.singleton x).
+Proof.
+  move/negP=> Hne i. apply/negP => Heq; apply: Hne.
+  move: (SSAVSLemmas.mem_singleton1 Heq) => {Heq}. destruct x as [x j] => /=.
+  move/eqP => [Hv Hi]. by rewrite Hv.
+Qed.
+
+Lemma svar_notin_union1 v vs1 vs2 :
+  svar_notin v (SSAVS.union vs1 vs2) -> svar_notin v vs1.
+Proof.
+  move=> H i. move: (H i) => {H} H. exact: (proj1 (SSAVSLemmas.not_mem_union1 H)).
+Qed.
+
+Lemma svar_notin_union2 v vs1 vs2 :
+  svar_notin v (SSAVS.union vs1 vs2) -> svar_notin v vs2.
+Proof.
+  move=> H i. move: (H i) => {H} H. exact: (proj2 (SSAVSLemmas.not_mem_union1 H)).
+Qed.
+
+Lemma svar_notin_union3 v vs1 vs2 :
+  svar_notin v vs1 -> svar_notin v vs2 ->
+  svar_notin v (SSAVS.union vs1 vs2).
+Proof.
+  move=> H1 H2 i. move: (H1 i) (H2 i) => {H1 H2} H1 H2.
+  exact: (SSAVSLemmas.not_mem_union2 H1 H2).
+Qed.
+
+Lemma svar_notin_add1 v x vs :
+  svar_notin v (SSAVS.add x vs) -> v != svar x.
+Proof.
+  destruct x as [x i] => /= H. move: (H i) => {H} H.
+  move: (SSAVSLemmas.not_mem_add1 H) => {H}. move=> [H _]; apply/negP => Heq.
+  apply: H. rewrite (eqP Heq); exact: eqxx.
+Qed.
+
+Lemma svar_notin_add2 v x vs :
+  svar_notin v (SSAVS.add x vs) -> svar_notin v vs.
+Proof.
+  move=> H i. move: (H i) => {H} H. move: (SSAVSLemmas.not_mem_add1 H) => {H}.
+  move=> [_ H]; exact: H.
+Qed.
+
+Lemma svar_notin_replace v vs1 vs2 :
+  SSAVS.Equal vs1 vs2 -> svar_notin v vs1 -> svar_notin v vs2.
+Proof.
+  move=> H H1 x. rewrite -H. exact: H1.
+Qed.
+
+Lemma svar_notin_subset v vs1 vs2 :
+  SSAVS.subset vs1 vs2 -> svar_notin v vs2 -> svar_notin v vs1.
+Proof.
+  move=> H H2 x. apply/negP => H1. move: (SSAVSLemmas.mem_subset H1 H) => Hmem.
+  move/negP: (H2 x). apply. exact: Hmem.
+Qed.
+
+
+
+(** Generate new SSA variables *)
+
+From Common Require Import Nats.
+
+Definition max_svar (vs : SSAVS.t) : VarOrder.t :=
+  match SSAVS.max_elt vs with
+  | Some v => svar v
+  | None => 0%N
+  end.
+
+Definition new_svar (vs : SSAVS.t) : VarOrder.t :=
+  N.succ (max_svar vs).
+
+Lemma N_ltb_succ v : (v <? N.succ v)%N.
+Proof.
+  apply: (proj2 (N.ltb_lt v (N.succ v))). exact: N.lt_succ_diag_r.
+Qed.
+
+Lemma V_ltb_succ v i j : SSAVarOrder.ltb (v, j) ((N.succ v), i).
+Proof.
+  rewrite /SSAVarOrder.ltb /SSAVarOrder.M.lt /VarOrder.ltb /NOrderMinimal.lt /=.
+  rewrite N_ltb_succ. exact: is_true_true.
+Qed.
+
+Lemma new_svar_notin vs : svar_notin (new_svar vs) vs.
+Proof.
+  rewrite /new_svar /max_svar. set x := SSAVS.max_elt vs.
+  have: SSAVS.max_elt vs = x by reflexivity. case x.
+  - move=> v Hmax i. apply/negP => Hmem. apply: (SSAVSLemmas.max_elt2 Hmax Hmem).
+    exact: V_ltb_succ.
+  - move=> Hnone i. apply: SSAVSLemmas.is_empty_mem.
+    exact: (SSAVSLemmas.max_elt3 Hnone).
+Qed.

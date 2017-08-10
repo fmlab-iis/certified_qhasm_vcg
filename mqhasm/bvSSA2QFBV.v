@@ -280,51 +280,53 @@ Proof.
   move: (eval_bexp_rbexp e s) => [H1 H2]. exact: H2.
 Qed.
 
+Ltac rewrite_eval_exp_atomic :=
+  repeat rewrite -> eval_exp_atomic in *.
+
+Ltac rewrite_store_acc :=
+  match goal with
+  | |- context f [QFBV64.Store.acc _ _] =>
+    rewrite !store_state_acc; rewrite_store_acc
+  | H : context f [QFBV64.Store.acc _ _] |- _ =>
+    rewrite !store_state_acc in H; rewrite_store_acc
+  | |- _ => idtac
+  end.
+
 Lemma eval_bexp_instr i p s1 s2 :
   ssa_vars_unchanged_program (vars_instr i) p ->
   eval_program s1 p = s2 ->
   QFBV64.eval_bexp (bexp_instr i) s1 ->
   QFBV64.eval_bexp (bexp_instr i) s2.
 Proof.
-  case: i => /=; intros;
-    (let rec tac :=
-         match goal with
-         | H : context f [QFBV64.eval_exp (exp_atomic ?a) ?s] |- _ =>
-           (* convert (QFBV64.eval_exp (exp_atomic a) s) to (eval_atomic a s) *)
-           rewrite eval_exp_atomic in H; tac
-         | |- context f [QFBV64.eval_exp (exp_atomic ?a) ?s] =>
-           rewrite eval_exp_atomic; tac
-         | H : context f [QFBV64.Store.acc ?v ?s] |- _ =>
-           (* convert (QFBV64.Store.acc v s) to (State.acc v s) *)
-           rewrite store_state_acc in H; tac
-         | |- context f [QFBV64.Store.acc ?v ?s] =>
-           rewrite store_state_acc; tac
-         | H : is_true (ssa_vars_unchanged_program (VS.add _ _) ?p) |- _ =>
-           let H1 := fresh in
-           let H2 := fresh in
-           move: (ssa_unchanged_program_add1 H) => {H} [H1 H2]; tac
-         | H : is_true (ssa_vars_unchanged_program (VS.union _ _) ?p) |- _ =>
-           let H1 := fresh in
-           let H2 := fresh in
-           move: (ssa_unchanged_program_union1 H) => {H} [H1 H2]; tac
-         | H1 : eval_program ?s1 ?p = ?s2,
-           H2 : is_true (ssa_var_unchanged_program ?v ?p) |-
-           context f [State.acc ?v ?s2] =>
-           (* convert (State.acc v s2) to (State.acc v s1) *)
-           rewrite -(acc_unchanged_program H2 H1); tac
-         | H1 : eval_program ?s1 ?p = ?s2,
-           H2 : is_true (ssa_vars_unchanged_program (vars_atomic ?a) ?p) |-
-           context f [eval_atomic ?a ?s2] =>
-           (* convert (eval_atomic a s2) to (eval_atomic a s1) *)
-           rewrite -(ssa_unchanged_program_eval_atomic H2 H1); tac
-         | |- _ => try assumption
-         end in
-    tac).
+  case: i => /=; intros; rewrite_eval_exp_atomic; rewrite_store_acc;
+  (let rec tac :=
+       match goal with
+       | H : is_true (ssa_vars_unchanged_program (SSAVS.add _ _) ?p) |- _ =>
+         let H1 := fresh in
+         let H2 := fresh in
+         move: (ssa_unchanged_program_add1 H) => {H} [H1 H2]; tac
+       | H : is_true (ssa_vars_unchanged_program (SSAVS.union _ _) ?p) |- _ =>
+         let H1 := fresh in
+         let H2 := fresh in
+         move: (ssa_unchanged_program_union1 H) => {H} [H1 H2]; tac
+       | H1 : eval_program ?s1 ?p = ?s2,
+              H2 : is_true (ssa_var_unchanged_program ?v ?p) |-
+         context f [State.acc ?v ?s2] =>
+         (* convert (State.acc v s2) to (State.acc v s1) *)
+         rewrite -(acc_unchanged_program H2 H1); tac
+       | H1 : eval_program ?s1 ?p = ?s2,
+              H2 : is_true (ssa_vars_unchanged_program (vars_atomic ?a) ?p) |-
+         context f [eval_atomic ?a ?s2] =>
+         (* convert (eval_atomic a s2) to (eval_atomic a s1) *)
+         rewrite -(ssa_unchanged_program_eval_atomic H2 H1); tac
+       | |- _ => try assumption
+       end in
+   tac).
 Qed.
 
 Ltac eval_exp_exp_atomic_to_pred_state :=
   match goal with
-  | Hsub : is_true (VS.subset (vars_atomic ?a) ?vs),
+  | Hsub : is_true (SSAVS.subset (vars_atomic ?a) ?vs),
     Hun : is_true (ssa_vars_unchanged_instr ?vs _),
     Hupd : State.upd _ _ ?s1 = ?s2 |-
     context f [QFBV64.eval_exp (exp_atomic ?a) ?s2] =>
@@ -332,7 +334,7 @@ Ltac eval_exp_exp_atomic_to_pred_state :=
     rewrite -(ssa_unchanged_instr_eval_atomic
                 (ssa_unchanged_instr_subset Hun Hsub)
                 Hupd)
-  | Hsub : is_true (VS.subset (vars_atomic ?a) ?vs),
+  | Hsub : is_true (SSAVS.subset (vars_atomic ?a) ?vs),
     Hun : is_true (ssa_vars_unchanged_instr ?vs _),
     Hupd : State.upd2 _ _ _ _ ?s1 = ?s2 |-
     context f [QFBV64.eval_exp (exp_atomic ?a) ?s2] =>
@@ -494,7 +496,7 @@ Definition valid_bexp_spec_conj (s : bexp_spec) : Prop :=
     eval_bexps_conj (bprog s) st ->
     QFBV64.eval_bexp (bpost s) st.
 
-Lemma bexp_spec_sound_conj (vs : VS.t) (s : rspec) :
+Lemma bexp_spec_sound_conj (vs : SSAVS.t) (s : rspec) :
   well_formed_ssa_spec vs s ->
   valid_bexp_spec_conj (bexp_of_rspec s) -> valid_rspec (bv2z_spec_rng s).
 Proof.
@@ -549,7 +551,7 @@ Proof.
     exact: (IH (Hi Hhd) Htl).
 Qed.
 
-Lemma bexp_spec_sound_imp (vs : VS.t) (s : rspec) :
+Lemma bexp_spec_sound_imp (vs : SSAVS.t) (s : rspec) :
   well_formed_ssa_spec vs s ->
   valid_bexp_spec_imp (bexp_of_rspec s) -> valid_rspec (bv2z_spec_rng s).
 Proof.
@@ -564,7 +566,7 @@ Qed.
 
 Definition valid_bexp_spec := valid_bexp_spec_imp.
 
-Theorem bexp_spec_sound (vs : VS.t) (s : rspec) :
+Theorem bexp_spec_sound (vs : SSAVS.t) (s : rspec) :
   well_formed_ssa_spec vs s ->
   valid_bexp_spec (bexp_of_rspec s) -> valid_rspec (bv2z_spec_rng s).
 Proof.
@@ -849,10 +851,10 @@ Proof.
   (let rec tac :=
        match goal with
        | |- True => by trivial
-       | H : is_true (ssa_vars_unchanged_instr (VS.union _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_instr (SSAVS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_instr_union1 H) => {H} [H1 H2]; tac
-       | H : is_true (ssa_vars_unchanged_instr (VS.add _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_instr (SSAVS.add _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_instr_add1 H) => {H} [H1 H2]; tac
        | H : is_true (ssa_vars_unchanged_instr (vars_atomic ?a) _) |-
@@ -880,10 +882,10 @@ Proof.
   (let rec tac :=
        match goal with
        | |- True => by trivial
-       | H : is_true (ssa_vars_unchanged_program (VS.union _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_program (SSAVS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_program_union1 H) => {H} [H1 H2]; tac
-       | H : is_true (ssa_vars_unchanged_program (VS.add _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_program (SSAVS.add _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_program_add1 H) => {H} [H1 H2]; tac
        | H : is_true (ssa_vars_unchanged_program (vars_atomic ?a) ?p) |-
@@ -908,10 +910,10 @@ Proof.
   (let rec tac :=
        match goal with
        | |- True => by trivial
-       | H : is_true (ssa_vars_unchanged_instr (VS.union _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_instr (SSAVS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_instr_union1 H) => {H} [H1 H2]; tac
-       | H : is_true (ssa_vars_unchanged_instr (VS.add _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_instr (SSAVS.add _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_instr_add1 H) => {H} [H1 H2]; tac
        | H1 : is_true (ssa_vars_unchanged_instr (vars_atomic ?a) _),
@@ -942,10 +944,10 @@ Proof.
   (let rec tac :=
        match goal with
        | |- True => by trivial
-       | H : is_true (ssa_vars_unchanged_program (VS.union _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_program (SSAVS.union _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_program_union1 H) => {H} [H1 H2]; tac
-       | H : is_true (ssa_vars_unchanged_program (VS.add _ _) _) |- _ =>
+       | H : is_true (ssa_vars_unchanged_program (SSAVS.add _ _) _) |- _ =>
          let H1 := fresh in let H2 := fresh in
          move: (ssa_unchanged_program_add1 H) => {H} [H1 H2]; tac
        | H1 : is_true (ssa_vars_unchanged_program (vars_atomic ?a) _),
