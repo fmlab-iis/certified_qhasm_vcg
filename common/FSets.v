@@ -956,6 +956,9 @@ Module FSetLemmas (S : SsrFSet).
     | |- ?x = ?x => reflexivity
     | |- is_true (?x == ?x) => exact: eqxx
     | |- S.E.eq ?x ?x => exact: S.E.eq_refl
+    | H1 : is_true (S.mem ?x ?s1), H2 : is_true (S.subset ?s1 ?s2) |-
+      is_true (S.mem ?x ?s2) =>
+      exact: (mem_subset H1 H2)
     (* *)
     | H : is_true (S.mem ?x (S.singleton ?y)) |- is_true (S.mem ?x _) =>
       move: (mem_singleton1 H) => {H} H; dp_mem
@@ -970,6 +973,27 @@ Module FSetLemmas (S : SsrFSet).
       first [ apply: mem_add2; by dp_mem | apply: mem_add3; by dp_mem ]
     | |- is_true (S.mem ?x (S.union ?s1 ?s2)) =>
       first [ apply: mem_union2; by dp_mem | apply: mem_union3; by dp_mem ]
+    (* *)
+    | H : is_true (S.subset (S.singleton _) _) |- _ =>
+      move: (subset_singleton1 H) => {H} H; dp_mem
+    | H : is_true (S.subset (S.add _ _) _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: (subset_add4 H) (subset_add5 H) => {H} H1 H2; dp_mem
+    | H : is_true (S.subset (S.union _ _) _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: (subset_union4 H) (subset_union5 H) => {H} H1 H2; dp_mem
+    (* *)
+    | H : is_true (_ && _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move/andP: H => [H1 H2]; dp_mem
+    | H : _ /\ _ |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: H => [H1 H2]; dp_mem
+    (* *)
+    | H : is_true (_ || _) |- _ =>
+      move/orP: H => [] H; dp_mem
+    | H : _ \/ _ |- _ =>
+      move: H => [] H; dp_mem
     end.
 
   Ltac dp_subset :=
@@ -979,6 +1003,9 @@ Module FSetLemmas (S : SsrFSet).
     | |- is_true (S.subset S.empty _) => exact: subset_empty
     | H : is_true (S.subset ?x ?y) |- is_true (S.subset ?x ?y) => exact: H
     | |- is_true (S.subset ?x ?x) => exact: subset_refl
+    | H1 : is_true (S.subset ?s1 ?s2), H2 : is_true (S.subset ?s2 ?s3) |-
+      is_true (S.subset ?s1 ?s3) =>
+      exact: (subset_trans H1 H2)
     (* *)
     | H : is_true (S.subset (S.singleton _) _) |- _ =>
       move: (subset_singleton1 H) => {H} H; dp_subset
@@ -1001,6 +1028,18 @@ Module FSetLemmas (S : SsrFSet).
     | |- is_true (S.subset _ (S.union _ _)) =>
       first [ apply: subset_union1; by dp_subset |
               apply: subset_union2; by dp_subset ]
+    (* *)
+    | H : is_true (_ && _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move/andP: H => [H1 H2]; dp_subset
+    | H : _ /\ _ |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: H => [H1 H2]; dp_subset
+    (* *)
+    | H : is_true (_ || _) |- _ =>
+      move/orP: H => [] H; dp_subset
+    | H : _ \/ _ |- _ =>
+      move: H => [] H; dp_subset
     end.
 
   Ltac dp_Equal :=
