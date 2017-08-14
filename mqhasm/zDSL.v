@@ -135,14 +135,7 @@ Module MakeZDSL (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
   Lemma vars_instr_split i :
     VS.Equal (vars_instr i) (VS.union (lvs_instr i) (rvs_instr i)).
   Proof.
-    elim: i => /=.
-    - move=> v e.
-      rewrite -VSLemmas.OP.P.add_union_singleton.
-      reflexivity.
-    - move=> vh vl e _.
-      rewrite VSLemmas.OP.P.union_add.
-      rewrite -VSLemmas.OP.P.add_union_singleton.
-      reflexivity.
+    elim : i => /=; move=> *; by VSLemmas.dp_Equal.
   Qed.
 
   Lemma mem_vars_instr1 v i :
@@ -192,14 +185,12 @@ Module MakeZDSL (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
     - rewrite VSLemmas.union_emptyl.
       reflexivity.
     - move=> hd tl IH.
-      rewrite VSLemmas.OP.P.union_assoc.
-      rewrite (VSLemmas.OP.P.union_sym (rvs_instr hd) (rvs_program tl)).
-      rewrite -(VSLemmas.OP.P.union_assoc (lvs_program tl)).
-      rewrite (VSLemmas.OP.P.union_sym _ (rvs_instr hd)).
-      rewrite -VSLemmas.OP.P.union_assoc.
-      rewrite -IH.
-      rewrite -vars_instr_split.
-      reflexivity.
+      have: VS.Equal (VS.union (VS.union (lvs_instr hd) (lvs_program tl))
+                               (VS.union (rvs_instr hd) (rvs_program tl)))
+                     (VS.union (VS.union (lvs_instr hd) (rvs_instr hd))
+                               (VS.union (lvs_program tl) (rvs_program tl))) by
+          VSLemmas.dp_Equal.
+      move=> ->. rewrite -IH. rewrite -vars_instr_split. reflexivity.
   Qed.
 
   Lemma mem_vars_program1 v p :
@@ -571,9 +562,7 @@ Module MakeZDSL (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
     well_formed_instr vs i ->
     VS.subset (rvs_instr i) vs.
   Proof.
-    elim: i => /=.
-    - move=> _ e H; exact: H.
-    - move=> vh vl e _ /andP [_ H]; exact: H.
+    elim: i => /=; intros; VSLemmas.dp_subset.
   Qed.
 
   Lemma well_formed_instr_subset vs1 vs2 i :
@@ -581,11 +570,12 @@ Module MakeZDSL (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
     VS.subset vs1 vs2 ->
     well_formed_instr vs2 i.
   Proof.
-    elim: i vs1 vs2 => /=.
-    - move=> _ e vs1 vs2 Hsub1 Hsub2.
-      by rewrite (VSLemmas.subset_trans Hsub1 Hsub2).
-    - move=> vh vl e _ vs1 vs2 /andP [H Hsub1] Hsub2.
-      by rewrite H (VSLemmas.subset_trans Hsub1 Hsub2).
+    elim: i vs1 vs2 => /=; move=> *; hyps_splitb; repeat splitb;
+    (match goal with
+     | H: ?a |- ?a => assumption
+     | |- is_true (VS.subset _ _) => VSLemmas.dp_subset
+     | |- _ => idtac
+     end).
   Qed.
 
   Lemma well_formed_instr_replace vs1 vs2 i :
@@ -628,23 +618,7 @@ Module MakeZDSL (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
     well_formed_instr vs i ->
     VS.Equal (VS.union vs (vars_instr i)) (VS.union vs (lvs_instr i)).
   Proof.
-    case: i => /=.
-    - move=> v e Hsub.
-      rewrite (VSLemmas.OP.P.union_sym vs (VS.add v (vars_exp e))).
-      rewrite VSLemmas.OP.P.union_add.
-      rewrite (VSLemmas.union_subset_equal Hsub).
-      rewrite (VSLemmas.OP.P.union_sym vs (VS.singleton v)).
-      rewrite -VSLemmas.OP.P.add_union_singleton.
-      reflexivity.
-    - move=> vh vl e _ /andP [Hhl Hsub].
-      rewrite (VSLemmas.OP.P.union_sym vs (VS.add vh (VS.add vl (vars_exp e)))).
-      rewrite VSLemmas.OP.P.union_add.
-      rewrite VSLemmas.OP.P.union_add.
-      rewrite (VSLemmas.union_subset_equal Hsub).
-      rewrite (VSLemmas.OP.P.union_sym vs (VS.add vh (VS.singleton vl))).
-      rewrite VSLemmas.OP.P.union_add.
-      rewrite -VSLemmas.OP.P.add_union_singleton.
-      reflexivity.
+    case: i => /=; intros; hyps_splitb; VSLemmas.dp_Equal.
   Qed.
 
   Lemma well_formed_program_concat vs p1 p2 :

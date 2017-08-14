@@ -1284,18 +1284,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     VS.subset vs1 vs2 ->
     well_formed_instr vs2 i.
   Proof.
-    elim: i vs1 vs2 => /=; move=> *;
-    hyps_splitb; repeat splitb;
+    elim: i vs1 vs2 => /=; move=> *; hyps_splitb; repeat splitb;
     (match goal with
      | H: ?a |- ?a => assumption
-     | H1: is_true (VS.subset ?s ?vs1),
-       H2 : is_true (VS.subset ?vs1 ?vs2)
-       |- is_true (VS.subset ?s ?vs2) =>
-         by rewrite (VSLemmas.subset_trans H1 H2)
-     | H1 : is_true (VS.mem ?v ?vs1),
-       H2 : is_true (VS.subset ?vs1 ?vs2)
-       |- is_true (VS.mem ?v ?vs3) =>
-       exact: (VSLemmas.mem_subset H1 H2)
+     | |- is_true (VS.subset _ _) => by VSLemmas.dp_subset
+     | |- is_true (VS.mem _ _) => by VSLemmas.dp_mem
      | |- _ => idtac
      end).
   Qed.
@@ -1340,100 +1333,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     well_formed_instr vs i ->
     VS.Equal (VS.union vs (vars_instr i)) (VS.union vs (lvs_instr i)).
   Proof.
-    case: i => /=; intros; hyps_splitb;
-    (match goal with
-     | H: is_true (VS.subset ?s ?vs) |-
-       VS.Equal (VS.union ?vs (VS.add ?t ?s)) (VS.union ?vs (VS.singleton ?t)) =>
-      rewrite (VSLemmas.OP.P.union_sym vs (VS.add t s))
-              VSLemmas.OP.P.union_add
-              (VSLemmas.union_subset_equal H)
-              (VSLemmas.OP.P.union_sym vs (VS.singleton t))
-              -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-     | H1: is_true (VS.subset ?s1 ?vs),
-       H2: is_true (VS.subset ?s2 ?vs) |-
-       VS.Equal (VS.union ?vs (VS.add ?t (VS.union ?s1 ?s2)))
-                (VS.union ?vs (VS.singleton ?t)) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H2)
-               (VSLemmas.union_subset_equal H1)
-               (VSLemmas.OP.P.union_sym vs (VS.singleton _))
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H1: is_true (VS.subset ?s1 ?vs),
-       H2: is_true (VS.subset ?s2 ?vs) |-
-       VS.Equal
-         (VS.union ?vs
-                   (VS.add ?t1 (VS.add ?t2 (VS.union ?s1 ?s2))))
-         (VS.union ?vs (VS.add ?t1 (VS.singleton ?t2))) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H2)
-               (VSLemmas.union_subset_equal H1)
-               (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H: is_true (VS.subset ?s ?vs) |-
-       VS.Equal (VS.union ?vs (VS.add ?t1 (VS.add ?t2 ?s)))
-                (VS.union ?vs (VS.add ?t1 (VS.singleton ?t2))) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               (VSLemmas.union_subset_equal H)
-               (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H0 : is_true (VS.subset (vars_atomic ?e2) ?vs),
-       H1 : is_true (VS.mem ?c ?vs),
-       H2 : is_true (VS.subset (vars_atomic ?e1) ?vs) |-
-       VS.Equal
-         (VS.union ?vs
-                   (VS.add ?c
-                           (VS.add ?v
-                                   (VS.union
-                                      (vars_atomic ?e1) (vars_atomic ?e2)))))
-         (VS.union ?vs (VS.singleton ?v)) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H0)
-               (VSLemmas.union_subset_equal H2)
-               VSLemmas.OP.P.add_add
-               (VSLemmas.add_equal H1)
-               VSLemmas.OP.P.union_sym
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H1 : is_true (VS.subset (vars_atomic ?e2) ?vs),
-       H2 : is_true (VS.subset (vars_atomic ?e1) ?vs),
-       H0 : is_true (?c != ?v),
-       H3 : is_true (VS.mem ?a vs) |-
-       VS.Equal
-         (VS.union ?vs
-                   (VS.add ?a (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))))
-         (VS.union ?vs (VS.add ?c (VS.singleton ?v))) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H1)
-               (VSLemmas.union_subset_equal H2)
-               (VSLemmas.OP.P.add_add)
-               (VSLemmas.OP.P.add_add vs)
-               (VSLemmas.add_equal H3)
-               VSLemmas.OP.P.union_sym
-               VSLemmas.OP.P.union_add
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | |- _ => idtac
-     end).
+    case: i => /=; intros; hyps_splitb; by VSLemmas.dp_Equal.
   Qed.
 
   Lemma well_formed_program_concat vs p1 p2 :
@@ -1656,17 +1556,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     (let rec tac :=
          match goal with
          | H: ?a |- ?a => assumption
-         | H : is_true (VS.subset (VS.union _ _) _) |- _ =>
-           let H1 := fresh in let H2 := fresh in
-           rewrite VSLemmas.subset_union6 in H;
-           move/andP: H => [H1 H2]; tac
-         | H : is_true (VS.subset (VS.add _ _) _) |- _ =>
-           let H1 := fresh in let H2 := fresh in
-           rewrite VSLemmas.subset_add6 in H;
-           move/andP: H => [H1 H2]; tac
+         | |- is_true (VS.subset _ _) => by VSLemmas.dp_subset
+         | |- is_true (VS.mem _ _) => by VSLemmas.dp_mem
          | |- _ => idtac
          end in
-     tac).
+    tac).
   Qed.
 
 
