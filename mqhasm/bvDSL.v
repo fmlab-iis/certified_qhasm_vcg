@@ -736,9 +736,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     end.
 
   Inductive rbexp :=
+  | bvrFalse : rbexp
   | bvrTrue : rbexp
   | bvrCmp : forall n : nat, cmpop -> rexp n -> rexp n -> rbexp
-  | bvrAnd : rbexp -> rbexp -> rbexp.
+  | bvrAnd : rbexp -> rbexp -> rbexp
+  | bvrOr  : rbexp -> rbexp -> rbexp.
 
   Definition bvult w (e1 e2 : rexp w) := bvrCmp bvUltOp e1 e2.
   Definition bvule w (e1 e2 : rexp w) := bvrCmp bvUleOp e1 e2.
@@ -752,11 +754,25 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     | _, _ => bvrAnd e1 e2
     end.
 
+  Definition bvror e1 e2 : rbexp :=
+    match e1, e2 with
+    | bvrFalse, _ => e2
+    | _, bvrFalse => e1
+    | _, _ => bvrOr e1 e2
+    end.
+
   Fixpoint bvrands es : rbexp :=
     match es with
     | [::] => bvrTrue
     | hd::[::] => hd
     | hd::tl => bvrand hd (bvrands tl)
+    end.
+
+  Fixpoint bvrors es : rbexp :=
+    match es with
+    | [::] => bvrFalse
+    | hd::[::] => hd
+    | hd::tl => bvror hd (bvrors tl)
     end.
 
   Definition bexp : Type := (ebexp * rbexp).
@@ -810,9 +826,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
 
   Fixpoint vars_rbexp (e : rbexp) : VS.t :=
     match e with
+    | bvrFalse 
     | bvrTrue => VS.empty
     | bvrCmp _ _ e1 e2 => VS.union (vars_rexp e1) (vars_rexp e2)
     | bvrAnd e1 e2 => VS.union (vars_rbexp e1) (vars_rbexp e2)
+    | bvrOr e1 e2  => VS.union (vars_rbexp e1) (vars_rbexp e2)
     end.
 
   Definition vars_bexp (e : bexp) : VS.t :=
@@ -877,8 +895,10 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
   Fixpoint eval_rbexp (e : rbexp) (s : State.t) : Prop :=
     match e with
     | bvrTrue => True
+    | bvrFalse => False
     | bvrCmp _ op e1 e2 => eval_cmpop op (eval_rexp e1 s) (eval_rexp e2 s)
     | bvrAnd e1 e2 => eval_rbexp e1 s /\ eval_rbexp e2 s
+    | bvrOr e1 e2 => eval_rbexp e1 s \/ eval_rbexp e2 s
     end.
 
   Definition eval_bexp (e : bexp) (s : State.t) : Prop :=
@@ -1026,6 +1046,24 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     move=> H; exact: ((proj2 (eval_bvrand e1 e2 s)) H).
   Qed.
 
+  Lemma eval_bvror e1 e2 s :
+    (eval_rbexp e1 s \/ eval_rbexp e2 s) <-> (eval_rbexp (bvror e1 e2) s).
+  Proof.
+    case: e1; case: e2 => /=; tauto .
+  Qed.
+
+  Lemma eval_bvror1 e1 e2 s :
+    eval_rbexp e1 s -> eval_rbexp (bvror e1 e2) s .
+  Proof .
+    by move=> H; apply eval_bvror; left .
+  Qed .
+
+  Lemma eval_bvror2 e1 e2 s :
+    eval_rbexp e2 s -> eval_rbexp (bvror e1 e2) s .
+  Proof .
+    by move=> H; apply eval_bvror; right .
+  Qed .
+    
   Lemma eval_bvand_eqn_distr e1 e2 s :
     (eval_ebexp (eqn_bexp e1) s /\ eval_ebexp (eqn_bexp e2) s) <->
     eval_ebexp (eqn_bexp (bvand e1 e2)) s.

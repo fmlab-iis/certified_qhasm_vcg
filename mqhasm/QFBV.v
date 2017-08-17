@@ -39,6 +39,7 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
   | bvSignExtend : forall w i, exp (w.+1) -> exp (w.+1 + i).
 
   Inductive bexp : Type :=
+  | bvFalse : bexp
   | bvTrue : bexp
   | bvUlt : forall w, exp w -> exp w -> bexp
   | bvUle : forall w, exp w -> exp w -> bexp
@@ -49,7 +50,8 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
   | bvSubo : forall w, exp w -> exp w -> bexp
   | bvMulo : forall w, exp w -> exp w -> bexp
   | bvLneg : bexp -> bexp
-  | bvConj : bexp -> bexp -> bexp.
+  | bvConj : bexp -> bexp -> bexp
+  | bvDisj : bexp -> bexp -> bexp.
 
   Definition bvEqMod w (e1 e2 p : exp w) : bexp :=
     bvEq (bvMod e1 p) (bvMod e2 p).
@@ -80,6 +82,7 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
 
   Fixpoint vars_bexp e : VS.t :=
     match e with
+    | bvFalse
     | bvTrue => VS.empty
     | bvUlt _ e1 e2
     | bvUle _ e1 e2
@@ -90,7 +93,8 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
     | bvSubo _ e1 e2
     | bvMulo _ e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
     | bvLneg e => vars_bexp e
-    | bvConj e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
+    | bvConj e1 e2 
+    | bvDisj e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
 
 
@@ -132,6 +136,7 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
 
   Fixpoint eval_bexp (e : bexp) (s : state) : Prop :=
     match e with
+    | bvFalse => False
     | bvTrue => True
     | bvUlt _ e1 e2 => ltB (eval_exp e1 s) (eval_exp e2 s)
     | bvUle _ e1 e2 => leB (eval_exp e1 s) (eval_exp e2 s)
@@ -144,6 +149,7 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
       high w (fullmulB (eval_exp e1 s) (eval_exp e2 s)) <> #0
     | bvLneg e => ~ eval_bexp e s
     | bvConj e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
+    | bvDisj e1 e2 => eval_bexp e1 s \/ eval_bexp e2 s
     end.
 
   Definition valid (e : bexp) : Prop :=
@@ -222,6 +228,7 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
 
   Fixpoint well_formed_bexp (e : bexp) : bool :=
     match e with
+    | bvFalse
     | bvTrue => true
     | bvUlt _ e1 e2
     | bvUle _ e1 e2
@@ -232,7 +239,8 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V
     | bvSubo _ e1 e2
     | bvMulo _ e1 e2 => (well_formed_exp e1) && (well_formed_exp e1)
     | bvLneg e => well_formed_bexp e
-    | bvConj e1 e2 => (well_formed_bexp e1) && (well_formed_bexp e1)
+    | bvConj e1 e2 
+    | bvDisj e1 e2 => (well_formed_bexp e1) && (well_formed_bexp e1)
     end.
 
 End MakeQFBV.

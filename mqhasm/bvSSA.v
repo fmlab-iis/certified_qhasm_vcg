@@ -277,9 +277,11 @@ Fixpoint ssa_ebexp (m : vmap) (e : ebexp) : bv64SSA.ebexp :=
 
 Fixpoint ssa_rbexp (m : vmap) (e : rbexp) : bv64SSA.rbexp :=
   match e with
+  | bvrFalse => bv64SSA.bvrFalse
   | bvrTrue => bv64SSA.bvrTrue
   | bvrCmp _ op e1 e2 => bv64SSA.bvrCmp (ssa_cmpop op) (ssa_rexp m e1) (ssa_rexp m e2)
   | bvrAnd e1 e2 => bv64SSA.bvrAnd (ssa_rbexp m e1) (ssa_rbexp m e2)
+  | bvrOr e1 e2  => bv64SSA.bvrOr (ssa_rbexp m e1) (ssa_rbexp m e2)
   end.
 
 Definition ssa_bexp (m : vmap) (e : bexp) : bv64SSA.bexp :=
@@ -754,7 +756,9 @@ Lemma ssa_vars_rbexp_comm m e :
 Proof.
   elim: e => /=.
   - reflexivity.
+  - reflexivity.
   - move=> w op e1 e2. rewrite ssa_vars_rexp_union; reflexivity.
+  - move=> e1 IH1 e2 IH2. rewrite -IH1 -IH2 ssa_vars_union; reflexivity.
   - move=> e1 IH1 e2 IH2. rewrite -IH1 -IH2 ssa_vars_union; reflexivity.
 Qed.
 
@@ -1475,7 +1479,9 @@ Lemma ssa_eval_rbexp m s ss e :
 Proof.
   move=> Heq; elim: e => /=.
   - done.
+  - done.
   - move=> w op e1 e2. rewrite 2!(ssa_eval_rexp _ Heq) ssa_eval_cmpop. done.
+  - move=> e1 [IH11 IH12] e2 [IH21 IH22]. tauto.
   - move=> e1 [IH11 IH12] e2 [IH21 IH22]. tauto.
 Qed.
 
@@ -2540,10 +2546,15 @@ Lemma ssa_unchanged_instr_eval_rbexp e s1 s2 i :
 Proof.
   elim: e => /=.
   - done.
+  - done.
   - move=> w op e1 e2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (ssa_unchanged_instr_eval_rexp Hun1 Hei)
             (ssa_unchanged_instr_eval_rexp Hun2 Hei).
+    done.
+  - move=> e1 IH1 e2 IH2 Hun Hei.
+    move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (IH1 Hun1 Hei) (IH2 Hun2 Hei).
     done.
   - move=> e1 IH1 e2 IH2 Hun Hei.
     move: (ssa_unchanged_instr_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -2614,10 +2625,15 @@ Lemma ssa_unchanged_program_eval_rbexp e s1 s2 p :
 Proof.
   elim: e => /=.
   - done.
+  - done.
   - move=> w op e1 e2 Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
     rewrite (ssa_unchanged_program_eval_rexp Hun1 Hep)
             (ssa_unchanged_program_eval_rexp Hun2 Hep).
+    done.
+  - move=> e1 IH1 e2 IH2 Hun Hep.
+    move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
+    rewrite (IH1 Hun1 Hep) (IH2 Hun2 Hep).
     done.
   - move=> e1 IH1 e2 IH2 Hun Hep.
     move: (ssa_unchanged_program_union1 Hun) => {Hun} [Hun1 Hun2].
@@ -3459,10 +3475,17 @@ Proof.
   elim: e m v i => /=.
   - move=> m v i Hmem.
     discriminate.
+  - move=> m v i Hmem.
+    discriminate.
   - move=> w op e1 e2 m v i Hmem.
     rewrite bv64SSA.VSLemmas.union_b in Hmem.
     move/orP: Hmem; case=> Hmem;
     apply: (ssa_rexp_var_index Hmem); reflexivity.
+  - move=> e1 IH1 e2 IH2 m v i Hmem.
+    rewrite bv64SSA.VSLemmas.union_b in Hmem.
+    move/orP: Hmem; case=> Hmem.
+    + exact: IH1.
+    + exact: IH2.
   - move=> e1 IH1 e2 IH2 m v i Hmem.
     rewrite bv64SSA.VSLemmas.union_b in Hmem.
     move/orP: Hmem; case=> Hmem.

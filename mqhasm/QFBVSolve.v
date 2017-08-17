@@ -41,6 +41,7 @@ Inductive sexp : Type :=
 | sbvSignExtend : nat -> nat -> sexp -> sexp.
 
 Inductive sbexp : Type :=
+| sbvFalse : sbexp
 | sbvTrue : sbexp
 | sbvUlt : nat -> sexp -> sexp -> sbexp
 | sbvUle : nat -> sexp -> sexp -> sbexp
@@ -51,7 +52,8 @@ Inductive sbexp : Type :=
 | sbvSubo : nat -> sexp -> sexp -> sbexp
 | sbvMulo : nat -> sexp -> sexp -> sbexp
 | sbvLneg : sbexp -> sbexp
-| sbvConj : sbexp -> sbexp -> sbexp.
+| sbvConj : sbexp -> sbexp -> sbexp
+| sbvDisj : sbexp -> sbexp -> sbexp.
 
 Inductive simp : Type :=
 | sbvNil : simp
@@ -166,6 +168,7 @@ Ltac abs_exp e :=
 
 Ltac abs_bexp e :=
   lazymatch e with
+  | bvFalse => constr:(sbvFalse)
   | bvTrue => constr:(sbvTrue)
   | @bvUlt ?w ?e1 ?e2 =>
     let w := eval compute in w in
@@ -218,6 +221,16 @@ Ltac abs_bexp e :=
     | _ => match e2 with
            | sbvTrue => e1
            | _ => constr:(sbvConj e1 e2)
+           end
+    end
+  | @bvDisj ?e1 ?e2 =>
+    let e1 := abs_bexp e1 in
+    let e2 := abs_bexp e2 in
+    match e1 with
+    | sbvFalse => e2
+    | _ => match e2 with
+           | sbvFalse => e1
+           | _ => constr:(sbvDisj e1 e2)
            end
     end
   | _ => fail 100

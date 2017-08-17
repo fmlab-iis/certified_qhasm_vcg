@@ -274,6 +274,7 @@ module CoqQFBV = struct
     let _sbvZeroExtend : Term.constr lazy_t = lazy (init_constant path "sbvZeroExtend")
     let _sbvSignExtend : Term.constr lazy_t = lazy (init_constant path "sbvSignExtend")
 
+    let _sbvFalse : Term.constr lazy_t = lazy (init_constant path "sbvFalse")
     let _sbvTrue : Term.constr lazy_t = lazy (init_constant path "sbvTrue")
     let _sbvUlt : Term.constr lazy_t = lazy (init_constant path "sbvUlt")
     let _sbvUle : Term.constr lazy_t = lazy (init_constant path "sbvUle")
@@ -285,6 +286,7 @@ module CoqQFBV = struct
     let _sbvMulo : Term.constr lazy_t = lazy (init_constant path "sbvMulo")
     let _sbvLneg : Term.constr lazy_t = lazy (init_constant path "sbvLneg")
     let _sbvConj : Term.constr lazy_t = lazy (init_constant path "sbvConj")
+    let _sbvDisj : Term.constr lazy_t = lazy (init_constant path "sbvDisj")
 
     let _sbvNil : Term.constr lazy_t = lazy (init_constant path "sbvNil")
     let _sbvCons : Term.constr lazy_t = lazy (init_constant path "sbvCons")
@@ -318,6 +320,7 @@ type exp =
   | SignExtend of (int * int * exp)
 
 type bexp =
+  | False
   | True
   | Ult of (int * exp * exp)
   | Ule of (int * exp * exp)
@@ -329,6 +332,7 @@ type bexp =
   | Mulo of (int * exp * exp)
   | Lneg of bexp
   | Conj of (bexp * bexp)
+  | Disj of (bexp * bexp)
 
 let is_atomic t =
   match t with
@@ -383,6 +387,7 @@ let rec obexp_of_cbexp e =
     match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
       None -> fail "Failed to find the definition of constant."
     | Some e' -> obexp_of_cbexp e'
+  else if Constr.equal e (Lazy.force CoqQFBV._sbvFalse) then False
   else if Constr.equal e (Lazy.force CoqQFBV._sbvTrue) then True
   else
     try
@@ -397,6 +402,7 @@ let rec obexp_of_cbexp e =
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvMulo) then Mulo (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvLneg) then Lneg (obexp_of_cbexp args.(0))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvConj) then Conj (obexp_of_cbexp args.(0), obexp_of_cbexp args.(1))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvDisj) then Disj (obexp_of_cbexp args.(0), obexp_of_cbexp args.(1))
       else fail "Not a valid sbexp (2)."
     with destKO -> fail "Not a valid sbexp (1)."
 
@@ -484,6 +490,7 @@ let rec string_of_exp (e : exp) : string =
 
 let rec string_of_bexp e =
   match e with
+  | False -> "False"
   | True -> "True"
   | Ult (w, e1, e2) -> string_of_exp e1 ^ " < " ^ string_of_exp e2
   | Ule (w, e1, e2) -> string_of_exp e1 ^ " <= " ^ string_of_exp e2
@@ -495,6 +502,7 @@ let rec string_of_bexp e =
   | Mulo (w, e1, e2) -> string_of_exp e1 ^ " *ov " ^ string_of_exp e2
   | Lneg e -> "~ (" ^ string_of_bexp e ^ ")"
   | Conj (e1, e2) -> string_of_bexp e1 ^ " /\\ " ^ string_of_bexp e2
+  | Disj (e1, e2) -> string_of_bexp e1 ^ " \\/ " ^ string_of_bexp e2
 
 let rec string_of_imp es = String.concat " -> " (List.map string_of_bexp es)
 
@@ -552,6 +560,7 @@ let rec vars_exp e =
 
 let rec vars_bexp e =
   match e with
+  | False
   | True -> VM.empty
   | Ult (_, e1, e2)
   | Ule (_, e1, e2)
@@ -562,7 +571,8 @@ let rec vars_bexp e =
   | Subo (_, e1, e2)
   | Mulo (_, e1, e2) -> VM.merge mvars (vars_exp e1) (vars_exp e2)
   | Lneg e -> vars_bexp e
-  | Conj (e1, e2) -> VM.merge mvars (vars_bexp e1) (vars_bexp e2)
+  | Conj (e1, e2) 
+  | Disj (e1, e2) -> VM.merge mvars (vars_bexp e1) (vars_bexp e2)
 
 let rec vars_imp es =
   List.fold_left (fun res e -> VM.merge mvars res (vars_bexp e)) VM.empty es
@@ -883,6 +893,7 @@ let rec btor_of_exp m e =
 
 let rec smtlib2_of_bexp e =
   match e with
+  | False -> "false"
   | True -> "true"
   | Ult (w, e1, e2) -> bvult (smtlib2_of_exp e1) (smtlib2_of_exp e2)
   | Ule (w, e1, e2) -> bvule (smtlib2_of_exp e1) (smtlib2_of_exp e2)
@@ -894,9 +905,11 @@ let rec smtlib2_of_bexp e =
   | Mulo (w, e1, e2) -> bvmulo w (smtlib2_of_exp e1) (smtlib2_of_exp e2)
   | Lneg e -> "(not " ^ smtlib2_of_bexp e ^ ")"
   | Conj (e1, e2) -> "(and " ^ smtlib2_of_bexp e1 ^ " " ^ smtlib2_of_bexp e2 ^ ")"
+  | Disj (e1, e2) -> "(or " ^ smtlib2_of_bexp e1 ^ " " ^ smtlib2_of_bexp e2 ^ ")"
 
 let rec btor_of_bexp m e =
   match e with
+  | False -> m#mkconstd 0 num_0
   | True -> m#mkconstd 1 num_1
   | Ult (w, e1, e2) -> m#mkult (btor_of_exp m e1) (btor_of_exp m e2)
   | Ule (w, e1, e2) -> m#mkule (btor_of_exp m e1) (btor_of_exp m e2)
@@ -908,6 +921,7 @@ let rec btor_of_bexp m e =
   | Mulo (w, e1, e2) -> m#mkmulo (btor_of_exp m e1) (btor_of_exp m e2)
   | Lneg e -> m#mknot 1 (btor_of_bexp m e)
   | Conj (e1, e2) -> m#mkand 1 (btor_of_bexp m e1) (btor_of_bexp m e2)
+  | Disj (e1, e2) -> m#mkor 1 (btor_of_bexp m e1) (btor_of_bexp m e2)
 
 let rec smtlib2_of_imp es =
   let (premises, goal) =

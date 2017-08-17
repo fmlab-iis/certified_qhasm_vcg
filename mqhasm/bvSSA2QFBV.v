@@ -174,6 +174,7 @@ Fixpoint exp_rexp w (e : rexp w) : QFBV64.exp w :=
 
 Fixpoint bexp_rbexp (e : rbexp) : QFBV64.bexp :=
   match e with
+  | bvrFalse => QFBV64.bvFalse
   | bvrTrue => QFBV64.bvTrue
   | bvrCmp _ op e1 e2 =>
     match op with
@@ -183,6 +184,7 @@ Fixpoint bexp_rbexp (e : rbexp) : QFBV64.bexp :=
     | bvUgeOp => QFBV64.bvUge (exp_rexp e1) (exp_rexp e2)
     end
   | bvrAnd e1 e2 => QFBV64.bvConj (bexp_rbexp e1) (bexp_rbexp e2)
+  | bvrOr e1 e2 => QFBV64.bvDisj (bexp_rbexp e1) (bexp_rbexp e2)
   end.
 
 Record bexp_spec : Type :=
@@ -253,12 +255,16 @@ Lemma eval_bexp_rbexp e s:
 Proof.
   split; elim: e => /=.
   - done.
+  - done.
   - move=> w op e1 e2. case: op; rewrite /= 2!eval_exp_rexp.
     + done.
     + done.
     + by rewrite ltBNle.
     + by rewrite leBNlt.
   - move=> e1 IH1 e2 IH2 [H1 H2]; exact: (conj (IH1 H1) (IH2 H2)).
+  - move=> e1 IH1 e2 IH2 H; elim: H; move=> H; 
+    [ left; exact: (IH1 H) | right; exact (IH2 H) ] .
+  - done.
   - done.
   - move=> w op e1 e2; case: op; rewrite /= 2!eval_exp_rexp.
     + done.
@@ -266,6 +272,8 @@ Proof.
     + by rewrite ltBNle.
     + by rewrite leBNlt.
   - move=> e1 IH1 e2 IH2 [H1 H2]; exact: (conj (IH1 H1) (IH2 H2)).
+  - move=> e1 IH1 e2 IH2 H; elim: H; move=> H;
+    [ left; exact (IH1 H) | right; exact (IH2 H) ] .
 Qed.
 
 Lemma eval_bexp_rbexp1 e s:
