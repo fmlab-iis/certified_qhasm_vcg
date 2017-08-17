@@ -127,7 +127,7 @@ def main():
       res = trfile(parse_descriptor_comment(sys.argv[1]), sys.argv[1])
     print "From Coq Require Import ZArith ."
     print "From mathcomp Require Import ssreflect ssrbool ssrnat seq ."
-    print "From Common Require Import Bits ."
+    print "From Common Require Import Var Bits ."
     print "From mQhasm Require Import bvDSL bvVerify Options ."
     print "Set Implicit Arguments ."
     print "Unset Strict Implicit ."
