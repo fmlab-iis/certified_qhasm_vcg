@@ -82,51 +82,9 @@ End MakeSsrOrderedType.
 
 (** Product of ordered types. *)
 
-Module MakeProdEqType (O1 O2 : EQTYPE).
-  Definition t : Type := (O1.t * O2.t).
-  Definition eq : t -> t -> bool :=
-    fun x y => (fst x == fst y) && (snd x == snd y).
-  Lemma eqP : Equality.axiom eq.
-  Proof.
-    move=> [] x1 x2 [] y1 y2.
-    rewrite /eq /=.
-    case H1: (x1 == y1); case H2: (x2 == y2).
-    - apply: ReflectT.
-      rewrite (eqP H1) (eqP H2).
-      reflexivity.
-    - apply: ReflectF => H.
-      case: H => H1' H2'.
-      apply/negPf: H2.
-      rewrite H2'.
-      exact: eqxx.
-    - apply: ReflectF => H.
-      case: H => H1' H2'.
-      apply/negPf: H1.
-      rewrite H1'.
-      exact: eqxx.
-    - apply: ReflectF => H.
-      case: H => H1' H2'.
-      apply/negPf: H1.
-      rewrite H1'.
-      exact: eqxx.
-  Qed.
-  Definition prod_eqMixin := EqMixin eqP.
-  Canonical prod_eqType := Eval hnf in EqType t prod_eqMixin.
-End MakeProdEqType.
+Module MakeProdOrderedMinimal (O1 O2 : SsrOrderedType) <: SsrOrderedTypeMinimal with Definition t := prod_eqType O1.T O2.T.
 
-Module MakeProdOrderedMinimal (O1 O2 : SsrOrderedType) <: SsrOrderedTypeMinimal.
-
-  Module E1 <: EQTYPE.
-    Definition t : eqType := O1.T.
-  End E1.
-
-  Module E2 <: EQTYPE.
-    Definition t : eqType := O2.T.
-  End E2.
-
-  Module P := MakeProdEqType E1 E2.
-
-  Definition t : eqType := P.prod_eqType.
+  Definition t : eqType := prod_eqType O1.T O2.T.
 
   Definition eq : t -> t -> bool := fun x y => x == y.
 
@@ -222,7 +180,7 @@ Module MakeProdOrderedMinimal (O1 O2 : SsrOrderedType) <: SsrOrderedTypeMinimal.
 
 End MakeProdOrderedMinimal.
 
-Module MakeProdOrdered (O1 O2 : SsrOrderedType) <: SsrOrderedType.
+Module MakeProdOrdered (O1 O2 : SsrOrderedType) <: SsrOrderedType with Definition T := prod_eqType O1.T O2.T.
   Module M := MakeProdOrderedMinimal O1 O2.
   Module P := MakeSsrOrderedType M.
   Include P.

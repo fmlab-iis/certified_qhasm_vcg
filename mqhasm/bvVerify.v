@@ -13,17 +13,12 @@ Import Prenex Implicits.
 
 (** bvspec - specification with specified input variables *)
 
-Definition bvspec : Type := (bv64DSL.VS.t * bv64DSL.spec).
+Definition bvspec : Type := (VS.t * bv64DSL.spec).
 
 Definition valid_bvspec (s : bvspec) : Prop :=
   bv64DSL.well_formed_spec (fst s) (snd s) /\ bv64DSL.valid_spec (snd s).
 
 
-
-(* We need to convert bv64DSL.VS.t to zDSL.VS.t. *)
-Module M2 := Map2 bv64DSL.VS zDSL.VS.
-Definition bvdsl2zdsl_vars (vs : bv64DSL.VS.t) : zDSL.VS.t :=
-  M2.map2 id vs.
 
 Ltac get_smt_solver o :=
   let a := constr:((opt_z3 o, opt_boolector o)) in
@@ -121,7 +116,7 @@ Ltac bv2zspec_to_poly_with o :=
   let tac _ :=
       lazymatch goal with
       | |- zSSA.valid_spec (bv2z_spec_eqn ?ssa_vs (bvSSA.ssa_spec ?spec)) =>
-        apply: (@zPoly.bexp_spec_sound (bv2z_vars ssa_vs));
+        apply: (@zPoly.bexp_spec_sound ssa_vs);
         [ (* well_formed_ssa_spec *)
           done
         | bvzsimpl; rewrite_bv2z_consts; intros;

@@ -9,9 +9,69 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+Module Type SsrFSet.
+  Declare Module E : SsrOrderedType.
+  Include Sfun E.
+End SsrFSet.
 
+Module Backport_Sets
+       (E : SsrOrderedType)
+       (M : MSetInterface.Sets with Definition E.t := E.t
+                               with Definition E.eq := E.eq
+                               with Definition E.lt := E.lt)
+       <: SsrFSet with Module E := E.
 
-Module FSetLemmas (S : FSetInterface.S).
+  Include Coq.FSets.FSetCompat.Backport_WSets E M.
+
+  Implicit Type s : t.
+  Implicit Type x y : elt.
+
+  Definition lt : t -> t -> Prop := M.lt.
+  Definition min_elt : t -> option elt := M.min_elt.
+  Definition max_elt : t -> option elt := M.max_elt.
+  Definition min_elt_1 : forall s x, min_elt s = Some x -> In x s
+   := M.min_elt_spec1.
+  Definition min_elt_2 : forall s x y,
+   min_elt s = Some x -> In y s -> ~ E.lt y x
+   := M.min_elt_spec2.
+  Definition min_elt_3 : forall s, min_elt s = None -> Empty s
+   := M.min_elt_spec3.
+  Definition max_elt_1 : forall s x, max_elt s = Some x -> In x s
+   := M.max_elt_spec1.
+  Definition max_elt_2 : forall s x y,
+   max_elt s = Some x -> In y s -> ~ E.lt x y
+   := M.max_elt_spec2.
+  Definition max_elt_3 : forall s, max_elt s = None -> Empty s
+   := M.max_elt_spec3.
+  Definition elements_3 : forall s, sort E.lt (elements s)
+   := M.elements_spec2.
+  Definition choose_3 : forall s s' x y,
+   choose s = Some x -> choose s' = Some y -> Equal s s' -> E.eq x y
+   := M.choose_spec3.
+  Definition lt_trans : forall s s' s'', lt s s' -> lt s' s'' -> lt s s''
+   := @StrictOrder_Transitive _ _ M.lt_strorder.
+  Lemma lt_not_eq : forall s s', lt s s' -> ~ eq s s'.
+  Proof.
+   unfold lt, eq. intros s s' Hlt Heq. rewrite -> Heq in Hlt.
+   apply (StrictOrder_Irreflexive s'); auto.
+  Qed.
+  Definition compare : forall s s', Compare lt eq s s'.
+  Proof.
+   intros s s'; destruct (CompSpec2Type (M.compare_spec s s'));
+    [ apply EQ | apply LT | apply GT ]; auto.
+  Defined.
+
+  Module E := E.
+
+End Backport_Sets.
+
+Module Make (X : SsrOrderedType) <: SsrFSet with Module E := X.
+  Module X' := OrdersAlt.Update_OT X.
+  Module MSet := MSetList.Make X'.
+  Include Backport_Sets X MSet.
+End Make.
+
+Module FSetLemmas (S : SsrFSet).
 
   Module F := Facts(S).
   Module OP := OrdProperties(S).
@@ -321,7 +381,7 @@ Module FSetLemmas (S : FSetInterface.S).
     move/memP=> H.
     apply: S.subset_1 => y Hy.
     move: (S.singleton_1 Hy) => {Hy} Hxy.
-    rewrite -Hxy.
+    rewrite -(eqP Hxy).
     assumption.
   Qed.
 
@@ -750,7 +810,8 @@ Module FSetLemmas (S : FSetInterface.S).
       apply: (Hemp x).
       apply/memP.
       apply: (mem_inter3 H).
-      exact: mem_singleton2.
+      apply: mem_singleton2.
+      exact: S.E.eq_refl.
     - move/negP: H => H.
       apply: S.is_empty_1 => v /memP Hv.
       apply: H.
@@ -767,7 +828,8 @@ Module FSetLemmas (S : FSetInterface.S).
       apply: (Hemp x).
       apply/memP.
       apply: (mem_inter3 Hx).
-      exact: mem_add2.
+      apply: mem_add2.
+      exact: S.E.eq_refl.
     - case Hd12: (disjoint s1 s2) => /=.
       + apply: S.is_empty_1 => v /memP Hv.
         move: (mem_inter1 Hv) (mem_inter2 Hv) => {Hv} Hv1 Hv2.
@@ -894,6 +956,9 @@ Module FSetLemmas (S : FSetInterface.S).
     | |- ?x = ?x => reflexivity
     | |- is_true (?x == ?x) => exact: eqxx
     | |- S.E.eq ?x ?x => exact: S.E.eq_refl
+    | H1 : is_true (S.mem ?x ?s1), H2 : is_true (S.subset ?s1 ?s2) |-
+      is_true (S.mem ?x ?s2) =>
+      exact: (mem_subset H1 H2)
     (* *)
     | H : is_true (S.mem ?x (S.singleton ?y)) |- is_true (S.mem ?x _) =>
       move: (mem_singleton1 H) => {H} H; dp_mem
@@ -908,6 +973,27 @@ Module FSetLemmas (S : FSetInterface.S).
       first [ apply: mem_add2; by dp_mem | apply: mem_add3; by dp_mem ]
     | |- is_true (S.mem ?x (S.union ?s1 ?s2)) =>
       first [ apply: mem_union2; by dp_mem | apply: mem_union3; by dp_mem ]
+    (* *)
+    | H : is_true (S.subset (S.singleton _) _) |- _ =>
+      move: (subset_singleton1 H) => {H} H; dp_mem
+    | H : is_true (S.subset (S.add _ _) _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: (subset_add4 H) (subset_add5 H) => {H} H1 H2; dp_mem
+    | H : is_true (S.subset (S.union _ _) _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: (subset_union4 H) (subset_union5 H) => {H} H1 H2; dp_mem
+    (* *)
+    | H : is_true (_ && _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move/andP: H => [H1 H2]; dp_mem
+    | H : _ /\ _ |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: H => [H1 H2]; dp_mem
+    (* *)
+    | H : is_true (_ || _) |- _ =>
+      move/orP: H => [] H; dp_mem
+    | H : _ \/ _ |- _ =>
+      move: H => [] H; dp_mem
     end.
 
   Ltac dp_subset :=
@@ -917,6 +1003,9 @@ Module FSetLemmas (S : FSetInterface.S).
     | |- is_true (S.subset S.empty _) => exact: subset_empty
     | H : is_true (S.subset ?x ?y) |- is_true (S.subset ?x ?y) => exact: H
     | |- is_true (S.subset ?x ?x) => exact: subset_refl
+    | H1 : is_true (S.subset ?s1 ?s2), H2 : is_true (S.subset ?s2 ?s3) |-
+      is_true (S.subset ?s1 ?s3) =>
+      exact: (subset_trans H1 H2)
     (* *)
     | H : is_true (S.subset (S.singleton _) _) |- _ =>
       move: (subset_singleton1 H) => {H} H; dp_subset
@@ -939,6 +1028,18 @@ Module FSetLemmas (S : FSetInterface.S).
     | |- is_true (S.subset _ (S.union _ _)) =>
       first [ apply: subset_union1; by dp_subset |
               apply: subset_union2; by dp_subset ]
+    (* *)
+    | H : is_true (_ && _) |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move/andP: H => [H1 H2]; dp_subset
+    | H : _ /\ _ |- _ =>
+      let H1 := fresh in let H2 := fresh in
+      move: H => [H1 H2]; dp_subset
+    (* *)
+    | H : is_true (_ || _) |- _ =>
+      move/orP: H => [] H; dp_subset
+    | H : _ \/ _ |- _ =>
+      move: H => [] H; dp_subset
     end.
 
   Ltac dp_Equal :=
@@ -946,15 +1047,9 @@ Module FSetLemmas (S : FSetInterface.S).
 
 End FSetLemmas.
 
-Module Make (V : SsrOrderedType).
-  Module S := FSetList.Make V.
-  Module Lemmas := FSetLemmas(S).
-  Include S.
-End Make.
 
 
-
-Module Map2 (S1 S2 : FSetInterface.S).
+Module Map2 (S1 S2 : SsrFSet).
 
   Module Lemmas1 := FSetLemmas(S1).
   Module Lemmas2 := FSetLemmas(S2).
@@ -1018,7 +1113,8 @@ Module Map2 (S1 S2 : FSetInterface.S).
         inversion_clear Hin.
         + exists hd; split.
           * assumption.
-          * exact: InA_cons_hd.
+          * apply: InA_cons_hd.
+            exact: S1.E.eq_refl.
         + move: (IH _ H) => [y [Heq HinA]].
           exists y; split.
           * assumption.
@@ -1108,7 +1204,8 @@ Module Map2 (S1 S2 : FSetInterface.S).
           assumption.
       - case: (Lemmas2.mem_add1 Hmem) => {Hmem} Hx.
         + rewrite Hx map2_mem1.
-          exact: Lemmas1.mem_add2.
+          apply: Lemmas1.mem_add2.
+          exact: S1.E.eq_refl.
         + move: (map2_mem2 Hx) => [y [Hfy Hmemy]].
           rewrite Hfy map2_mem1.
           apply: Lemmas1.mem_add3.

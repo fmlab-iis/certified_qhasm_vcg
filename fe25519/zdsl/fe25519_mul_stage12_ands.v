@@ -1,4 +1,5 @@
 From Coq Require Import ZArith .
+From Common Require Import Var .
 From mQhasm Require Import zDSL zRadix .
 From mathcomp Require Import seq .
 

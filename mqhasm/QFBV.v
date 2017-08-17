@@ -7,9 +7,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
+Module MakeQFBV (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
 
-  Module VS := FSetList.Make V.
   Module VSLemmas := FSetLemmas VS.
 
   (*
@@ -98,9 +97,13 @@ Module MakeQFBV (A : ARCH) (V : SsrOrderedType).
 
   Notation value := (BITS A.wordsize).
 
-  Module Store := MakeTStore V.
+  Module ValueType <: Equalities.Typ.
+    Definition t : Set := value.
+  End ValueType.
 
-  Definition state := Store.t value.
+  Module Store := TStoreAdapter V ValueType.
+
+  Local Notation state := Store.t.
 
   Fixpoint eval_exp w (e : exp w) (s : state) : BITS w :=
     match e with
@@ -238,4 +241,4 @@ End MakeQFBV.
 
 From mQhasm Require Import bvSSA.
 
-Module QFBV64 := MakeQFBV AMD64 bv64SSA.V.
+Module QFBV64 := MakeQFBV AMD64 SSAVarOrder SSAVS.

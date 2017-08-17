@@ -30,9 +30,8 @@ Reserved Notation "f ===> g" (at level 82, no associativity).
 Reserved Notation "{{ f }} p {{ g }}" (at level 82, no associativity).
 Reserved Notation "|= s" (at level 83, no associativity).
 
-Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
+Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := V).
 
-  Module VS := FSetList.Make V.
   Module VSLemmas := FSetLemmas VS.
 
 
@@ -169,48 +168,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Lemma vars_instr_split i :
     VS.Equal (vars_instr i) (VS.union (lvs_instr i) (rvs_instr i)).
   Proof.
-    elim : i => /=; move=> *;
-    match goal with
-    | |- VS.Equal (VS.add ?v (vars_atomic ?e)) (VS.union (VS.singleton ?v) (vars_atomic ?e)) =>
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))
-                  (VS.union (VS.singleton ?v)
-                            (VS.union (vars_atomic ?e1) (vars_atomic ?e2))) =>
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal (VS.add ?vh (VS.add ?vl (vars_atomic ?e)))
-                  (VS.union (VS.add ?vh (VS.singleton ?vl)) (vars_atomic ?e)) =>
-      rewrite VSLemmas.OP.P.union_add;
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal
-           (VS.add ?vh (VS.add ?vl (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))
-           (VS.union (VS.add ?vh (VS.singleton ?vl))
-                     (VS.union (vars_atomic ?e1) (vars_atomic ?e2))) =>
-      rewrite VSLemmas.OP.P.union_add;
-      rewrite -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal
-           (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))
-           (VS.union (VS.singleton ?v)
-                     (VS.add ?c (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))) =>
-      rewrite VSLemmas.OP.P.add_add;
-      rewrite VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- VS.Equal
-           (VS.add ?a
-                   (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))))
-           (VS.union (VS.add ?c (VS.singleton ?v))
-                     (VS.add ?a (VS.union (vars_atomic ?e1) (vars_atomic ?e2)))) =>
-      rewrite (VSLemmas.OP.P.union_sym (VS.add _ _) (VS.add _ _))
-              VSLemmas.OP.P.union_add
-              (VSLemmas.OP.P.union_sym (VS.union _ _) (VS.add _ _))
-              VSLemmas.OP.P.union_add
-              -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-    | |- _ => idtac "not matched"
-    end.
+    elim : i => /=; move=> *; by VSLemmas.dp_Equal.
   Qed.
 
   Lemma mem_vars_instr1 v i :
@@ -260,14 +218,12 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     - rewrite VSLemmas.union_emptyl.
       reflexivity.
     - move=> hd tl IH.
-      rewrite VSLemmas.OP.P.union_assoc.
-      rewrite (VSLemmas.OP.P.union_sym (rvs_instr hd) (rvs_program tl)).
-      rewrite -(VSLemmas.OP.P.union_assoc (lvs_program tl)).
-      rewrite (VSLemmas.OP.P.union_sym _ (rvs_instr hd)).
-      rewrite -VSLemmas.OP.P.union_assoc.
-      rewrite -IH.
-      rewrite -vars_instr_split.
-      reflexivity.
+      have: VS.Equal (VS.union (VS.union (lvs_instr hd) (lvs_program tl))
+                               (VS.union (rvs_instr hd) (rvs_program tl)))
+                     (VS.union (VS.union (lvs_instr hd) (rvs_instr hd))
+                               (VS.union (lvs_program tl) (rvs_program tl))) by
+          VSLemmas.dp_Equal.
+      move=> ->. rewrite -IH. rewrite -vars_instr_split. reflexivity.
   Qed.
 
   Lemma mem_vars_program1 v p :
@@ -360,150 +316,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
   Notation value := int.
 
-  Module Store := MakeTStore V.
+  Module IntType <: Equalities.Typ.
+    Definition t : Set := int.
+  End IntType.
 
-  Module State.
-
-    Definition t : Type := Store.t value.
-
-    Definition empty : t := Store.empty value.
-
-    Definition acc (x : var) (s : t) : value :=
-      Store.acc x s.
-
-    Definition upd (x : var) (v : value) (s : t) : t :=
-      Store.upd x v s.
-
-    Definition upd2 (x1 : var) v1 (x2 : var) v2 (s : t) : t :=
-      upd x2 v2 (upd x1 v1 s).
-
-    Lemma acc_upd_eq :
-      forall (x y : var) v (s : t),
-        x == y ->
-        acc x (upd y v s) = v.
-    Proof.
-      exact: Store.acc_upd_eq.
-    Qed.
-
-    Lemma acc_upd_neq :
-      forall (x y : var) v (s : t),
-        x != y ->
-        acc x (upd y v s) = acc x s.
-    Proof.
-      exact: Store.acc_upd_neq.
-    Qed.
-
-    Lemma acc_upd2_eq1 :
-      forall (x : var) (y1 : var) v1 (y2 : var) v2 (s : t),
-        x == y1 ->
-        x != y2 ->
-        acc x (upd2 y1 v1 y2 v2 s) = v1.
-    Proof.
-      move=> x y1 v1 y2 v2 s Hx1 Hx2.
-      rewrite (acc_upd_neq _ _ Hx2) (acc_upd_eq _ _ Hx1).
-      reflexivity.
-    Qed.
-
-    Lemma acc_upd2_eq2 :
-      forall (x : var) (y1 : var) v1 (y2 : var) v2 (s : t),
-        x == y2 ->
-        acc x (upd2 y1 v1 y2 v2 s) = v2.
-    Proof.
-      move=> x y1 v1 y2 v2 s Hx2.
-      rewrite (acc_upd_eq _ _ Hx2).
-      reflexivity.
-    Qed.
-
-    Lemma acc_upd2_neq :
-      forall (x : var) (y1 : var) v1 (y2 : var) v2 s,
-        x != y1 ->
-        x != y2 ->
-        acc x (upd2 y1 v1 y2 v2 s) = acc x s.
-    Proof.
-      move=> x y1 v1 y2 v2 s Hx1 Hx2.
-      rewrite (acc_upd_neq _ _ Hx2) (acc_upd_neq _ _ Hx1).
-      reflexivity.
-    Qed.
-
-    Definition Upd (x : var) v (s1 s2 : t) : Prop :=
-      forall y, acc y s2 = acc y (upd x v s1).
-
-    Definition Upd2 (x1 : var) v1 (x2 : var) v2 (s1 s2 : t) : Prop :=
-      forall y, acc y s2 = acc y (upd x2 v2 (upd x1 v1 s1)).
-
-    Lemma Upd_upd :
-      forall (x : var) v s,
-        Upd x v s (upd x v s).
-    Proof.
-      exact: Store.Upd_upd.
-    Qed.
-
-    Lemma Upd2_upd :
-      forall (x1 : var) v1 (x2 : var) v2 s,
-        Upd2 x1 v1 x2 v2 s (upd x2 v2 (upd x1 v1 s)).
-    Proof.
-      move=> x1 v1 x2 v2 s y.
-      reflexivity.
-    Qed.
-
-    Lemma acc_Upd_eq :
-      forall (x y : var) v s1 s2,
-        x == y ->
-        Upd y v s1 s2 ->
-        acc x s2 = v.
-    Proof.
-      move=> x y v s1 s2 Hxy Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd_eq.
-    Qed.
-
-    Lemma acc_Upd_neq :
-      forall (x y : var) v s1 s2,
-        x != y ->
-        Upd y v s1 s2 ->
-        acc x s2 = acc x s1.
-    Proof.
-      move=> x y v s1 s2 Hxy Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd_neq.
-    Qed.
-
-    Lemma acc_Upd2_eq1 :
-      forall (x : var) (y1 : var) v1 (y2 : var) v2 s1 s2,
-        x == y1 ->
-        x != y2 ->
-        Upd2 y1 v1 y2 v2 s1 s2 ->
-        acc x s2 = v1.
-    Proof.
-      move=> x y1 v1 y2 v2 s1 s2 Heq Hne Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd2_eq1.
-    Qed.
-
-    Lemma acc_Upd2_eq2 :
-      forall (x : var) (y1 : var) v1 (y2 : var) v2 s1 s2,
-        x == y2 ->
-        Upd2 y1 v1 y2 v2 s1 s2 ->
-        acc x s2 = v2.
-    Proof.
-      move=> x y1 v1 y2 v2 s1 s2 Heq Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd2_eq2.
-    Qed.
-
-    Lemma acc_Upd2_neq :
-      forall (x : var) (y1 : var) v1 (y2 : var) v2 s1 s2,
-        x != y1 ->
-        x != y2 ->
-        Upd2 y1 v1 y2 v2 s1 s2 ->
-        acc x s2 = acc x s1.
-    Proof.
-      move=> x y1 v1 y2 v2 s1 s2 Hne1 Hne2 Hupd.
-      rewrite (Hupd x).
-      exact: acc_upd2_neq.
-    Qed.
-
-  End State.
+  Module State := TStoreAdapter V IntType.
 
 
 
@@ -514,39 +331,6 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     | bvVar v => State.acc v s
     | bvConst n => n
     end.
-
-  Program Definition high_ext (n : nat) (x : BITS n) (p : nat) : BITS n :=
-    (if Program.Utils.dec (p < n)
-     then zeroExtend (n - p) (@high p (n - p) x)
-     else zero n)%GEN_IF.
-  Next Obligation.
-    apply: Logic.eq_sym.
-    apply: subnK.
-    exact: ltnW.
-  Qed.
-  Next Obligation.
-    apply: subnKC.
-    exact: ltnW.
-  Qed.
-
-  Program Definition low_ext (n : nat) (x : BITS n) (p : nat) : BITS n :=
-    (if Program.Utils.dec (p < n)
-     then zeroExtend (n - p) (@low (n - p) p x)
-     else x)%GEN_IF.
-  Next Obligation.
-    apply: Logic.eq_sym.
-    apply: subnKC.
-    exact: ltnW.
-  Qed.
-  Next Obligation.
-    apply: subnKC.
-    exact: ltnW.
-  Qed.
-
-  (*
-  Definition split_ext (n : nat) (x : BITS n) (p : nat) :=
-    (high_ext x (n - p), low_ext x p).
-   *)
 
   Definition split_ext (n : nat) (x : BITS n) (p : nat) :=
     (shrBn x p,
@@ -644,12 +428,98 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
                  s
     end.
 
+  Inductive succ_instr (s : State.t) : instr -> State.t -> Prop :=
+  | succAssign v e :
+      succ_instr s (bvAssign v e)
+           (State.upd v (eval_atomic e s) s)
+  | succAdd v e1 e2 :
+      succ_instr s (bvAdd v e1 e2)
+           (State.upd v (addB (eval_atomic e1 s) (eval_atomic e2 s)) s)
+  | succAddC c v e1 e2 :
+      succ_instr s (bvAddC c v e1 e2)
+           (State.upd2
+              c (high A.wordsize
+                      (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                            (zeroExtend A.wordsize (eval_atomic e2 s))))
+              v (low A.wordsize
+                     (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                           (zeroExtend A.wordsize (eval_atomic e2 s))))
+              s)
+  | succAdc v e1 e2 c :
+      succ_instr s (bvAdc v e1 e2 c)
+           (State.upd
+              v (low A.wordsize
+                     (addB
+                        (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                              (zeroExtend A.wordsize (eval_atomic e2 s)))
+                        (zeroExtend A.wordsize (State.acc c s))))
+              s)
+  | succAdcC c v e1 e2 a :
+      succ_instr s (bvAdcC c v e1 e2 a)
+           (State.upd2
+              c (high A.wordsize
+                      (addB
+                         (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                               (zeroExtend A.wordsize (eval_atomic e2 s)))
+                         (zeroExtend A.wordsize (State.acc a s))))
+              v (low A.wordsize
+                     (addB
+                        (addB (zeroExtend A.wordsize (eval_atomic e1 s))
+                              (zeroExtend A.wordsize (eval_atomic e2 s)))
+                        (zeroExtend A.wordsize (State.acc a s))))
+              s)
+  | succSub v e1 e2 :
+      succ_instr s (bvSub v e1 e2)
+           (State.upd v (subB (eval_atomic e1 s) (eval_atomic e2 s)) s)
+(*
+  | succSubC c v e1 e2 : 
+      succ_instr s (bvSubC c v e1 e2)
+           (State.upd2 
+              c (if carry_subB (eval_atomic e1 s) (eval_atomic e2 s) then bvone else bvzero)
+              v (subB (eval_atomic e1 s) (eval_atomic e2 s))
+              s)
+*)
+  | succMul v e1 e2 :
+      succ_instr s (bvMul v e1 e2)
+           (State.upd v (mulB (eval_atomic e1 s) (eval_atomic e2 s)) s)
+  | succMulf vh vl e1 e2 :
+      succ_instr s (bvMulf vh vl e1 e2)
+           (State.upd2
+              vh (high A.wordsize (fullmulB (eval_atomic e1 s)
+                                            (eval_atomic e2 s)))
+              vl (low A.wordsize (fullmulB (eval_atomic e1 s)
+                                           (eval_atomic e2 s)))
+              s)
+  | succShl v e p :
+      succ_instr s (bvShl v e p)
+           (State.upd v (shlBn (eval_atomic e s) (toNat p)) s)
+  | succSplit vh vl e p :
+      succ_instr s (bvSplit vh vl e p)
+           (State.upd2
+              vh (fst (split_ext (eval_atomic e s) (toNat p)))
+              vl (snd (split_ext (eval_atomic e s) (toNat p)))
+              s)
+  | succConcatShl vh vl e1 e2 p :
+      succ_instr s (bvConcatShl vh vl e1 e2 p)
+           (State.upd2
+              vh (fst (concat_shl (eval_atomic e1 s)
+                                  (eval_atomic e2 s) (toNat p)))
+              vl (snd (concat_shl (eval_atomic e1 s)
+                                  (eval_atomic e2 s) (toNat p)))
+              s) .
+
+  Fixpoint succ_program (s : State.t) (p: program) (t : State.t) : Prop :=
+    match p with
+      | [::] => s = t
+      | hd::tl => exists r, succ_instr s hd r /\ succ_program r tl t
+    end .
+  
   Fixpoint eval_program (s : State.t) (p : program) : State.t :=
     match p with
     | [::] => s
     | hd::tl => eval_program (eval_instr s hd) tl
     end.
-
+  
   Lemma eval_program_singleton :
     forall (i : instr) (s1 s2 : State.t),
       eval_program s1 ([:: i]) = s2 ->
@@ -657,6 +527,25 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Proof.
     move=> i s1 s2 H; assumption.
   Qed.
+
+  Lemma succ_program_singleton :
+    forall (i : instr) (s1 s2 : State.t),
+      succ_program s1 [:: i] s2 -> succ_instr s1 i s2 .
+  Proof .
+    move=> i s1 s2 H .
+    case: H .
+    simpl .
+    move=> x [] => H0 H1 .
+    by rewrite H1 in H0 .
+  Qed .
+
+  Lemma succ_singleton_program :
+    forall (i : instr) (s1 s2 : State.t),
+      succ_instr s1 i s2 -> succ_program s1 [:: i] s2 .
+  Proof .
+    move=> i s1 s2 H => /= .
+    by exists s2 .
+  Qed .
 
   Lemma eval_program_cons :
     forall (hd : instr) (tl : program) (s1 s2 : State.t),
@@ -670,6 +559,15 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     - assumption.
   Qed.
 
+  Lemma succ_program_cons :
+    forall (hd : instr) (tl : program) (s1 s2 : State.t),
+      succ_program s1 (hd::tl) s2 ->
+      exists s3 : State.t,
+        succ_instr s1 hd s3 /\ succ_program s3 tl s2 .
+  Proof .
+    by [] .
+  Qed .
+    
   Lemma eval_program_concat :
     forall (p1 p2 : program) (s1 s2 s3 : State.t),
       eval_program s1 p1 = s2 ->
@@ -685,6 +583,20 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       rewrite He1; assumption.
   Qed.
 
+  Lemma succ_program_concat :
+    forall (p1 p2 : program) (s1 s2 s3 : State.t),
+      succ_program s1 p1 s2 ->
+      succ_program s2 p2 s3 ->
+      succ_program s1 (p1 ++ p2) s3 .
+  Proof .
+    move => p1; elim p1 => /= .
+    - move => p2 s1 s2 s3 Heq Hsucc .
+      rewrite Heq //= .
+    - move => hd tl Hind p2 s1 s2 s3 [] => x [] => Hsucchd Hsucctl Hsuccp2 .
+      exists x; split => //= .
+      by apply: (Hind p2 x s2 s3) .
+  Qed .
+      
   Lemma eval_program_concat_step :
     forall (p1 p2 : program) (s : State.t),
       eval_program s (p1 ++ p2) =
@@ -717,8 +629,22 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       + exact: He42.
   Qed.
 
-
-
+  Lemma succ_program_split :
+    forall (p1 p2 : program) (s1 s2 : State.t),
+      succ_program s1 (p1 ++ p2) s2 ->
+      exists s3, succ_program s1 p1 s3 /\ succ_program s3 p2 s2 .
+  Proof .
+    move => p1; elim: p1 .
+    - move => p2 s1 s2 Hsucc .
+      exists s1; split => // .
+    - move => hd tl Hind p2 s1 s2 Hsucc .
+      move: (succ_program_cons Hsucc) => {Hsucc} [s3 [Hsucchd Hsucctl]] .
+      move: (Hind _ _ _ Hsucctl) => {Hsucctl} [s4 [Hsucctl Hsuccp2]] .
+      exists s4; split => // .
+      simpl .
+      by exists s3 .
+  Qed .
+  
   (** Specification *)
 
   Inductive unop : Set :=
@@ -991,11 +917,23 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       eval_program s1 (sprog s) = s2 ->
       eval_bexp (spost s) s2.
 
+  Definition succ_valid_spec (s: spec) : Prop :=
+    forall s1 s2,
+      eval_bexp (spre s) s1 ->
+      succ_program s1 (sprog s) s2 ->
+      eval_bexp (spost s) s2 .
+
   Definition valid_espec (s : espec) : Prop :=
     forall s1 s2,
       eval_ebexp (espre s) s1 ->
       eval_program s1 (esprog s) = s2 ->
       eval_ebexp (espost s) s2.
+
+  Definition succ_valid_espec (s : espec) : Prop :=
+    forall s1 s2,
+      eval_ebexp (espre s) s1 ->
+      succ_program s1 (esprog s) s2 ->
+      eval_ebexp (espost s) s2 .
 
   Definition valid_rspec (s : rspec) : Prop :=
     forall s1 s2,
@@ -1003,16 +941,28 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
       eval_program s1 (rsprog s) = s2 ->
       eval_rbexp (rspost s) s2.
 
+  Definition succ_valid_rspec (s : rspec) : Prop :=
+    forall s1 s2,
+      eval_rbexp (rspre s) s1 ->
+      succ_program s1 (rsprog s) s2 ->
+      eval_rbexp (rspost s) s2 .
+
   Local Notation "s |= f" := (eval_bexp f true s) (at level 74, no associativity).
   Local Notation "f ===> g" := (entails f g) (at level 82, no associativity).
   Local Notation "{{ f }} p {{ g }}" :=
     ({| spre := f; sprog := p; spost := g |}) (at level 82).
   Local Notation "|= s" := (valid_spec s) (at level 83).
-
+  Local Notation "||= s" := (succ_valid_spec s) (at level 83) .
+  
   Definition counterexample (sp : spec) (s : State.t) : Prop :=
     eval_bexp (spre sp) s /\
     exists s' : State.t,
       eval_program s (sprog sp) = s' /\ (~ eval_bexp (spost sp) s').
+
+  Definition succ_counterexample (sp : spec) (s : State.t) : Prop :=
+    eval_bexp (spre sp) s /\
+    exists s' : State.t,
+      succ_program s (sprog sp) s' /\ (~ eval_bexp (spost sp) s').
 
   Lemma vars_ebexp_subset e :
     VS.subset (vars_ebexp (eqn_bexp e)) (vars_bexp e).
@@ -1129,6 +1079,14 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     reflexivity.
   Qed.
 
+  Lemma succ_spec_empty :
+    forall f g,
+      ||= {{ f }} [::] {{ g }} -> f ===> g .
+  Proof .
+    move => f g He s Hf .
+    by apply: (He s _ Hf) .
+  Qed .
+    
   Lemma spec_strengthing :
     forall f g h p,
       entails f g -> |= {{ g }} p {{ h }} -> |= {{ f }} p {{ h }}.
@@ -1138,9 +1096,27 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     exact: (Hfg _ Hf).
   Qed.
 
+  Lemma succ_spec_strengthing :
+    forall f g h p,
+      entails f g -> ||= {{ g }} p {{ h }} -> ||= {{ f }} p {{ h }}.
+  Proof.
+    move=> f g h p Hfg Hgh s1 s2 Hf Hp.
+    apply: (Hgh _ _ _ Hp).
+    exact: (Hfg _ Hf).
+  Qed.
+
   Lemma spec_weakening :
     forall f g h p,
       |= {{ f }} p {{ g }} -> g ===> h -> |= {{ f }} p {{ h }}.
+  Proof.
+    move=> f g h p Hfg Hgh s1 s2 Hf Hp.
+    apply: Hgh.
+    exact: (Hfg _ _ Hf Hp).
+  Qed.
+
+  Lemma succ_spec_weakening :
+    forall f g h p,
+      ||= {{ f }} p {{ g }} -> g ===> h -> ||= {{ f }} p {{ h }}.
   Proof.
     move=> f g h p Hfg Hgh s1 s2 Hf Hp.
     apply: Hgh.
@@ -1159,6 +1135,17 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     assumption.
   Qed.
 
+  Lemma succ_spec_cons :
+    forall f g h hd tl,
+      ||= {{ f }} [::hd] {{ g }} -> ||= {{ g }} tl {{ h }} ->
+      ||= {{ f }} (hd::tl) {{ h }}.
+  Proof.
+    move=> f g h hd tl Hshd Hstl s1 s2 /= Hf Hp.
+    move: (succ_program_cons Hp) => {Hp} [s3 [Hhd Htl]].
+    apply: (Hstl _ _ _ Htl) => /=.
+    by apply: (Hshd _ _ _ (succ_singleton_program Hhd)) => /=.
+  Qed.
+
   Lemma spec_concat :
     forall f g h p1 p2,
       |= {{ f }} p1 {{ g }} -> |= {{ g }} p2 {{ h }} ->
@@ -1166,6 +1153,18 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
   Proof.
     move=> f g h p1 p2 Hp1 Hp2 s1 s2 /= Hf Hp.
     move: (eval_program_split Hp) => [s3 [Hep1 Hep2]].
+    apply: (Hp2 _ _ _ Hep2) => /=.
+    apply: (Hp1 _ _ _ Hep1) => /=.
+    assumption.
+  Qed.
+
+  Lemma succ_spec_concat :
+    forall f g h p1 p2,
+      ||= {{ f }} p1 {{ g }} -> ||= {{ g }} p2 {{ h }} ->
+      ||= {{ f }} (p1 ++ p2) {{ h }}.
+  Proof.
+    move=> f g h p1 p2 Hp1 Hp2 s1 s2 /= Hf Hp.
+    move: (succ_program_split Hp) => [s3 [Hep1 Hep2]].
     apply: (Hp2 _ _ _ Hep2) => /=.
     apply: (Hp1 _ _ _ Hep1) => /=.
     assumption.
@@ -1185,7 +1184,19 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     - exact: (eval_bvand_rng_distr1 Hgr1 Hgr2).
   Qed.
 
-
+  Lemma succ_spec_split_post :
+    forall f g1 g2 p,
+      ||= {{ f }} p {{ g1 }} ->
+      ||= {{ f }} p {{ g2 }} ->
+      ||= {{ f }} p {{ bvand g1 g2 }}.
+  Proof.
+    move=> f g1 g2 p Hg1 Hg2 s1 s2 /= Hf Hp.
+    move: (Hg1 s1 s2 Hf Hp) => /= {Hg1} [Hge1 Hgr1].
+    move: (Hg2 s1 s2 Hf Hp) => /= {Hg2} [Hge2 Hgr2].
+    split.
+    - exact: (eval_bvand_eqn_distr1 Hge1 Hge2).
+    - exact: (eval_bvand_rng_distr1 Hgr1 Hgr2).
+  Qed.
 
   (** Well-formed programs *)
 
@@ -1273,18 +1284,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     VS.subset vs1 vs2 ->
     well_formed_instr vs2 i.
   Proof.
-    elim: i vs1 vs2 => /=; move=> *;
-    hyps_splitb; repeat splitb;
+    elim: i vs1 vs2 => /=; move=> *; hyps_splitb; repeat splitb;
     (match goal with
      | H: ?a |- ?a => assumption
-     | H1: is_true (VS.subset ?s ?vs1),
-       H2 : is_true (VS.subset ?vs1 ?vs2)
-       |- is_true (VS.subset ?s ?vs2) =>
-         by rewrite (VSLemmas.subset_trans H1 H2)
-     | H1 : is_true (VS.mem ?v ?vs1),
-       H2 : is_true (VS.subset ?vs1 ?vs2)
-       |- is_true (VS.mem ?v ?vs3) =>
-       exact: (VSLemmas.mem_subset H1 H2)
+     | |- is_true (VS.subset _ _) => by VSLemmas.dp_subset
+     | |- is_true (VS.mem _ _) => by VSLemmas.dp_mem
      | |- _ => idtac
      end).
   Qed.
@@ -1329,100 +1333,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     well_formed_instr vs i ->
     VS.Equal (VS.union vs (vars_instr i)) (VS.union vs (lvs_instr i)).
   Proof.
-    case: i => /=; intros; hyps_splitb;
-    (match goal with
-     | H: is_true (VS.subset ?s ?vs) |-
-       VS.Equal (VS.union ?vs (VS.add ?t ?s)) (VS.union ?vs (VS.singleton ?t)) =>
-      rewrite (VSLemmas.OP.P.union_sym vs (VS.add t s))
-              VSLemmas.OP.P.union_add
-              (VSLemmas.union_subset_equal H)
-              (VSLemmas.OP.P.union_sym vs (VS.singleton t))
-              -VSLemmas.OP.P.add_union_singleton;
-      reflexivity
-     | H1: is_true (VS.subset ?s1 ?vs),
-       H2: is_true (VS.subset ?s2 ?vs) |-
-       VS.Equal (VS.union ?vs (VS.add ?t (VS.union ?s1 ?s2)))
-                (VS.union ?vs (VS.singleton ?t)) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H2)
-               (VSLemmas.union_subset_equal H1)
-               (VSLemmas.OP.P.union_sym vs (VS.singleton _))
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H1: is_true (VS.subset ?s1 ?vs),
-       H2: is_true (VS.subset ?s2 ?vs) |-
-       VS.Equal
-         (VS.union ?vs
-                   (VS.add ?t1 (VS.add ?t2 (VS.union ?s1 ?s2))))
-         (VS.union ?vs (VS.add ?t1 (VS.singleton ?t2))) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H2)
-               (VSLemmas.union_subset_equal H1)
-               (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H: is_true (VS.subset ?s ?vs) |-
-       VS.Equal (VS.union ?vs (VS.add ?t1 (VS.add ?t2 ?s)))
-                (VS.union ?vs (VS.add ?t1 (VS.singleton ?t2))) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               (VSLemmas.union_subset_equal H)
-               (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H0 : is_true (VS.subset (vars_atomic ?e2) ?vs),
-       H1 : is_true (VS.mem ?c ?vs),
-       H2 : is_true (VS.subset (vars_atomic ?e1) ?vs) |-
-       VS.Equal
-         (VS.union ?vs
-                   (VS.add ?c
-                           (VS.add ?v
-                                   (VS.union
-                                      (vars_atomic ?e1) (vars_atomic ?e2)))))
-         (VS.union ?vs (VS.singleton ?v)) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H0)
-               (VSLemmas.union_subset_equal H2)
-               VSLemmas.OP.P.add_add
-               (VSLemmas.add_equal H1)
-               VSLemmas.OP.P.union_sym
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | H1 : is_true (VS.subset (vars_atomic ?e2) ?vs),
-       H2 : is_true (VS.subset (vars_atomic ?e1) ?vs),
-       H0 : is_true (?c != ?v),
-       H3 : is_true (VS.mem ?a vs) |-
-       VS.Equal
-         (VS.union ?vs
-                   (VS.add ?a (VS.add ?c (VS.add ?v (VS.union (vars_atomic ?e1) (vars_atomic ?e2))))))
-         (VS.union ?vs (VS.add ?c (VS.singleton ?v))) =>
-       rewrite (VSLemmas.OP.P.union_sym vs (VS.add _ _))
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_add
-               VSLemmas.OP.P.union_assoc
-               (VSLemmas.union_subset_equal H1)
-               (VSLemmas.union_subset_equal H2)
-               (VSLemmas.OP.P.add_add)
-               (VSLemmas.OP.P.add_add vs)
-               (VSLemmas.add_equal H3)
-               VSLemmas.OP.P.union_sym
-               VSLemmas.OP.P.union_add
-               -VSLemmas.OP.P.add_union_singleton;
-       reflexivity
-     | |- _ => idtac
-     end).
+    case: i => /=; intros; hyps_splitb; by VSLemmas.dp_Equal.
   Qed.
 
   Lemma well_formed_program_concat vs p1 p2 :
@@ -1645,17 +1556,11 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
     (let rec tac :=
          match goal with
          | H: ?a |- ?a => assumption
-         | H : is_true (VS.subset (VS.union _ _) _) |- _ =>
-           let H1 := fresh in let H2 := fresh in
-           rewrite VSLemmas.subset_union6 in H;
-           move/andP: H => [H1 H2]; tac
-         | H : is_true (VS.subset (VS.add _ _) _) |- _ =>
-           let H1 := fresh in let H2 := fresh in
-           rewrite VSLemmas.subset_add6 in H;
-           move/andP: H => [H1 H2]; tac
+         | |- is_true (VS.subset _ _) => by VSLemmas.dp_subset
+         | |- is_true (VS.mem _ _) => by VSLemmas.dp_mem
          | |- _ => idtac
          end in
-     tac).
+    tac).
   Qed.
 
 
@@ -1685,1205 +1590,9 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType).
 
   End BigIntegers.
 
-
-
-  (** State equality modulo values of a set of variables *)
-(*
-  Section StateEqmod.
-
-    Variable vs : VS.t.
-
-    Definition state_eqmod s1 s2 : Prop :=
-      forall v, VS.mem v vs -> State.acc v s1 = State.acc v s2.
-
-    Lemma state_eqmod_refl s :
-      state_eqmod s s.
-    Proof.
-      move=> v Hmem; reflexivity.
-    Qed.
-
-    Lemma state_eqmod_sym s1 s2 :
-      state_eqmod s1 s2 -> state_eqmod s2 s1.
-    Proof.
-      move=> Heqm v Hmem.
-      rewrite (Heqm v Hmem).
-      reflexivity.
-    Qed.
-
-    Lemma state_eqmod_trans s1 s2 s3 :
-      state_eqmod s1 s2 -> state_eqmod s2 s3 -> state_eqmod s1 s3.
-    Proof.
-      move=> Heqm12 Heqm23 v Hmem.
-      rewrite (Heqm12 v Hmem) (Heqm23 v Hmem).
-      reflexivity.
-    Qed.
-
-    Global Instance state_eqmod_equiv : RelationClasses.Equivalence state_eqmod.
-    Proof.
-      split.
-      - exact: state_eqmod_refl.
-      - exact: state_eqmod_sym.
-      - exact: state_eqmod_trans.
-    Defined.
-
-  End StateEqmod.
-
-  Lemma state_eqmod_subset vs1 vs2 s1 s2 :
-    state_eqmod vs1 s1 s2 ->
-    VS.subset vs2 vs1 ->
-    state_eqmod vs2 s1 s2.
-  Proof.
-    move=> Heqm Hsub v Hmem.
-    exact: (Heqm v (VSLemmas.mem_subset Hmem Hsub)).
-  Qed.
-
-  Lemma state_eqmod_add1 v vs s1 s2 :
-    state_eqmod (VS.add v vs) s1 s2 ->
-    State.acc v s1 = State.acc v s2 /\ state_eqmod vs s1 s2.
-  Proof.
-    move=> Heqm; split.
-    - apply: Heqm.
-      exact: VSLemmas.mem_add2.
-    - move=> x Hmem; apply: Heqm.
-      apply: VSLemmas.mem_add3.
-      assumption.
-  Qed.
-
-  Lemma state_eqmod_add2 v vs s1 s2 :
-    state_eqmod vs s1 s2 ->
-    State.acc v s1 = State.acc v s2 ->
-    state_eqmod (VS.add v vs) s1 s2.
-  Proof.
-    move=> Heqm Hv x Hmem.
-    case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
-    - by rewrite (eqP Hmem).
-    - exact: (Heqm x Hmem).
-  Qed.
-
-  Lemma state_eqmod_union1 vs1 vs2 s1 s2 :
-    state_eqmod (VS.union vs1 vs2) s1 s2 ->
-    state_eqmod vs1 s1 s2 /\ state_eqmod vs2 s1 s2.
-  Proof.
-    move=> Heqm; split; move=> v Hmem; apply: Heqm.
-    - apply: VSLemmas.mem_union2.
-      assumption.
-    - apply: VSLemmas.mem_union3.
-      assumption.
-  Qed.
-
-  Lemma state_eqmod_union2 vs1 vs2 s1 s2 :
-    state_eqmod vs1 s1 s2 ->
-    state_eqmod vs2 s1 s2 ->
-    state_eqmod (VS.union vs1 vs2) s1 s2.
-  Proof.
-    move=> Heqm1 Heqm2 v Hmem.
-    case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-    - exact: (Heqm1 v Hmem).
-    - exact: (Heqm2 v Hmem).
-  Qed.
-
-  Lemma state_eqmod_exp s1 s2 e :
-    state_eqmod (vars_exp e) s1 s2 ->
-    eval_exp e s1 = eval_exp e s2.
-  Proof.
-    elim: e => /=.
-    - move=> v Heqm.
-      apply: Heqm.
-      exact: VSLemmas.mem_singleton2.
-    - reflexivity.
-    - move=> op e IH Heqm.
-      rewrite (IH Heqm).
-      reflexivity.
-    - move=> op e1 IH1 e2 IH2 Heqm.
-      move: (state_eqmod_union1 Heqm) => {Heqm} [Heqm1 Heqm2].
-      rewrite (IH1 Heqm1) (IH2 Heqm2); reflexivity.
-    - move=> e IH p Heqm.
-      rewrite (IH Heqm).
-      reflexivity.
-  Qed.
-
-  Lemma state_eqmod_bexp s1 s2 e :
-    state_eqmod (vars_bexp e) s1 s2 ->
-    eval_bexp e s1 = eval_bexp e s2.
-  Proof.
-    elim: e => /=.
-    - done.
-    - move=> e1 e2 Heqm.
-      move: (state_eqmod_union1 Heqm) => {Heqm} [Heqm1 Heqm2].
-      rewrite (state_eqmod_exp Heqm1) (state_eqmod_exp Heqm2).
-      reflexivity.
-    - move=> e1 e2 p Heqm.
-      move: (state_eqmod_union1 Heqm) => {Heqm} [Heqm1 Heqm2].
-      rewrite (state_eqmod_exp Heqm1) (state_eqmod_exp Heqm2).
-      reflexivity.
-    - move=> e1 IH1 e2 IH2 Heqm.
-      move: (state_eqmod_union1 Heqm) => {Heqm} [Heqm1 Heqm2].
-      rewrite (IH1 Heqm1) (IH2 Heqm2).
-      reflexivity.
-  Qed.
-
-  Lemma state_eqmod_instr vs i s1 s2 :
-    state_eqmod vs s1 s2 ->
-    VS.subset (rvs_instr i) vs ->
-    state_eqmod (VS.union vs (lvs_instr i)) (eval_instr s1 i) (eval_instr s2 i).
-  Proof.
-    elim: i => /=.
-    - move=> v e Heqm Hsub x Hmem.
-      case Hxv: (x == v).
-      + rewrite 2!(State.acc_upd_eq _ _ Hxv).
-        apply: state_eqmod_exp.
-        exact: (state_eqmod_subset Heqm Hsub).
-      + move/idP/negP: Hxv => Hxv.
-        rewrite 2!(State.acc_upd_neq _ _ Hxv).
-        apply: Heqm.
-        case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-        * assumption.
-        * move: (VSLemmas.mem_singleton1 Hmem) => Heq.
-          apply: False_ind; apply: (negP Hxv).
-          assumption.
-    - move=> vh vl e p Heqm Hsub.
-      set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p) by reflexivity.
-      destruct tmp as [q1 r1] => Hqr1.
-      set tmp := Z.div_eucl (eval_exp e s2) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s2) (Z.pow_pos 2 p) by reflexivity.
-      destruct tmp as [q2 r2] => Hqr2.
-      rewrite (state_eqmod_exp (state_eqmod_subset Heqm Hsub)) in Hqr1.
-      rewrite -Hqr2 in Hqr1.
-      move: Hqr1 => {Hqr2} [] Hq Hr.
-      rewrite {}Hq {}Hr => {q1 r1}.
-      move=> v Hmem.
-      case Hvvl: (v == vl).
-      + rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hvvl).
-        reflexivity.
-      + move/idP/negP: Hvvl => Hvvl.
-        case Hvvh: (v == vh).
-        * rewrite 2!(State.acc_upd2_eq1 _ _ _ Hvvh Hvvl).
-          reflexivity.
-        * move/idP/negP: Hvvh => Hvvh.
-          case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-          -- rewrite 2!(State.acc_upd2_neq _ _ _ Hvvh Hvvl).
-             exact: (Heqm v Hmem).
-          -- apply: False_ind.
-             case: (VSLemmas.mem_add1 Hmem) => {Hmem} Hmem.
-             ++ apply: (negP Hvvh); assumption.
-             ++ move: (VSLemmas.mem_singleton1 Hmem) => {Hmem} Hmem.
-                apply: (negP Hvvl); assumption.
-  Qed.
-
-  Lemma state_eqmod_program vs p s1 s2 :
-    well_formed_program vs p ->
-    state_eqmod vs s1 s2 ->
-    state_eqmod (VS.union vs (vars_program p))
-                (eval_program s1 p) (eval_program s2 p).
-  Proof.
-    elim: p vs s1 s2 => /=.
-    - move=> vs s1 s2 _ Heqm x Hmem.
-      case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem.
-      + exact: (Heqm _ Hmem).
-      + rewrite VSLemmas.mem_empty in Hmem; discriminate.
-    - move=> hd tl IH vs s1 s2 /andP [Hhd Htl] Heqm x Hmem.
-      move: (well_formed_instr_subset_rvs Hhd) => Hsub.
-      move: (state_eqmod_instr Heqm Hsub) => {Hhd Heqm} Heqm.
-      move: (IH _ _ _ Htl Heqm) => {IH Heqm Htl} Heqm.
-      apply: Heqm.
-      case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem;
-      [idtac | case: (VSLemmas.mem_union1 Hmem) => {Hmem} Hmem].
-    - apply: VSLemmas.mem_union2.
-      apply: VSLemmas.mem_union2.
-      assumption.
-    - case: (mem_vars_instr1 Hmem) => {Hmem} Hmem.
-      + apply: VSLemmas.mem_union2.
-        apply: VSLemmas.mem_union3.
-        assumption.
-      + apply: VSLemmas.mem_union2.
-        apply: VSLemmas.mem_union2.
-        exact: (VSLemmas.mem_subset Hmem Hsub).
-    - apply: VSLemmas.mem_union3.
-      assumption.
-  Qed.
-*)
-
-
-  (** Program slicing *)
-(*
-  Definition slice_instr vs i :=
-    match i with
-    | zAssign v e => if VS.mem v vs
-                     then (VS.union (vars_exp e) (VS.remove v vs), Some i)
-                     else (vs, None)
-    | zSplit vh vl e p => if VS.mem vh vs || VS.mem vl vs
-                          then (VS.union (vars_exp e)
-                                         (VS.remove vh (VS.remove vl vs)), Some i)
-                          else (vs, None)
-    end.
-
-  Fixpoint slice_program_rec vs sliced rinstrs :=
-    match rinstrs with
-    | [::] => (vs, sliced)
-    | i::instrs =>
-      match slice_instr vs i with
-      | (vs', None) => slice_program_rec vs' sliced instrs
-      | (vs', Some i') => slice_program_rec vs' (i'::sliced) instrs
-      end
-    end.
-
-  Definition slice_program vs p :=
-    slice_program_rec vs [::] (rev p).
-
-  Definition slice_spec' s :=
-    let (vs, sp) := slice_program (vars_bexp (spost s)) (sprog s) in
-    (vs, {| spre := spre s;
-            sprog := sp;
-            spost := spost s |}).
-
-  Definition slice_spec s := snd (slice_spec' s).
-
-  Lemma slice_instr_some_replace vs1 vs2 vs3 i1 i2 :
-    VS.Equal vs1 vs3 ->
-    slice_instr vs1 i1 = (vs2, Some i2) ->
-    exists vs4, slice_instr vs3 i1 = (vs4, Some i2) /\ VS.Equal vs2 vs4.
-  Proof.
-    case: i1 => /=.
-    - move=> v e H13.
-      case H1: (VS.mem v vs1).
-      + move=> [Hvs Hi].
-        exists (VS.union (vars_exp e) (VS.remove v vs3)); split.
-        * rewrite -{1}H13 H1 Hi; reflexivity.
-        * rewrite -H13 Hvs; reflexivity.
-      + discriminate.
-    - move=> vh vl e p H13.
-      case H1: (VS.mem vh vs1 || VS.mem vl vs1).
-      + move=> [Hvs Hi].
-        exists (VS.union (vars_exp e) (VS.remove vh (VS.remove vl vs3))); split.
-        * rewrite -{1 2}H13 H1 Hi; reflexivity.
-        * rewrite -H13 Hvs; reflexivity.
-      + discriminate.
-  Qed.
-
-  Lemma slice_instr_none_replace vs1 vs2 vs3 i :
-    VS.Equal vs1 vs3 ->
-    slice_instr vs1 i = (vs2, None) ->
-    exists vs4, slice_instr vs3 i = (vs4, None) /\ VS.Equal vs2 vs4.
-  Proof.
-    case: i => /=.
-    - move=> v e H13.
-      case H1: (VS.mem v vs1).
-      + discriminate.
-      + move=> [Hvs].
-        exists vs3; split.
-        * rewrite -{1}H13 H1; reflexivity.
-        * rewrite -Hvs; assumption.
-    - move=> vh vl e p H13.
-      case H1: (VS.mem vh vs1 || VS.mem vl vs1).
-      + discriminate.
-      + move=> [Hvs].
-        exists vs3; split.
-        * rewrite -{1 2}H13 H1; reflexivity.
-        * rewrite -Hvs; assumption.
-  Qed.
-
-  Lemma slice_program_rec_replace vs1 vs2 vs3 sliced p1 p2 :
-    VS.Equal vs1 vs3 ->
-    slice_program_rec vs1 sliced p1 = (vs2, p2) ->
-    exists vs4, slice_program_rec vs3 sliced p1 = (vs4, p2) /\ VS.Equal vs2 vs4.
-  Proof.
-    elim: p1 vs1 vs2 vs3 sliced p2 => /=.
-    - move=> vs1 vs2 vs3 sliced p2 H13 [Hvs Hp].
-      exists vs3; split.
-      + rewrite Hp; reflexivity.
-      + rewrite -Hvs; assumption.
-    - move=> hd tl IH vs1 vs2 vs3 sliced p2 H13.
-      set tmp := slice_instr vs1 hd.
-      have: tmp = slice_instr vs1 hd by reflexivity.
-      destruct tmp as (vs1', shd).
-      case: shd.
-      + move=> shd Hshd Hstl.
-        move: (Logic.eq_sym Hshd) => {Hshd} Hshd.
-        move: (slice_instr_some_replace H13 Hshd) => [vs4 [Hshd4 H14]].
-        rewrite Hshd4.
-        exact: (IH _ _ _ _ _ H14 Hstl).
-      + move=> Hshd Hstl.
-        move: (Logic.eq_sym Hshd) => {Hshd} Hshd.
-        move: (slice_instr_none_replace H13 Hshd) => [vs4 [Hshd4 H14]].
-        rewrite Hshd4.
-        exact: (IH _ _ _ _ _ H14 Hstl).
-  Qed.
-
-  Lemma slice_program_replace vs1 vs2 vs3 p1 p2 :
-    VS.Equal vs1 vs3 ->
-    slice_program vs1 p1 = (vs2, p2) ->
-    exists vs4, slice_program vs3 p1 = (vs4, p2) /\ VS.Equal vs2 vs4.
-  Proof.
-    exact: slice_program_rec_replace.
-  Qed.
-
-  Lemma slice_instr_some_instr vs1 vs2 i1 i2 :
-    slice_instr vs1 i1 = (vs2, Some i2) ->
-    i1 = i2.
-  Proof.
-    case: i1 => /=.
-    - move=> v e; case: (VS.mem v vs1).
-      + move=> [_ Hi].
-        assumption.
-      + discriminate.
-    - move=> vh vl e p; case: (VS.mem vh vs1 || VS.mem vl vs1).
-      + move=> [_ Hi].
-        assumption.
-      + discriminate.
-  Qed.
-
-  Lemma slice_instr_some_vars vs1 vs2 i1 i2 :
-    slice_instr vs1 i1 = (vs2, Some i2) ->
-    VS.Equal (VS.union (rvs_instr i1) (VS.diff vs1 (lvs_instr i1))) vs2.
-  Proof.
-    case: i1 => /=.
-    - move=> v e; case: (VS.mem v vs1).
-      + move=> [Hvs _].
-        rewrite -VSLemmas.OP.P.remove_diff_singleton.
-        rewrite Hvs.
-        reflexivity.
-      + discriminate.
-    - move=> vh vl e p; case: (VS.mem vh vs1 || VS.mem vl vs1).
-      + move=> [Hvs _].
-        rewrite VSLemmas.diff_add.
-        rewrite -VSLemmas.OP.P.remove_diff_singleton.
-        rewrite Hvs.
-        reflexivity.
-      + discriminate.
-  Qed.
-
-  Lemma slice_instr_none vs1 vs2 i :
-    slice_instr vs1 i = (vs2, None) ->
-    VS.Equal vs1 vs2.
-  Proof.
-    case: i => /=.
-    - move=> v e; case: (VS.mem v vs1).
-      + discriminate.
-      + move=> [Hvs]; rewrite Hvs; reflexivity.
-    - move=> vh vl e p; case: (VS.mem vh vs1 || VS.mem vl vs1).
-      + discriminate.
-      + move=> [Hvs]; rewrite Hvs; reflexivity.
-  Qed.
-
-  Lemma slice_instr_none_lvs_disjoint vs1 vs2 i :
-    slice_instr vs1 i = (vs2, None) ->
-    VSLemmas.disjoint vs1 (lvs_instr i).
-  Proof.
-    elim: i => /=.
-    - move=> v e.
-      case H: (VS.mem v vs1); first by discriminate.
-      move=> _.
-      by rewrite VSLemmas.disjoint_singleton H.
-    - move=> vh vl e p.
-      case H: (VS.mem vh vs1 || VS.mem vl vs1); first by discriminate.
-      move=> _.
-      rewrite VSLemmas.disjoint_add.
-      move/idP/negP: H.
-      rewrite negb_or.
-      move=> /andP [H1 H2].
-      rewrite H1 /=.
-      by rewrite VSLemmas.disjoint_singleton H2.
-  Qed.
-
-  Lemma slice_instr_some_subset_lvs vs vs1 vs1' p lst lst' :
-    well_formed_program vs (rcons p lst) ->
-    VS.subset vs1 (VS.union vs (lvs_program (rcons p lst))) ->
-    slice_instr vs1 lst = (vs1', Some lst') ->
-    VS.subset vs1' (VS.union vs (lvs_program p)).
-  Proof.
-    rewrite well_formed_program_rcons.
-    move => /andP [Hp1 Hlst] Hsub Hslst.
-    rewrite -(slice_instr_some_vars Hslst).
-    apply: VSLemmas.subset_union3.
-    -- move=> {Hsub Hslst}.
-       move: (well_formed_instr_subset_rvs Hlst) => Hsub.
-       apply: (VSLemmas.subset_trans Hsub).
-       exact: VSLemmas.subset_refl.
-    -- apply: VSLemmas.subset_union_diff1.
-       apply: (VSLemmas.subset_trans Hsub).
-       rewrite lvs_program_rcons.
-       rewrite -VSLemmas.OP.P.union_assoc.
-       rewrite (VSLemmas.OP.P.union_sym (lvs_instr lst)).
-       exact: VSLemmas.subset_refl.
-  Qed.
-
-  Lemma slice_instr_some_subset_vars vs vs1 vs1' p lst lst' :
-    well_formed_program vs (rcons p lst) ->
-    VS.subset vs1 (VS.union vs (vars_program (rcons p lst))) ->
-    slice_instr vs1 lst = (vs1', Some lst') ->
-    VS.subset vs1' (VS.union vs (vars_program p)).
-  Proof.
-    move=> Hwell.
-    rewrite (well_formed_program_vars Hwell) => Hsub Hslst.
-    have: well_formed_program vs (rcons p lst) by assumption.
-    rewrite well_formed_program_rcons.
-    move => /andP [H _].
-    rewrite (well_formed_program_vars H) => {H}.
-    exact: (slice_instr_some_subset_lvs Hwell Hsub Hslst).
-  Qed.
-
-  Lemma slice_instr_none_subset_lvs vs vs1 vs1' p lst :
-    VS.subset vs1 (VS.union vs (lvs_program (rcons p lst))) ->
-    slice_instr vs1 lst = (vs1', None) ->
-    VS.subset vs1' (VS.union vs (lvs_program p)).
-  Proof.
-    rewrite lvs_program_rcons.
-    rewrite -VSLemmas.OP.P.union_assoc.
-    move=> Hsub Hslst.
-    rewrite -(slice_instr_none Hslst).
-    apply: (VSLemmas.subset_union_disjoint1 Hsub).
-    exact: (slice_instr_none_lvs_disjoint Hslst).
-  Qed.
-
-  Lemma slice_instr_none_subset_vars vs vs1 vs1' p lst :
-    well_formed_program vs (rcons p lst) ->
-    VS.subset vs1 (VS.union vs (vars_program (rcons p lst))) ->
-    slice_instr vs1 lst = (vs1', None) ->
-    VS.subset vs1' (VS.union vs (vars_program p)).
-  Proof.
-    move=> Hwell.
-    rewrite (well_formed_program_vars Hwell) => Hsub Hslst.
-    have: well_formed_program vs (rcons p lst) by assumption.
-    rewrite well_formed_program_rcons.
-    move => /andP [H _].
-    rewrite (well_formed_program_vars H) => {H}.
-    exact: (slice_instr_none_subset_lvs Hsub Hslst).
-  Qed.
-
-  Lemma slice_program_empty vs :
-    slice_program vs [::] = (vs, [::]).
-  Proof.
-    reflexivity.
-  Qed.
-
-  Lemma slice_program_rec_concat vs1 vs2 vs3 p1 p2 sliced1 sliced2 sliced3 :
-    slice_program_rec vs1 sliced1 p1 = (vs2, sliced2) ->
-    slice_program_rec vs2 sliced2 p2 = (vs3, sliced3) ->
-    slice_program_rec vs1 sliced1 (p1 ++ p2) = (vs3, sliced3).
-  Proof.
-    elim: p1 vs1 vs2 vs3 p2 sliced1 sliced2 sliced3 => /=.
-    - move=> vs1 vs2 vs3 p2 sliced1 sliced2 sliced3 [Hvs1 Hsliced1] Hs2.
-      rewrite {}Hvs1 {}Hsliced1.
-      assumption.
-    - move=> hd tl IH vs1 vs2 vs3 p2 sliced1 sliced2 sliced3.
-      set tmp := slice_instr vs1 hd.
-      have: tmp = slice_instr vs1 hd by reflexivity.
-      destruct tmp as (vs1', shd).
-      case: shd.
-      + move=> shd Hshd Hp1 Hp2.
-        exact: (IH _ _ _ _ _ _ _ Hp1 Hp2).
-      + move=> Hshd Hp1 Hp2.
-        exact: (IH _ _ _ _ _ _ _ Hp1 Hp2).
-  Qed.
-
-  Lemma slice_program_rec_rcons_some vs1 vs2 vs3 p sliced1 sliced2 lst slst :
-    slice_program_rec vs1 sliced1 p = (vs2, sliced2) ->
-    slice_instr vs2 lst = (vs3, Some slst) ->
-    slice_program_rec vs1 sliced1 (rcons p lst) = (vs3, slst :: sliced2).
-  Proof.
-    move=> Hp Hlst.
-    rewrite -cats1.
-    apply: (slice_program_rec_concat Hp) => /=.
-    rewrite Hlst.
-    reflexivity.
-  Qed.
-
-  Lemma slice_program_rec_rcons_none vs1 vs2 vs3 p sliced1 sliced2 lst :
-    slice_program_rec vs1 sliced1 p = (vs2, sliced2) ->
-    slice_instr vs2 lst = (vs3, None) ->
-    slice_program_rec vs1 sliced1 (rcons p lst) = (vs3, sliced2).
-  Proof.
-    move=> Hp Hlst.
-    rewrite -cats1.
-    apply: (slice_program_rec_concat Hp) => /=.
-    rewrite Hlst.
-    reflexivity.
-  Qed.
-
-  Lemma slice_program_rec_sliced_concat vs1 vs2 p1 p2 sliced :
-    slice_program_rec vs1 sliced p1 = (vs2, p2) ->
-    exists p3, p2 = p3 ++ sliced.
-  Proof.
-    elim: p1 vs1 vs2 p2 sliced => /=.
-    - move=> vs1 vs2 p2 sliced [Hvs1 Hsliced].
-      exists [::].
-      rewrite Hsliced /=.
-      reflexivity.
-    - move=> hd tl IH vs1 vs2 p2 sliced.
-      set tmp := slice_instr vs1 hd.
-      have: tmp = slice_instr vs1 hd by reflexivity.
-      destruct tmp as (svs1, shd).
-      case: shd.
-      + move=> shd Hshd Hstl.
-        move: (IH _ _ _ _ Hstl) => [p3 Hp3].
-        exists (rcons p3 shd).
-        rewrite cat_rcons.
-        exact: Hp3.
-      + move=> Hshd Hstl.
-        exact: (IH _ _ _ _ Hstl).
-  Qed.
-
-  Lemma slice_program_rec_sliced_vars vs1 vs2 p1 p2 sliced :
-    slice_program_rec vs1 sliced p1 = (vs2, p2) ->
-    VS.subset (vars_program sliced) (vars_program p2).
-  Proof.
-    move=> H.
-    move: (slice_program_rec_sliced_concat H) => [p3 Hp3].
-    rewrite Hp3 vars_program_concat.
-    apply: VSLemmas.subset_union2.
-    exact: VSLemmas.subset_refl.
-  Qed.
-
-  Lemma slice_program_rec_sliced_lvs vs1 vs2 p1 p2 sliced :
-    slice_program_rec vs1 sliced p1 = (vs2, p2) ->
-    VS.subset (lvs_program sliced) (lvs_program p2).
-  Proof.
-    move=> H.
-    move: (slice_program_rec_sliced_concat H) => [p3 Hp3].
-    rewrite Hp3 lvs_program_concat.
-    apply: VSLemmas.subset_union2.
-    exact: VSLemmas.subset_refl.
-  Qed.
-
-  Lemma slice_instr_some_eqmod vs1 vs2 i1 i2 s1 s2 :
-    slice_instr vs1 i1 = (vs2, Some i2) ->
-    state_eqmod vs2 s1 s2 ->
-    state_eqmod vs1 (eval_instr s1 i1) (eval_instr s2 i2).
-  Proof.
-    elim: i1 vs1 vs2 i2 s1 s2 => /=.
-    - move=> v e vs1 vs2 i2 s1 s2.
-      case Hmemv: (VS.mem v vs1).
-      + move => [Hvs Hi2] Heqm.
-        rewrite -{}Hi2 /= => x Hmemx.
-        case Hxv: (x == v).
-        * rewrite 2!(State.acc_upd_eq _ _ Hxv).
-          apply: state_eqmod_exp.
-          apply: (state_eqmod_subset Heqm).
-          rewrite -Hvs.
-          exact: VSLemmas.union_subset_1.
-        * move/idP/negP: Hxv => Hxv.
-          rewrite 2!(State.acc_upd_neq _ _ Hxv).
-          apply: Heqm.
-          rewrite -Hvs; apply: VSLemmas.mem_union3.
-          apply: (VSLemmas.mem_remove3 _ Hmemx).
-          move=> Heq; apply: (negP Hxv).
-          assumption.
-      + discriminate.
-    - move=> vh vl e p vs1 vs2 i2 s1 s2.
-      set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p) by reflexivity.
-      destruct tmp as (q1, r1) => Hqr1.
-      case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
-      + move=> [Hvs Hi2] Heqm.
-        rewrite -{}Hi2 /= => x Hmemx.
-        have: (eval_exp e s1) = (eval_exp e s2) by
-          apply: state_eqmod_exp;
-          apply: (state_eqmod_subset Heqm);
-          rewrite -Hvs;
-          exact: VSLemmas.union_subset_1.
-        move=> He; rewrite -{}He -{}Hqr1.
-        case Hxvl: (x == vl).
-        * rewrite 2!(State.acc_upd2_eq2 _ _ _ _ Hxvl).
-          reflexivity.
-        * move/idP/negP: Hxvl => Hxvl.
-          case Hxvh: (x == vh).
-          -- rewrite 2!(State.acc_upd2_eq1 _ _ _ Hxvh Hxvl).
-             reflexivity.
-          -- move/idP/negP: Hxvh => Hxvh.
-             rewrite 2!(State.acc_upd2_neq _ _ _ Hxvh Hxvl).
-             apply: Heqm.
-             rewrite -Hvs.
-             apply: VSLemmas.mem_union3.
-             apply: (VSLemmas.mem_remove3 (negP Hxvh)).
-             apply: (VSLemmas.mem_remove3 (negP Hxvl)).
-             assumption.
-      + discriminate.
-  Qed.
-
-  Lemma slice_instr_none_eqmod vs1 vs2 i s1 s2 :
-    slice_instr vs1 i = (vs2, None) ->
-    state_eqmod vs2 s1 s2 ->
-    state_eqmod vs1 (eval_instr s1 i) s2.
-  Proof.
-    elim: i vs1 vs2 s1 s2 => /=.
-    - move=> v e vs1 vs2 s1 s2.
-      case Hmemv: (VS.mem v vs1).
-      + discriminate.
-      + move => [Hvs] Heqm.
-        rewrite -Hvs in Heqm => {Hvs vs2}.
-        move => x Hmemx.
-        case Hxv: (x == v).
-        * rewrite (eqP Hxv) Hmemv in Hmemx.
-          discriminate.
-        * move/idP/negP: Hxv => Hxv.
-          rewrite (State.acc_upd_neq _ _ Hxv).
-          apply: Heqm.
-          assumption.
-    - move=> vh vl e p vs1 vs2 s1 s2.
-      set tmp := Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p).
-      have: tmp = Z.div_eucl (eval_exp e s1) (Z.pow_pos 2 p) by reflexivity.
-      destruct tmp as (q1, r1) => Hqr1.
-      case Hmemhl: (VS.mem vh vs1 || VS.mem vl vs1).
-      + discriminate.
-      + move=> [Hvs] Heqm.
-        rewrite -Hvs in Heqm => {Hvs vs2}.
-        move => x Hmemx.
-        case Hxvl: (x == vl).
-        * rewrite -(eqP Hxvl) Hmemx orbT in Hmemhl.
-          discriminate.
-        * move/idP/negP: Hxvl => Hxvl.
-          case Hxvh: (x == vh).
-          -- rewrite -(eqP Hxvh) Hmemx in Hmemhl.
-             discriminate.
-          -- move/idP/negP: Hxvh => Hxvh.
-             rewrite (State.acc_upd2_neq _ _ _ Hxvh Hxvl).
-             apply: Heqm.
-             assumption.
-  Qed.
-
-  Lemma slice_instr_some_cons_eqmod vs1 vs2 vs3 lst slst p sliced s1 s2 :
-    slice_program_rec vs1 [::] (rev p) = (vs2, sliced) ->
-    (forall t1 t2,
-      state_eqmod vs2 t1 t2 ->
-      state_eqmod vs1 (eval_program t1 p) (eval_program t2 sliced)
-    ) ->
-    slice_instr vs2 lst = (vs3, Some slst) ->
-    state_eqmod vs3 s1 s2 ->
-    state_eqmod vs1 (eval_program s1 (lst :: p)) (eval_program s2 (slst :: sliced)).
-  Proof.
-    move=> Hp IH Hlst Heqm.
-    apply: IH.
-    exact: (slice_instr_some_eqmod Hlst Heqm).
-  Qed.
-
-  Lemma slice_instr_none_cons_eqmod vs1 vs2 vs3 lst p sliced s1 s2 :
-    slice_program_rec vs1 [::] (rev p) = (vs2, sliced) ->
-    (forall t1 t2,
-      state_eqmod vs2 t1 t2 ->
-      state_eqmod vs1 (eval_program t1 p) (eval_program t2 sliced)
-    ) ->
-    slice_instr vs2 lst = (vs3, None) ->
-    state_eqmod vs3 s1 s2 ->
-    state_eqmod vs1 (eval_program s1 (lst :: p)) (eval_program s2 sliced).
-  Proof.
-    move=> Hp IH Hlst Heqm.
-    apply: IH.
-    exact: (slice_instr_none_eqmod Hlst Heqm).
-  Qed.
-
-  Lemma slice_program_rec_eqmod vs_beg vs_mid vs_fin sliced p11 p12 p2 s1 s2 :
-    slice_program_rec vs_fin [::] (rev p12) = (vs_mid, sliced) ->
-    slice_program_rec vs_mid sliced (rev p11) = (vs_beg, p2) ->
-    (forall t1 t2, state_eqmod vs_mid t1 t2 ->
-                   state_eqmod vs_fin (eval_program t1 p12)
-                               (eval_program t2 sliced)) ->
-    state_eqmod vs_beg s1 s2 ->
-    state_eqmod vs_fin (eval_program s1 (p11 ++ p12)) (eval_program s2 p2).
-  Proof.
-    move: p11 vs_beg vs_mid vs_fin sliced p12 p2 s1 s2.
-    apply: last_ind => /=.
-    - move=> vs_beg vs_mid vs_fin sliced p12 p2 s1 s2 Hsp12 [Hvs_mid Hsliced]
-                    Hasum Heqm.
-      rewrite {}Hvs_mid {}Hsliced in Hsp12 Hasum.
-      exact: (Hasum _ _ Heqm).
-    - move=> p11 lst IH vs_beg vs_mid vs_fin sliced p12 p2 s1 s2
-                 Hsp12 Hsp11 Hasum Heqm.
-      rewrite cat_rcons.
-      rewrite rev_rcons in Hsp11.
-      have: slice_program_rec vs_mid sliced (lst :: rev p11) = (vs_beg, p2)
-        by assumption.
-      rewrite /=.
-      set tmp := slice_instr vs_mid lst.
-      have: tmp = slice_instr vs_mid lst by reflexivity.
-      destruct tmp as (vs_mid', lst').
-      case: lst'.
-      + move=> lst' Hlst Hsp11'.
-        apply: (IH _ _ _ _ _ _ _ _ _ Hsp11' _ Heqm).
-        * rewrite rev_cons.
-          exact: (slice_program_rec_rcons_some Hsp12 (Logic.eq_sym Hlst)).
-        * move=> t1 t2 Heqm_mid'.
-          exact: (slice_instr_some_cons_eqmod Hsp12 Hasum
-                                              (Logic.eq_sym Hlst) Heqm_mid').
-      + move=> Hlst Hsp11'.
-        apply: (IH _ _ _ _ _ _ _ _ _ Hsp11' _ Heqm).
-        * rewrite rev_cons.
-          exact: (slice_program_rec_rcons_none Hsp12 (Logic.eq_sym Hlst)).
-        * move=> t1 t2 Heqm_mid'.
-          exact: (slice_instr_none_cons_eqmod Hsp12 Hasum
-                                              (Logic.eq_sym Hlst) Heqm_mid').
-  Qed.
-
-  Lemma slice_program_eqmod vs1 vs2 p1 p2 s1 s2 :
-    slice_program vs1 p1 = (vs2, p2) ->
-    state_eqmod vs2 s1 s2 ->
-    state_eqmod vs1 (eval_program s1 p1) (eval_program s2 p2).
-  Proof.
-    rewrite /slice_program.
-    rewrite -{2}(cats0 p1).
-    move=> Hp1 Heqm.
-    apply: (slice_program_rec_eqmod _ Hp1 _ Heqm).
-    - reflexivity.
-    - move=> t1 t2 Heqmt.
-      assumption.
-  Qed.
-
-  Lemma slice_instr_some_well_formed vs1 vs2 i1 i2 :
-    instr_lvne i1 ->
-    slice_instr vs1 i1 = (vs2, Some i2) ->
-    well_formed_instr vs2 i2.
-  Proof.
-    move=> Hok Hs.
-    rewrite -(slice_instr_some_instr Hs).
-    apply: (instr_lvne_well_formed Hok).
-    rewrite -(slice_instr_some_vars Hs).
-    exact: VSLemmas.union_subset_1.
-  Qed.
-
-  Lemma slice_instr_some_cons_well_formed vs vs' i i' p :
-    instr_lvne i ->
-    well_formed_program vs p ->
-    slice_instr vs i = (vs', Some i') ->
-    well_formed_program vs' (i' :: p).
-  Proof.
-    move=> Hi Hp Hsi.
-    apply/andP; split.
-    * exact: (slice_instr_some_well_formed Hi Hsi).
-    * apply: (well_formed_program_subset Hp).
-      rewrite -(slice_instr_some_instr Hsi) -(slice_instr_some_vars Hsi).
-      rewrite VSLemmas.OP.P.union_assoc.
-      apply: VSLemmas.subset_union2.
-      exact: VSLemmas.subset_union_diff3.
-  Qed.
-
-  Lemma slice_instr_none_rcons_concat_well_formed vs vs1 vs2 p lst sliced :
-    well_formed_program vs (rcons p lst ++ sliced) ->
-    well_formed_program vs1 sliced ->
-    VS.subset vs1 (VS.union vs (vars_program (rcons p lst))) ->
-    slice_instr vs1 lst = (vs2, None) ->
-    well_formed_program vs (p ++ sliced).
-  Proof.
-    move=> Hwell1 Hwell2 Hsub Hslst.
-    rewrite well_formed_program_concat.
-    apply/andP; split; first by
-        exact: (well_formed_program_rcons1 (well_formed_program_concat1 Hwell1)).
-    apply: (well_formed_program_subset Hwell2).
-    move: Hsub.
-    rewrite (well_formed_program_vars (well_formed_program_concat1 Hwell1)) =>
-    Hsub.
-    rewrite (slice_instr_none Hslst).
-    exact: (slice_instr_none_subset_lvs Hsub Hslst).
-  Qed.
-
-  Lemma slice_program_rec_well_formed vs1 vs2 p sliced1 sliced2 :
-    program_lvne p ->
-    well_formed_program vs1 sliced1 ->
-    slice_program_rec vs1 sliced1 p = (vs2, sliced2) ->
-    well_formed_program vs2 sliced2.
-  Proof.
-    elim: p vs1 vs2 sliced1 sliced2 => /=.
-    - move=> vs1 vs2 sliced1 sliced2 _ Hwell1 [Hvs1 Hsliced1].
-      rewrite -Hvs1 -Hsliced1; exact: Hwell1.
-    - move=> hd tl IH vs1 vs2 sliced1 sliced2 /andP [Hokhd Hoktl] Hwell1.
-      set tmp := slice_instr vs1 hd.
-      have: tmp = slice_instr vs1 hd by reflexivity.
-      destruct tmp as (svs1, shd).
-      case: shd.
-      + move=> shd Hshd Hstl.
-        move: (Logic.eq_sym Hshd) => {Hshd} Hshd.
-        apply: (IH _ _ _ _ Hoktl _ Hstl).
-        exact: (slice_instr_some_cons_well_formed Hokhd Hwell1 Hshd).
-      + move=> Hshd Hstl.
-        apply: (IH _ _ _ _ Hoktl _ Hstl).
-        move: (Logic.eq_sym Hshd) => {Hshd} Hshd.
-        apply: (well_formed_program_replace Hwell1).
-        rewrite -(slice_instr_none Hshd).
-        reflexivity.
-  Qed.
-
-  Lemma slice_program_well_formed vs1 vs2 p sliced :
-    program_lvne p ->
-    slice_program vs1 p = (vs2, sliced) ->
-    well_formed_program vs2 sliced.
-  Proof.
-    move=> Hokp Hsp.
-    rewrite /slice_program in Hsp.
-    apply: (slice_program_rec_well_formed _ _ Hsp).
-    - rewrite -program_lvne_rev.
-      assumption.
-    - done.
-  Qed.
-
-  Lemma slice_program_rec_subset vs vs1 vs2 sliced p1 p2 :
-    well_formed_program vs (p1 ++ sliced) ->
-    well_formed_program vs1 sliced ->
-    VS.subset vs1 (VS.union vs (vars_program p1)) ->
-    slice_program_rec vs1 sliced (rev p1) = (vs2, p2) ->
-    VS.subset vs2 vs.
-  Proof.
-    move: p1 vs vs1 vs2 sliced p2.
-    apply: last_ind => /=.
-    - move=> vs vs1 vs2 sliced p2 Hwell1 Hwell2 Hsub [Hvs1 Hsliced].
-      rewrite -{}Hvs1.
-      apply: (VSLemmas.subset_trans Hsub).
-      rewrite VSLemmas.union_emptyr.
-      exact: VSLemmas.subset_refl.
-    - move=> p1 lst IH vs vs1 vs2 sliced p2 Hwell1 Hwell2 Hsub.
-      have: well_formed_program vs (rcons p1 lst ++ sliced) by exact: Hwell1.
-      move=> Htmp.
-      rewrite cat_rcons well_formed_program_concat in Htmp.
-      move/andP: Htmp => [Hp1 /andP [Hlst Hsliced]].
-      rewrite rev_rcons /=.
-      set tmp := slice_instr vs1 lst.
-      have: tmp = slice_instr vs1 lst by reflexivity.
-      destruct tmp as (vs1', lst').
-      case: lst'.
-      + move=> lst' Hlst' Hsp1.
-        move: (Logic.eq_sym Hlst') => {Hlst'} Hlst'.
-        apply: (IH _ _ _ _ _ _ _ _ Hsp1).
-        * rewrite -cat_rcons -(slice_instr_some_instr Hlst').
-          exact: Hwell1.
-        * exact: (slice_instr_some_cons_well_formed
-                    (well_formed_instr_lvne Hlst) Hwell2 Hlst').
-        * exact: (slice_instr_some_subset_vars
-                    (well_formed_program_concat1 Hwell1) Hsub Hlst').
-      + move=> Hslst Hsp1.
-        move: (Logic.eq_sym Hslst) => {Hslst} Hslst.
-        (* start have *)
-        have: VS.subset vs1 (VS.union vs (lvs_program p1)).
-        move: Hsub.
-        rewrite (well_formed_program_vars (well_formed_program_concat1 Hwell1)) =>
-        Hsub.
-        rewrite (slice_instr_none Hslst).
-        exact: (slice_instr_none_subset_lvs Hsub Hslst).
-        (* end have *)
-        move=> Hsub1.
-        apply: (IH _ _ _ _ _ _ _ _ Hsp1).
-        * exact: (slice_instr_none_rcons_concat_well_formed Hwell1 Hwell2 Hsub Hslst).
-        * apply: (well_formed_program_replace Hwell2).
-          rewrite (slice_instr_none Hslst).
-          reflexivity.
-        * exact: (slice_instr_none_subset_vars (well_formed_program_concat1 Hwell1) Hsub Hslst).
-  Qed.
-
-  Lemma slice_program_subset vs vs1 vs2 p1 p2 :
-    well_formed_program vs p1 ->
-    VS.subset vs1 (VS.union vs (vars_program p1)) ->
-    slice_program vs1 p1 = (vs2, p2) ->
-    VS.subset vs2 vs.
-  Proof.
-    rewrite /slice_program.
-    move=> Hwell Hsub Hsp1.
-    rewrite -(cats0 p1) in Hwell.
-    by apply: (slice_program_rec_subset Hwell _ Hsub Hsp1).
-  Qed.
-
-  Lemma slice_program_rec_lvs_sliced vs vs1 vs2 p1 p2 sliced :
-    well_formed_program vs (p1 ++ sliced) ->
-    well_formed_program vs1 sliced ->
-    VS.subset vs1 (VS.union vs (lvs_program p1)) ->
-    slice_program_rec vs1 sliced (rev p1) = (vs2, p2) ->
-    VS.subset vs1 (VS.union vs (lvs_program p2)).
-  Proof.
-    move: p1 vs vs1 vs2 p2 sliced.
-    apply: last_ind => /=.
-    - move=> vs vs1 vs2 p2 sliced.
-      rewrite VSLemmas.union_emptyr.
-      move=> _ _ Hsub _.
-      apply: VSLemmas.subset_union1.
-      assumption.
-    - move=> p1 lst IH vs vs1 vs2 p2 sliced Hwell1 Hwell2 Hsub.
-      rewrite rev_rcons /=.
-      set tmp := slice_instr vs1 lst.
-      have: tmp = slice_instr vs1 lst by reflexivity.
-      destruct tmp as (vs1', lst').
-      case: lst'.
-      + move=> lst' Hslst Hsp1.
-        move: (Logic.eq_sym Hslst) => {Hslst} Hslst.
-        move: (slice_instr_some_subset_lvs
-                 (well_formed_program_concat1 Hwell1) Hsub Hslst) => Hsub'.
-        rewrite cat_rcons in Hwell1.
-        (* start have *)
-        have: well_formed_program vs1' (lst' :: sliced).
-        apply: (slice_instr_some_cons_well_formed _ Hwell2 Hslst).
-        exact: (well_formed_instr_lvne
-                  (well_formed_program_cons1 (well_formed_program_concat2 Hwell1))).
-        (* end have *)
-        move=> Hwell'.
-        rewrite -(slice_instr_some_instr Hslst) in Hwell' Hsp1.
-        move: (IH vs vs1' vs2 p2 (lst::sliced) Hwell1 Hwell' Hsub' Hsp1).
-        rewrite -(slice_instr_some_vars Hslst).
-        move=> H.
-        move: (VSLemmas.subset_union_diff4 (VSLemmas.subset_union5 H)) => {H} H.
-        (* start have *)
-        have: VS.subset (lvs_instr lst) (VS.union vs (lvs_program p2)).
-        apply: VSLemmas.subset_union2.
-        exact: (VSLemmas.subset_union4 (slice_program_rec_sliced_lvs Hsp1)).
-        (* end have *)
-        move=> H1.
-        move: H; rewrite (VSLemmas.union_subset_equal H1).
-        by apply.
-      + move=> Hslst Hsp1.
-        move: (Logic.eq_sym Hslst) => {Hslst} Hslst.
-        move: (VSLemmas.OP.P.equal_sym (slice_instr_none Hslst)) => Heq1.
-        move: (slice_program_rec_replace Heq1 Hsp1) => [vs2' [Hsp1' Heq2]].
-        apply: (IH _ _ vs2' _ _ _ Hwell2 _ Hsp1').
-        * move: Hsub;
-          rewrite -(well_formed_program_vars (well_formed_program_concat1 Hwell1)) =>
-          Hsub.
-          exact: (slice_instr_none_rcons_concat_well_formed Hwell1 Hwell2 Hsub Hslst).
-        * rewrite (slice_instr_none Hslst).
-          exact: (slice_instr_none_subset_lvs Hsub Hslst).
-  Qed.
-
-  Lemma slice_program_rec_vars_sliced vs vs1 vs2 p1 p2 sliced :
-    well_formed_program vs (p1 ++ sliced) ->
-    well_formed_program vs1 sliced ->
-    VS.subset vs1 (VS.union vs (vars_program p1)) ->
-    slice_program_rec vs1 sliced (rev p1) = (vs2, p2) ->
-    VS.subset vs1 (VS.union vs (vars_program p2)).
-  Proof.
-    move=> Hwell1 Hwell2 Hsub Hsp1.
-    move: Hsub;
-      rewrite (well_formed_program_vars (well_formed_program_concat1 Hwell1)) => H.
-    move: (slice_program_rec_lvs_sliced Hwell1 Hwell2 H Hsp1) => {H} H.
-    rewrite vars_program_split.
-    rewrite -VSLemmas.OP.P.union_assoc.
-    apply: VSLemmas.subset_union1.
-    assumption.
-  Qed.
-
-  Lemma slice_program_lvs_sliced vs vs1 vs2 p1 p2 :
-    well_formed_program vs p1 ->
-    VS.subset vs1 (VS.union vs (lvs_program p1)) ->
-    slice_program vs1 p1 = (vs2, p2) ->
-    VS.subset vs1 (VS.union vs (lvs_program p2)).
-  Proof.
-    rewrite /slice_program.
-    rewrite -{1}(cats0 p1).
-    move=> Hwell Hsub Hslice.
-    exact: (slice_program_rec_lvs_sliced Hwell _ Hsub Hslice).
-  Qed.
-
-  Lemma slice_program_vars_sliced vs vs1 vs2 p1 p2 :
-    well_formed_program vs p1 ->
-    VS.subset vs1 (VS.union vs (vars_program p1)) ->
-    slice_program vs1 p1 = (vs2, p2) ->
-    VS.subset vs1 (VS.union vs (vars_program p2)).
-  Proof.
-    rewrite /slice_program.
-    rewrite -{1}(cats0 p1).
-    move=> Hwell Hsub Hslice.
-    exact: (slice_program_rec_vars_sliced Hwell _ Hsub Hslice).
-  Qed.
-*)
-
-
-  (** Well-formedness and soundness of program slicing *)
-(*
-  Theorem slice_spec_well_formed vs s :
-    well_formed_spec vs s ->
-    well_formed_spec vs (slice_spec s).
-  Proof.
-    destruct s as [f p g].
-    rewrite /slice_spec /slice_spec' /well_formed_spec /=.
-    set tmp := slice_program (vars_bexp g) p.
-    have: tmp = slice_program (vars_bexp g) p by reflexivity.
-    destruct tmp as (svs, sp).
-    move=> /= Hs /andP [/andP [Hf Hp] Hg].
-    move: (Logic.eq_sym Hs) => {Hs} Hs.
-    apply/andP; split; first (apply/andP; split).
-    - assumption.
-    - apply: (well_formed_program_subset
-                (slice_program_well_formed (well_formed_program_lvne Hp) Hs)).
-      exact: (slice_program_subset Hp Hg Hs).
-    - exact: (slice_program_vars_sliced Hp Hg Hs).
-  Qed.
-
-  Theorem slice_spec_sound s :
-    valid_spec (slice_spec s) -> valid_spec s.
-  Proof.
-    destruct s as [f p g].
-    rewrite /slice_spec /slice_spec' /=.
-    set tmp := slice_program (vars_bexp g) p.
-    have: tmp = slice_program (vars_bexp g) p by reflexivity.
-    destruct tmp as (vs', p') => /=.
-    move=> Hsp Hs s1 s2 /= Hf Hp.
-    rewrite -{}Hp.
-    move: (Logic.eq_sym Hsp) => {Hsp} Hsp.
-    move: (slice_program_eqmod Hsp (state_eqmod_refl s1)) => Heqm.
-    move: (Hs s1 (eval_program s1 p') Hf
-              (Logic.eq_refl (eval_program s1 p'))) => /= Hg.
-    rewrite (state_eqmod_bexp Heqm).
-    assumption.
-  Qed.
-
-  Theorem slice_spec_complete s :
-    valid_spec s -> valid_spec (slice_spec s).
-  Proof.
-    destruct s as [f p g].
-    rewrite /slice_spec /slice_spec' /=.
-    set tmp := slice_program (vars_bexp g) p.
-    have: tmp = slice_program (vars_bexp g) p by reflexivity.
-    destruct tmp as (vs', p') => /=.
-    move=> Hsp Hs s1 s2 /= Hf Hp.
-    rewrite -{}Hp.
-    move: (Logic.eq_sym Hsp) => {Hsp} Hsp.
-    move: (slice_program_eqmod Hsp (state_eqmod_refl s1)) => Heqm.
-    move: (Hs s1 (eval_program s1 p) Hf
-              (Logic.eq_refl (eval_program s1 p))) => /= Hg.
-    rewrite -(state_eqmod_bexp Heqm).
-    assumption.
-  Qed.
-*)
-
-
-  (** Precondition slicing *)
-(*
-  Fixpoint slice_bexp vs e : bexp :=
-    match e with
-    | zTrue => e
-    | zEq e1 e2 =>
-      if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
-      then zTrue
-      else e
-    | zEqMod e1 e2 p =>
-      if VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))
-      then zTrue
-      else e
-    | zAnd e1 e2 => zAnd (slice_bexp vs e1) (slice_bexp vs e2)
-    end.
-
-  Fixpoint split_qands e : seq bexp :=
-    match e with
-    | zTrue => [::]
-    | zEq _ _ => [:: e]
-    | zEqMod _ _ _ => [:: e]
-    | zAnd e1 e2 => (split_qands e1) ++ (split_qands e2)
-    end.
-
-  Fixpoint related_vars_bexp_once vs es :=
-    match es with
-    | [::] => vs
-    | hd::tl => if VSLemmas.disjoint vs (vars_bexp hd)
-                then related_vars_bexp_once vs tl
-                else related_vars_bexp_once (VS.union vs (vars_bexp hd)) tl
-    end.
-
-  Fixpoint related_vars_bexp_rec n vs es :=
-    match n with
-    | 0%nat => vs
-    | S m =>
-      let vs' := related_vars_bexp_once vs es in
-      if Nat.eqb (VS.cardinal vs) (VS.cardinal vs')
-      then vs'
-      else related_vars_bexp_rec m vs' es
-    end.
-
-  Lemma eval_slice_bexp vs e s :
-    eval_bexp e s ->
-    eval_bexp (slice_bexp vs e) s.
-  Proof.
-    elim: e vs s => /=.
-    - done.
-    - move=> e1 e2 vs s He.
-      case: (VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2)));
-        first by done.
-      exact: He.
-    - move=> e1 e2 p vs s Hm.
-      case: (VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2)));
-        first by done.
-      exact: Hm.
-    - move=> e1 IH1 e2 IH2 vs s [H1 H2].
-      split; [exact: (IH1 _ _ H1) | exact: (IH2 _ _ H2)].
-  Qed.
-
-  Lemma slice_bexp_vars vs e :
-    VS.subset (vars_bexp (slice_bexp vs e)) (vars_bexp e).
-  Proof.
-    elim: e => /=.
-    - exact: VSLemmas.subset_refl.
-    - move=> e1 e2.
-      case: (VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))) => /=.
-      + exact: VSLemmas.subset_empty.
-      + exact: VSLemmas.subset_refl.
-    - move=> e1 e2 p.
-      case: (VSLemmas.disjoint vs (VS.union (vars_exp e1) (vars_exp e2))) => /=.
-      + exact: VSLemmas.subset_empty.
-      + exact: VSLemmas.subset_refl.
-    - move=> e1 IH1 e2 IH2.
-      by apply: VSLemmas.union_subsets.
-  Qed.
-
-  Definition slice_pre vs s : spec :=
-    {| spre := slice_bexp vs (spre s);
-       sprog := sprog s;
-       spost := spost s |}.
-
-  Lemma slice_pre_well_formed vs1 vs2 s :
-    well_formed_spec vs1 s ->
-    well_formed_spec vs1 (slice_pre vs2 s).
-  Proof.
-    destruct s as (f, p, g).
-    rewrite /well_formed_spec /=.
-    move=> /andP [/andP [Hf Hp] Hg].
-    apply/andP; split; first (apply/andP; split).
-    - apply: (VSLemmas.subset_trans _ Hf).
-      exact: slice_bexp_vars.
-    - assumption.
-    - assumption.
-  Qed.
-
-  Lemma slice_pre_sound vs s :
-    valid_spec (slice_pre vs s) -> valid_spec s.
-  Proof.
-    destruct s as (f, p, g).
-    rewrite /valid_spec /slice_pre /=.
-    move=> H s1 s2 Hf Hp.
-    apply: (H _ _ _ Hp).
-    exact: (eval_slice_bexp _ Hf).
-  Qed.
-
-  (* Slice program and then precondition. *)
-  Definition zslice s : spec :=
-    let (vs, ss) := slice_spec' s in
-    let vs' := related_vars_bexp_rec (VS.cardinal (vars_bexp (spre ss)))
-                                     vs (split_qands (spre ss)) in
-    slice_pre vs' ss.
-
-  Lemma zslice_well_formed vs s :
-    well_formed_spec vs s ->
-    well_formed_spec vs (zslice s).
-  Proof.
-    destruct s as (f, p, g).
-    rewrite /zslice.
-    set tmp := slice_spec' ({{f}} p {{g}}).
-    have: tmp = slice_spec' ({{f}} p {{g}}) by reflexivity.
-    destruct tmp as (xs, ss).
-    move=> Hss Hwell.
-    apply: slice_pre_well_formed.
-    move: (slice_spec_well_formed Hwell).
-    rewrite /slice_spec -Hss /=.
-    by apply.
-  Qed.
-
-  Lemma zslice_sound s :
-    valid_spec (zslice s) -> valid_spec s.
-  Proof.
-    destruct s as (f, p, g).
-    rewrite /zslice.
-    set tmp := slice_spec' ({{f}} p {{g}}).
-    have: tmp = slice_spec' ({{f}} p {{g}}) by reflexivity.
-    destruct tmp as (xs, ss).
-    move=> Hss Hsp.
-    apply: slice_spec_sound.
-    rewrite /slice_spec -Hss /=.
-    exact: (slice_pre_sound Hsp).
-  Qed.
-*)
 End MakeBVDSL.
 
-Module bv64DSL := MakeBVDSL AMD64 VarOrder.
+Module bv64DSL := MakeBVDSL AMD64 VarOrder VS.
 Export bv64DSL.
 Arguments bv64DSL.bvVar v%N.
 

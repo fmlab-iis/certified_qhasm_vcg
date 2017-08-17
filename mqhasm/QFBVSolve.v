@@ -19,7 +19,7 @@ Inductive solver : Set :=
 | Boolector.
 
 Inductive sexp : Type :=
-| sbvVar : nat -> bv64SSA.V.t -> sexp
+| sbvVar : nat -> bv64SSA.var -> sexp
 | sbvConst : nat -> Z -> sexp
 | sbvNot : nat -> sexp -> sexp
 | sbvAnd : nat -> sexp -> sexp -> sexp
