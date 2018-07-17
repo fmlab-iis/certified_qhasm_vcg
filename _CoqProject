@@ -1,8 +1,12 @@
 -Q lib/CompCert CompCert
 -Q lib/gbarith/src GBArith
 -Q lib/polyop/src PolyOp
+-Q lib/coq-bits/src Bits
 -Q common Common
 -Q qhasm Qhasm
 -Q sqhasm sQhasm
 -Q mqhasm mQhasm
 -I .
+-I lib/polyop/src
+-I lib/gbarith/src
+-I mqhasm

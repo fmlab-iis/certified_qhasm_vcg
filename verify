@@ -1,6 +1,6 @@
 #!/bin/bash
 COQC=coqc
-PKGS="-Q . Top -Q lib/CompCert CompCert -Q lib/gbarith/src GBArith -Q lib/polyop/src PolyOp -Q common Common -Q qhasm Qhasm -Q sqhasm sQhasm -Q mqhasm mQhasm"
+PKGS="-Q . Top -Q lib/CompCert CompCert -Q lib/gbarith/src GBArith -Q lib/polyop/src PolyOp -Q lib/coq-bits/src Bits -Q common Common -Q qhasm Qhasm -Q sqhasm sQhasm -Q mqhasm mQhasm -I lib/gbarith/src -I lib/polyop/src -I mqhasm"
 LOG_GB=log_gb
 LOG_QFBV=log_qfbv
 case `uname` in

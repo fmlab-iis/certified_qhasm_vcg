@@ -3,13 +3,8 @@
 
 open Polyop
 
-open Num
-
-open Globnames
-open Glob_term
-open Proofview.Notations
-open Tacexpr
-open Tacinterp
+open Ltac_plugin
+open Stdarg
 
 DECLARE PLUGIN "polyop_plugin"
 
@@ -21,10 +16,10 @@ let pdiv_tac eng id p c =
       let oc = oterm_of_cterm c in
       let owit = pdiv ~engine:oeng op oc in
       let wit = cterm_of_oterm owit in
-      Tactics.letin_tac None (Names.Name id) wit None Locusops.nowhere
+      Tactics.letin_tac None (Names.Name id) (EConstr.of_constr wit) None Locusops.nowhere
     with _ ->
       Proofview.V82.tactic (Tacticals.tclFAIL 0 (Pp.str ("Failed")))
   )
 TACTIC EXTEND modp
-| ["pdiv_ml" reference(eng) ident(id) constr(p) constr(c)] -> [pdiv_tac eng id p c]
+| ["pdiv_ml" reference(eng) ident(id) constr(p) constr(c)] -> [pdiv_tac eng id (EConstr.Unsafe.to_constr p) (EConstr.Unsafe.to_constr c)]
 END

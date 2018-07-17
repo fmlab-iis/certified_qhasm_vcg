@@ -1124,7 +1124,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     move => f g He s Hf .
     by apply: (He s _ Hf) .
   Qed .
-    
+
   Lemma spec_strengthing :
     forall f g h p,
       entails f g -> |= {{ g }} p {{ h }} -> |= {{ f }} p {{ h }}.
@@ -1590,6 +1590,7 @@ Module MakeBVDSL (A : ARCH) (V : SsrOrderedType) (VS : SsrFSet with Module E := 
     VS.subset (rvs_instr i) vs ->
     well_formed_instr vs i.
   Proof.
+    Import VSLemmas.
     case: i => /=; intros; repeat splitb;
     (let rec tac :=
          match goal with

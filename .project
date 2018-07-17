@@ -1,12 +1,15 @@
 -Q lib/CompCert CompCert
 -Q lib/gbarith/src GBArith
 -Q lib/polyop/src PolyOp
+-Q lib/coq-bits/src Bits
 -Q common Common
 -Q qhasm Qhasm
 -Q sqhasm sQhasm
 -Q mqhasm mQhasm
 -I mqhasm
 -I .
+-I lib/gbarith/src
+-I lib/polyop/src
 # 3rd Party Libraries
 lib/CompCert/Coqlib.v
 lib/CompCert/Integers.v

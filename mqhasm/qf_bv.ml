@@ -50,30 +50,30 @@ let trace s =
 let fail s =
   trace s; failwith s
 
-let pp_constr x = Pp.msg (Printer.pr_constr x)
+let pp_constr fmt x = Pp.pp_with fmt (Printer.pr_constr x)
 
 let print_constr t =
-  if Term.isRel t then trace "Rel"
-  else if Term.isVar t then trace "Var"
-  else if Term.isInd t then trace "Ind"
-  else if Term.isEvar t then trace "Evar"
-  else if Term.isMeta t then trace "Meta"
-  else if Term.isSort t then trace "Sort"
-  else if Term.isCast t then trace "Cast"
-  else if Term.isApp t then trace "App"
-  else if Term.isLambda t then trace "Lambda"
-  else if Term.isLetIn t then trace "LetIn"
-  else if Term.isProd t then trace "Prod"
-  else if Term.isConst t then trace "Const"
-  else if Term.isConstruct t then trace "Construct"
-  else if Term.isFix t then trace "Fix"
-  else if Term.isCoFix t then trace "CoFix"
-  else if Term.isCase t then trace "Case"
-  else if Term.isProj t then trace "Proj"
-  else if Term.is_Prop t then trace "Prop"
-  else if Term.is_Set t then trace "Set"
-  else if Term.is_Type t then trace "Type"
-  else if Term.iskind t then trace "kind"
+  if Constr.isRel t then trace "Rel"
+  else if Constr.isVar t then trace "Var"
+  else if Constr.isInd t then trace "Ind"
+  else if Constr.isEvar t then trace "Evar"
+  else if Constr.isMeta t then trace "Meta"
+  else if Constr.isSort t then trace "Sort"
+  else if Constr.isCast t then trace "Cast"
+  else if Constr.isApp t then trace "App"
+  else if Constr.isLambda t then trace "Lambda"
+  else if Constr.isLetIn t then trace "LetIn"
+  else if Constr.isProd t then trace "Prod"
+  else if Constr.isConst t then trace "Const"
+  else if Constr.isConstruct t then trace "Construct"
+  else if Constr.isFix t then trace "Fix"
+  else if Constr.isCoFix t then trace "CoFix"
+  else if Constr.isCase t then trace "Case"
+  else if Constr.isProj t then trace "Proj"
+  else if Constr.is_Prop t then trace "Prop"
+  else if Constr.is_Set t then trace "Set"
+  else if Constr.is_Type t then trace "Type"
+  else if Constr.iskind t then trace "kind"
   else trace ""
 
 
@@ -94,7 +94,7 @@ let fresh_id_in_env avoid id env =
   (* ids to be avoided *)
   let ids = (avoid@Termops.ids_of_named_context (Environ.named_context env)) in
   (* generate a new id *)
-  Namegen.next_ident_away_in_goal id ids
+  Namegen.next_ident_away_in_goal id (Names.Id.Set.of_list ids)
 
 let new_fresh_id avoid id gl =
   fresh_id_in_env avoid id (Proofview.Goal.env gl)
@@ -107,7 +107,7 @@ let new_fresh_id avoid id gl =
 
 module CoqDatatypes = struct
     let path = ["Coq"; "Init"; "Datatypes"]
-    let _pair : Term.constr lazy_t = lazy (init_constant path "pair")
+    let _pair : Constr.constr lazy_t = lazy (init_constant path "pair")
   end
 
 
@@ -118,9 +118,9 @@ module CoqDatatypes = struct
 
 module CoqBool = struct
     let path = ["Coq"; "Init"; "Datatypes"]
-    let typ : Term.constr lazy_t = lazy (init_constant path "bool")
-    let _true : Term.constr lazy_t = lazy (init_constant path "true")
-    let _false : Term.constr lazy_t = lazy (init_constant path "false")
+    let typ : Constr.constr lazy_t = lazy (init_constant path "bool")
+    let _true : Constr.constr lazy_t = lazy (init_constant path "true")
+    let _false : Constr.constr lazy_t = lazy (init_constant path "false")
   end
 
 (** Constructs a Coq bool from an OCaml bool. *)
@@ -142,9 +142,9 @@ let rec obool_of_cbool (n : Constr.t) : bool =
 
 module CoqNat = struct
     let path = ["Coq"; "Init"; "Datatypes"]
-    let typ : Term.constr lazy_t = lazy (init_constant path "nat")
-    let _S : Term.constr lazy_t = lazy (init_constant path "S")
-    let _O : Term.constr lazy_t = lazy (init_constant path "O")
+    let typ : Constr.constr lazy_t = lazy (init_constant path "nat")
+    let _S : Constr.constr lazy_t = lazy (init_constant path "S")
+    let _O : Constr.constr lazy_t = lazy (init_constant path "O")
   end
 
 (** Constructs a Coq nat from an OCaml int. *)
@@ -157,7 +157,7 @@ let rec oint_of_cnat (n : Constr.t) : int =
   if Constr.equal n (Lazy.force CoqNat._O) then 0
   else
     try
-      let (constructor, args) = Term.destApp n in
+      let (constructor, args) = Constr.destApp n in
       if Constr.equal constructor (Lazy.force CoqNat._S) then 1 + (oint_of_cnat args.(0))
       else fail "Not a valid Coq nat."
     with destKO -> fail "Not a valid Coq nat."
@@ -170,15 +170,15 @@ let rec oint_of_cnat (n : Constr.t) : int =
 
 module CoqBinNums = struct
     let path = ["Coq"; "Numbers"; "BinNums"]
-    let typ : Term.constr lazy_t = lazy (init_constant path "positive")
-    let _xI : Term.constr lazy_t = lazy (init_constant path "xI")
-    let _xO : Term.constr lazy_t = lazy (init_constant path "xO")
-    let _xH : Term.constr lazy_t = lazy (init_constant path "xH")
-    let _N0 : Term.constr lazy_t = lazy (init_constant path "N0")
-    let _Npos : Term.constr lazy_t = lazy (init_constant path "Npos")
-    let _Z0 : Term.constr lazy_t = lazy (init_constant path "Z0")
-    let _Zpos : Term.constr lazy_t = lazy (init_constant path "Zpos")
-    let _Zneg : Term.constr lazy_t = lazy (init_constant path "Zneg")
+    let typ : Constr.constr lazy_t = lazy (init_constant path "positive")
+    let _xI : Constr.constr lazy_t = lazy (init_constant path "xI")
+    let _xO : Constr.constr lazy_t = lazy (init_constant path "xO")
+    let _xH : Constr.constr lazy_t = lazy (init_constant path "xH")
+    let _N0 : Constr.constr lazy_t = lazy (init_constant path "N0")
+    let _Npos : Constr.constr lazy_t = lazy (init_constant path "Npos")
+    let _Z0 : Constr.constr lazy_t = lazy (init_constant path "Z0")
+    let _Zpos : Constr.constr lazy_t = lazy (init_constant path "Zpos")
+    let _Zneg : Constr.constr lazy_t = lazy (init_constant path "Zneg")
   end
 
 let num_0 = Int 0
@@ -198,7 +198,7 @@ let rec onum_of_cpos (n : Constr.t) : num =
   if Constr.equal n (Lazy.force CoqBinNums._xH) then num_1
   else
     try
-      let (constructor, args) = Term.destApp n in
+      let (constructor, args) = Constr.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._xI) then num_1 +/ (onum_of_cpos args.(0) */ num_2)
       else if Constr.equal constructor (Lazy.force CoqBinNums._xO) then num_0 +/ (onum_of_cpos args.(0) */ num_2)
       else fail "Not a valid Coq positive."
@@ -215,7 +215,7 @@ let onum_of_cn (n : Constr.t) : num =
   if Constr.equal n (Lazy.force CoqBinNums._N0) then num_0
   else
     try
-      let (constructor, args) = Term.destApp n in
+      let (constructor, args) = Constr.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._Npos) then onum_of_cpos args.(0)
       else fail "Not a valid Coq N."
     with destKO -> fail "Not a valid Coq N."
@@ -231,7 +231,7 @@ let onum_of_cz (n : Constr.t) : num =
   if Constr.equal n (Lazy.force CoqBinNums._Z0) then num_0
   else
     try
-      let (constructor, args) = Term.destApp n in
+      let (constructor, args) = Constr.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._Zpos) then onum_of_cpos args.(0)
       else if Constr.equal constructor (Lazy.force CoqBinNums._Zneg) then minus_num (onum_of_cpos args.(0))
       else fail "Not a valid Coq Z."
@@ -253,46 +253,46 @@ let ostring_of_cpos (n : Constr.t) : string =
 
 module CoqQFBV = struct
     let path = ["mQhasm"; "QFBVSolve"]
-    let _sbvVar : Term.constr lazy_t = lazy (init_constant path "sbvVar")
-    let _sbvConst : Term.constr lazy_t = lazy (init_constant path "sbvConst")
-    let _sbvNot : Term.constr lazy_t = lazy (init_constant path "sbvNot")
-    let _sbvAnd : Term.constr lazy_t = lazy (init_constant path "sbvAnd")
-    let _sbvOr : Term.constr lazy_t = lazy (init_constant path "sbvOr")
-    let _sbvXor : Term.constr lazy_t = lazy (init_constant path "sbvXor")
-    let _sbvNeg : Term.constr lazy_t = lazy (init_constant path "sbvNeg")
-    let _sbvAdd : Term.constr lazy_t = lazy (init_constant path "sbvAdd")
-    let _sbvSub : Term.constr lazy_t = lazy (init_constant path "sbvSub")
-    let _sbvMul : Term.constr lazy_t = lazy (init_constant path "sbvMul")
-    let _sbvMod : Term.constr lazy_t = lazy (init_constant path "sbvMod")
-    let _sbvShl : Term.constr lazy_t = lazy (init_constant path "sbvShl")
-    let _sbvShr : Term.constr lazy_t = lazy (init_constant path "sbvShr")
-    let _sbvConcat : Term.constr lazy_t = lazy (init_constant path "sbvConcat")
-    let _sbvExtract : Term.constr lazy_t = lazy (init_constant path "sbvExtract")
-    let _sbvSlice : Term.constr lazy_t = lazy (init_constant path "sbvSlice")
-    let _sbvHigh : Term.constr lazy_t = lazy (init_constant path "sbvHigh")
-    let _sbvLow : Term.constr lazy_t = lazy (init_constant path "sbvLow")
-    let _sbvZeroExtend : Term.constr lazy_t = lazy (init_constant path "sbvZeroExtend")
-    let _sbvSignExtend : Term.constr lazy_t = lazy (init_constant path "sbvSignExtend")
+    let _sbvVar : Constr.constr lazy_t = lazy (init_constant path "sbvVar")
+    let _sbvConst : Constr.constr lazy_t = lazy (init_constant path "sbvConst")
+    let _sbvNot : Constr.constr lazy_t = lazy (init_constant path "sbvNot")
+    let _sbvAnd : Constr.constr lazy_t = lazy (init_constant path "sbvAnd")
+    let _sbvOr : Constr.constr lazy_t = lazy (init_constant path "sbvOr")
+    let _sbvXor : Constr.constr lazy_t = lazy (init_constant path "sbvXor")
+    let _sbvNeg : Constr.constr lazy_t = lazy (init_constant path "sbvNeg")
+    let _sbvAdd : Constr.constr lazy_t = lazy (init_constant path "sbvAdd")
+    let _sbvSub : Constr.constr lazy_t = lazy (init_constant path "sbvSub")
+    let _sbvMul : Constr.constr lazy_t = lazy (init_constant path "sbvMul")
+    let _sbvMod : Constr.constr lazy_t = lazy (init_constant path "sbvMod")
+    let _sbvShl : Constr.constr lazy_t = lazy (init_constant path "sbvShl")
+    let _sbvShr : Constr.constr lazy_t = lazy (init_constant path "sbvShr")
+    let _sbvConcat : Constr.constr lazy_t = lazy (init_constant path "sbvConcat")
+    let _sbvExtract : Constr.constr lazy_t = lazy (init_constant path "sbvExtract")
+    let _sbvSlice : Constr.constr lazy_t = lazy (init_constant path "sbvSlice")
+    let _sbvHigh : Constr.constr lazy_t = lazy (init_constant path "sbvHigh")
+    let _sbvLow : Constr.constr lazy_t = lazy (init_constant path "sbvLow")
+    let _sbvZeroExtend : Constr.constr lazy_t = lazy (init_constant path "sbvZeroExtend")
+    let _sbvSignExtend : Constr.constr lazy_t = lazy (init_constant path "sbvSignExtend")
 
-    let _sbvFalse : Term.constr lazy_t = lazy (init_constant path "sbvFalse")
-    let _sbvTrue : Term.constr lazy_t = lazy (init_constant path "sbvTrue")
-    let _sbvUlt : Term.constr lazy_t = lazy (init_constant path "sbvUlt")
-    let _sbvUle : Term.constr lazy_t = lazy (init_constant path "sbvUle")
-    let _sbvUgt : Term.constr lazy_t = lazy (init_constant path "sbvUgt")
-    let _sbvUge : Term.constr lazy_t = lazy (init_constant path "sbvUge")
-    let _sbvEq : Term.constr lazy_t = lazy (init_constant path "sbvEq")
-    let _sbvAddo : Term.constr lazy_t = lazy (init_constant path "sbvAddo")
-    let _sbvSubo : Term.constr lazy_t = lazy (init_constant path "sbvSubo")
-    let _sbvMulo : Term.constr lazy_t = lazy (init_constant path "sbvMulo")
-    let _sbvLneg : Term.constr lazy_t = lazy (init_constant path "sbvLneg")
-    let _sbvConj : Term.constr lazy_t = lazy (init_constant path "sbvConj")
-    let _sbvDisj : Term.constr lazy_t = lazy (init_constant path "sbvDisj")
+    let _sbvFalse : Constr.constr lazy_t = lazy (init_constant path "sbvFalse")
+    let _sbvTrue : Constr.constr lazy_t = lazy (init_constant path "sbvTrue")
+    let _sbvUlt : Constr.constr lazy_t = lazy (init_constant path "sbvUlt")
+    let _sbvUle : Constr.constr lazy_t = lazy (init_constant path "sbvUle")
+    let _sbvUgt : Constr.constr lazy_t = lazy (init_constant path "sbvUgt")
+    let _sbvUge : Constr.constr lazy_t = lazy (init_constant path "sbvUge")
+    let _sbvEq : Constr.constr lazy_t = lazy (init_constant path "sbvEq")
+    let _sbvAddo : Constr.constr lazy_t = lazy (init_constant path "sbvAddo")
+    let _sbvSubo : Constr.constr lazy_t = lazy (init_constant path "sbvSubo")
+    let _sbvMulo : Constr.constr lazy_t = lazy (init_constant path "sbvMulo")
+    let _sbvLneg : Constr.constr lazy_t = lazy (init_constant path "sbvLneg")
+    let _sbvConj : Constr.constr lazy_t = lazy (init_constant path "sbvConj")
+    let _sbvDisj : Constr.constr lazy_t = lazy (init_constant path "sbvDisj")
 
-    let _sbvNil : Term.constr lazy_t = lazy (init_constant path "sbvNil")
-    let _sbvCons : Term.constr lazy_t = lazy (init_constant path "sbvCons")
+    let _sbvNil : Constr.constr lazy_t = lazy (init_constant path "sbvNil")
+    let _sbvCons : Constr.constr lazy_t = lazy (init_constant path "sbvCons")
 
-    let _Z3 : Term.constr lazy_t = lazy (init_constant path "Z3")
-    let _Boolector : Term.constr lazy_t = lazy (init_constant path "Boolector")
+    let _Z3 : Constr.constr lazy_t = lazy (init_constant path "Z3")
+    let _Boolector : Constr.constr lazy_t = lazy (init_constant path "Boolector")
   end
 
 type var = (num * num)
@@ -341,25 +341,25 @@ let is_atomic t =
 
 let rec ovar_of_cvar v =
   let _ = Lazy.force CoqDatatypes._pair in
-  if Term.isConst v then
-    match Global.body_of_constant (Univ.out_punivs (Term.destConst v)) with
+  if Constr.isConst v then
+    match Global.body_of_constant (Univ.out_punivs (Constr.destConst v)) with
       None -> fail "Failed to find the definition of constant."
-    | Some v' -> ovar_of_cvar v'
+    | Some (v', _) -> ovar_of_cvar v'
   else
     try
-      let (constructor, args) = Term.destApp v in
+      let (constructor, args) = Constr.destApp v in
       if Constr.equal constructor (Lazy.force CoqDatatypes._pair) then (onum_of_cn args.(2), onum_of_cn args.(3))
       else fail "Not a valid var (2)."
     with destKO -> fail "Not a valid var (1)."
 
 let rec oexp_of_cexp e =
-  if Term.isConst e then
-    match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
+  if Constr.isConst e then
+    match Global.body_of_constant (Univ.out_punivs (Constr.destConst e)) with
       None -> fail "Failed to find the definition of constant."
-    | Some e' -> oexp_of_cexp e'
+    | Some (e', _) -> oexp_of_cexp e'
   else
     try
-      let (constructor, args) = Term.destApp e in
+      let (constructor, args) = Constr.destApp e in
       if Constr.equal constructor (Lazy.force CoqQFBV._sbvVar) then Var (oint_of_cnat args.(0), ovar_of_cvar args.(1))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvConst) then Const (oint_of_cnat args.(0), onum_of_cz args.(1))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvNot) then Not (oint_of_cnat args.(0), oexp_of_cexp args.(1))
@@ -383,15 +383,15 @@ let rec oexp_of_cexp e =
     with destKO -> fail "Not a valid sexp (1)."
 
 let rec obexp_of_cbexp e =
-  if Term.isConst e then
-    match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
+  if Constr.isConst e then
+    match Global.body_of_constant (Univ.out_punivs (Constr.destConst e)) with
       None -> fail "Failed to find the definition of constant."
-    | Some e' -> obexp_of_cbexp e'
+    | Some (e', _) -> obexp_of_cbexp e'
   else if Constr.equal e (Lazy.force CoqQFBV._sbvFalse) then False
   else if Constr.equal e (Lazy.force CoqQFBV._sbvTrue) then True
   else
     try
-      let (constructor, args) = Term.destApp e in
+      let (constructor, args) = Constr.destApp e in
       if Constr.equal constructor (Lazy.force CoqQFBV._sbvUlt) then Ult (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUle) then Ule (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
       else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUgt) then Ugt (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
@@ -407,14 +407,14 @@ let rec obexp_of_cbexp e =
     with destKO -> fail "Not a valid sbexp (1)."
 
 let rec oimp_of_cimp e =
-  if Term.isConst e then
-    match Global.body_of_constant (Univ.out_punivs (Term.destConst e)) with
+  if Constr.isConst e then
+    match Global.body_of_constant (Univ.out_punivs (Constr.destConst e)) with
       None -> fail "Failed to find the definition of constant."
-    | Some e' -> oimp_of_cimp e'
+    | Some (e', _) -> oimp_of_cimp e'
   else if Constr.equal e (Lazy.force CoqQFBV._sbvNil) then []
   else
     try
-      let (constructor, args) = Term.destApp e in
+      let (constructor, args) = Constr.destApp e in
       if Constr.equal constructor (Lazy.force CoqQFBV._sbvCons) then (obexp_of_cbexp args.(0))::(oimp_of_cimp args.(1))
       else fail "Not a valid simp (2)."
     with destKO -> fail "Not a valid simp (1)."
@@ -596,7 +596,7 @@ let convert_coq_solver (v : Globnames.global_reference) : solver =
      begin
      match Global.body_of_constant cr with
      | None -> fail "Unknown solver."
-     | Some c ->
+     | Some (c, _) ->
         if Constr.equal c (Lazy.force CoqQFBV._Z3) then Z3
         else if Constr.equal c (Lazy.force CoqQFBV._Boolector) then Boolector
         else fail "Unknown solver."

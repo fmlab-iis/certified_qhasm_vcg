@@ -28,26 +28,26 @@ let init_trace () =
 let trace s =
   unix ("echo \"" ^ s ^ "\n\" >> " ^ gbdir ^ "/log_gb")
 
-let pp_constr x = Pp.msg (Printer.pr_constr x)
+let pp_constr fmt x = Pp.pp_with fmt (Printer.pr_constr x)
 
-let print_constr t =
-  if Term.isRel t then trace "Rel"
-  else if Term.isVar t then trace "Var"
-  else if Term.isInd t then trace "Ind"
-  else if Term.isEvar t then trace "Evar"
-  else if Term.isMeta t then trace "Meta"
-  else if Term.isSort t then trace "Sort"
-  else if Term.isCast t then trace "Cast"
-  else if Term.isApp t then trace "App"
-  else if Term.isLambda t then trace "Lambda"
-  else if Term.isLetIn t then trace "LetIn"
-  else if Term.isProd t then trace "Prod"
-  else if Term.isConst t then trace "Const"
-  else if Term.isConstruct t then trace "Construct"
-  else if Term.isFix t then trace "Fix"
-  else if Term.isCoFix t then trace "CoFix"
-  else if Term.isCase t then trace "Case"
-  else if Term.isProj t then trace "Proj"
+let print_constr m t =
+  if Constr.isRel t then trace "Rel"
+  else if Constr.isVar t then trace "Var"
+  else if Constr.isInd t then trace "Ind"
+  else if Constr.isEvar t then trace "Evar"
+  else if Constr.isMeta t then trace "Meta"
+  else if Constr.isSort t then trace "Sort"
+  else if Constr.isCast t then trace "Cast"
+  else if Constr.isApp t then trace "App"
+  else if Constr.isLambda t then trace "Lambda"
+  else if Constr.isLetIn t then trace "LetIn"
+  else if Constr.isProd t then trace "Prod"
+  else if Constr.isConst t then trace "Const"
+  else if Constr.isConstruct t then trace "Construct"
+  else if Constr.isFix t then trace "Fix"
+  else if Constr.isCoFix t then trace "CoFix"
+  else if Constr.isCase t then trace "Case"
+  else if Constr.isProj t then trace "Proj"
   else trace ""
 
 
@@ -68,7 +68,7 @@ let fresh_id_in_env avoid id env =
   (* ids to be avoided *)
   let ids = (avoid@Termops.ids_of_named_context (Environ.named_context env)) in
   (* generate a new id *)
-  Namegen.next_ident_away_in_goal id ids
+  Namegen.next_ident_away_in_goal id (Id.Set.of_list ids)
 
 let new_fresh_id avoid id gl =
   fresh_id_in_env avoid id (Proofview.Goal.env gl)
@@ -81,12 +81,12 @@ let new_fresh_id avoid id gl =
 
 module CoqBinNums = struct
   let path = ["Coq"; "Numbers"; "BinNums"]
-  let _xI : Term.constr lazy_t = lazy (init_constant path "xI")
-  let _xO : Term.constr lazy_t = lazy (init_constant path "xO")
-  let _xH : Term.constr lazy_t = lazy (init_constant path "xH")
-  let _Z0 : Term.constr lazy_t = lazy (init_constant path "Z0")
-  let _Zpos : Term.constr lazy_t = lazy (init_constant path "Zpos")
-  let _Zneg : Term.constr lazy_t = lazy (init_constant path "Zneg")
+  let _xI : Constr.t lazy_t = lazy (init_constant path "xI")
+  let _xO : Constr.t lazy_t = lazy (init_constant path "xO")
+  let _xH : Constr.t lazy_t = lazy (init_constant path "xH")
+  let _Z0 : Constr.t lazy_t = lazy (init_constant path "Z0")
+  let _Zpos : Constr.t lazy_t = lazy (init_constant path "Zpos")
+  let _Zneg : Constr.t lazy_t = lazy (init_constant path "Zneg")
 end
 
 let num_0 = Int 0
@@ -106,7 +106,7 @@ let rec onum_of_cpos (n : Constr.t) : num =
   if Constr.equal n (Lazy.force CoqBinNums._xH) then num_1
   else
     try
-      let (constructor, args) = Term.destApp n in
+      let (constructor, args) = Constr.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._xI) then num_1 +/ (onum_of_cpos args.(0) */ num_2)
       else if Constr.equal constructor (Lazy.force CoqBinNums._xO) then num_0 +/ (onum_of_cpos args.(0) */ num_2)
       else failwith "Not a valid Coq positive."
@@ -123,7 +123,7 @@ let onum_of_cz (n : Constr.t) : num =
   if Constr.equal n (Lazy.force CoqBinNums._Z0) then num_0
   else
     try
-      let (constructor, args) = Term.destApp n in
+      let (constructor, args) = Constr.destApp n in
       if Constr.equal constructor (Lazy.force CoqBinNums._Zpos) then onum_of_cpos args.(0)
       else if Constr.equal constructor (Lazy.force CoqBinNums._Zneg) then minus_num (onum_of_cpos args.(0))
       else failwith "Not a valid Coq integer."
@@ -145,16 +145,16 @@ let ostring_of_cpos (n : Constr.t) : string =
 
 module CoqTerm = struct
   let path = ["PolyOp"; "PolyOp"]
-  let _Zero : Term.constr lazy_t = lazy (init_constant path "Zero")
-  let _Const : Term.constr lazy_t = lazy (init_constant path "Const")
-  let _Var : Term.constr lazy_t = lazy (init_constant path "Var")
-  let _Opp : Term.constr lazy_t = lazy (init_constant path "Opp")
-  let _Add : Term.constr lazy_t = lazy (init_constant path "Add")
-  let _Sub : Term.constr lazy_t = lazy (init_constant path "Sub")
-  let _Mul : Term.constr lazy_t = lazy (init_constant path "Mul")
-  let _Pow : Term.constr lazy_t = lazy (init_constant path "Pow")
-  let _Singular : Term.constr lazy_t = lazy (init_constant path "Singular")
-  let _Magma : Term.constr lazy_t = lazy (init_constant path "Magma")
+  let _Zero : Constr.t lazy_t = lazy (init_constant path "Zero")
+  let _Const : Constr.t lazy_t = lazy (init_constant path "Const")
+  let _Var : Constr.t lazy_t = lazy (init_constant path "Var")
+  let _Opp : Constr.t lazy_t = lazy (init_constant path "Opp")
+  let _Add : Constr.t lazy_t = lazy (init_constant path "Add")
+  let _Sub : Constr.t lazy_t = lazy (init_constant path "Sub")
+  let _Mul : Constr.t lazy_t = lazy (init_constant path "Mul")
+  let _Pow : Constr.t lazy_t = lazy (init_constant path "Pow")
+  let _Singular : Constr.t lazy_t = lazy (init_constant path "Singular")
+  let _Magma : Constr.t lazy_t = lazy (init_constant path "Magma")
 end
 
 type vname = string
@@ -223,14 +223,14 @@ let rec cterm_of_oterm (t : term) : Constr.t =
 
 (** Constructs an OCaml term from a Coq term. *)
 let rec oterm_of_cterm (t : Constr.t) : term =
-  if Term.isConst t then
-    match Global.body_of_constant (Univ.out_punivs (Term.destConst t)) with
+  if Constr.isConst t then
+    match Global.body_of_constant (Univ.out_punivs (Constr.destConst t)) with
       None -> failwith "Failed to find the definition of constant."
-    | Some t' -> oterm_of_cterm t'
+    | Some (t', _) -> oterm_of_cterm t'
   else if Constr.equal t (Lazy.force CoqTerm._Zero) then Zero
   else
     try
-      let (constructor, args) = Term.destApp t in
+      let (constructor, args) = Constr.destApp t in
       if Constr.equal constructor (Lazy.force CoqTerm._Const) then Const ((onum_of_cz args.(0)) // (onum_of_cpos args.(1)))
       else if Constr.equal constructor (Lazy.force CoqTerm._Var) then Var (ostring_of_cpos args.(0))
       else if Constr.equal constructor (Lazy.force CoqTerm._Opp) then Opp (oterm_of_cterm args.(0))
@@ -260,7 +260,7 @@ let convert_coq_engine (v : Globnames.global_reference) : engine =
      begin
      match Global.body_of_constant cr with
      | None -> failwith "Unknown algorithm."
-     | Some c ->
+     | Some (c, _) ->
         if Constr.equal c (Lazy.force CoqTerm._Singular) then Singular
         else if Constr.equal c (Lazy.force CoqTerm._Magma) then Magma
         else failwith "Unknown algorithm."

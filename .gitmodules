@@ -1,3 +1,6 @@
 [submodule "lib/gbarith"]
 	path = lib/gbarith
 	url = https://github.com/fmlab-iis/gbarith.git
+[submodule "lib/coq-bits"]
+	path = lib/coq-bits
+	url = https://github.com/mht208/coq-bits.git

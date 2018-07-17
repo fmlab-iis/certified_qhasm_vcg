@@ -1,6 +1,7 @@
 LIBS=\
 	lib/gbarith \
-	lib/polyop
+	lib/polyop \
+	lib/coq-bits
 COQMAKEFILE = Makefile.coq
 
 .PHONY: default libs

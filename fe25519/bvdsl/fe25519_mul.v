@@ -2,7 +2,7 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat seq.
 From Common Require Import Var Bits.
-From mQhasm Require Import bvDSL bvVerify Options.
+From mQhasm Require Import bvDSL bvVerify Options zVerify.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

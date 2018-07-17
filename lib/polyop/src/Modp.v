@@ -15,7 +15,7 @@ Ltac NCst t :=
   match t with
   | O => constr:(1%positive)
   | Zpos ?t1 => t1
-  | _ => constr:false
+  | _ => constr:(false)
   end.
 
 (********************************************)
@@ -24,9 +24,9 @@ Ltac NCst t :=
 
 Ltac rIN a l :=
   match l with
-  | (cons a ?l) => constr:true
+  | (cons a ?l) => constr:(true)
   | (cons _ ?l) => rIN a l
-  | _ => constr:false
+  | _ => constr:(false)
   end.
 
 (********************************************)
@@ -45,13 +45,13 @@ Ltac rAddFv a l :=
 
 Ltac rFind_at a l :=
   match l with
-  | (cons a _) => constr:xH
+  | (cons a _) => constr:(xH)
   | (cons _ ?l) =>
     let p := rFind_at a l in
-    let v := constr:(Psucc p) in
+    let v := constr:(Pos.succ p) in
     let v1 := eval compute in v in
     v1
-  | _ => constr:xH
+  | _ => constr:(xH)
  end.
 
 (********************************************)
@@ -153,7 +153,7 @@ Fixpoint interpret t fv {struct t} : Z :=
   end.
 
 Ltac simplZ :=
-  cbv beta iota zeta delta -[Zmult Zplus Zpower Z.pow_pos Zminus Zopp Zdiv Zmod].
+  cbv beta iota zeta delta -[Zmult Zplus Zpower Z.pow_pos Zminus Z.opp Z.div Zmod].
 
 Ltac modp_find_witness_with eng :=
   match goal with

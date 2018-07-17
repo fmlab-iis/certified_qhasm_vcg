@@ -437,7 +437,7 @@ Section BitsLemmas.
   Lemma adcBmain_addB n (p1 p2 : BITS n) :
     adcBmain false p1 p2 = joinmsb (carry_addB p1 p2, addB p1 p2).
   Proof.
-    rewrite /adcB eta_expand_eq splitmsbK. reflexivity.
+    Transparent adcB. rewrite /adcB eta_expand_eq splitmsbK. reflexivity.
   Qed.
 
   Lemma toNat_addn_bounded n (p1 p2 : BITS n) :
@@ -710,6 +710,7 @@ Section BitsLemmas.
   Lemma geB_carry_subB n (p1 p2 : BITS n) :
     leB p2 p1 -> ~~ carry_subB p1 p2.
   Proof.
+    Transparent sbbB.
     rewrite leB_nat /sbbB /adcB /= => Hle. apply/negPn.
     rewrite toNat_splitmsb1 toNat_adcBmain toNat_invB /=.
     rewrite -subn1 (addnBA _ (toNatBounded_leq p2)).

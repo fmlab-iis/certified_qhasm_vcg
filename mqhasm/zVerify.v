@@ -198,20 +198,20 @@ Ltac variables_disjoint vs1 vs2 :=
   match vs1 with
   | cons ?a ?vs =>
     match rIN a vs2 with
-    | true => constr:false
+    | true => constr:(false)
     | false => variables_disjoint vs vs2
     end
-  | _ => constr:true
+  | _ => constr:(true)
   end.
 
 Ltac keep_unused1 x e vars :=
   let evs := variables e in
   match rIN x vars with
-  | true => constr:false
+  | true => constr:(false)
   | false =>
     match variables_disjoint evs vars with
-    | true => constr:false
-    | false => constr:true
+    | true => constr:(false)
+    | false => constr:(true)
     end
   end.
 
@@ -219,15 +219,15 @@ Ltac keep_unused2 x e1 e2 vars :=
   let evs1 := variables e1 in
   let evs2 := variables e2 in
   match rIN x vars with
-  | true => constr:false
+  | true => constr:(false)
   | false =>
     match variables_disjoint evs1 vars with
     | true =>
       match variables_disjoint evs2 vars with
-      | true => constr:false
-      | false => constr:true
+      | true => constr:(false)
+      | false => constr:(true)
       end
-    | false => constr:true
+    | false => constr:(true)
     end
   end.
 

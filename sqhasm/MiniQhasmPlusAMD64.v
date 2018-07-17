@@ -441,7 +441,7 @@ Proof.
       rewrite (State.acc_upd_neq _ qst Hxr).
       rewrite (IProg.State.acc_upd_neq _ ist Hxr).
       rewrite -(eqP (Hst ty x)).
-      dependent destruction ty => /=; do 2 rewrite -eq_rect_eq; exact: eqxx.
+      dependent destruction ty => /=; rewrite -eq_rect_eq; exact: eqxx.
   - move: (carry_var_neq r) => Hcr.
     rewrite (IProg.State.acc_upd_neq _ ist Hcr).
     exact: Hc.
