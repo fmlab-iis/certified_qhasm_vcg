@@ -428,17 +428,19 @@ let atomic_of_string str =
     | [v; e] -> (v, int_of_string e)
     | _ -> failwith "atomic_of_string" in
   let (c, v, e) =
-    try (Str.search_forward (Str.regexp "\\-*[0-9]+") v 0;
-	 (Big_int.big_int_of_string v, "", 1))
+    try
+      let _ = Str.search_forward (Str.regexp "\\-*[0-9]+") v 0 in
+	  (Big_int.big_int_of_string v, "", 1)
     with _ ->
       let v = replace vname "" v in
       if String.sub v 0 1 = "-"
       then (Big_int.big_int_of_int (-1), String.sub v 1 ((String.length v)-1), e)
       else (Big_int.big_int_of_int 1, v, e)
   in
-  if Big_int.eq_big_int c (Big_int.big_int_of_int 1) then mk_pow (Var v) e
+  if v = "" then (if e = 1 then Const (Big_int c) else mk_pow (Const (Big_int c)) e)
+  else if Big_int.eq_big_int c (Big_int.big_int_of_int 1) then mk_pow (Var v) e
   else if Big_int.eq_big_int c (Big_int.big_int_of_int (-1)) then Opp (mk_pow (Var v) e)
-  else Const (Big_int c)
+  else failwith ("Failed to parse atomic: " ^ str)
 
 let mon_of_string str =
   let t = split_regexp "[\\*]" str in
