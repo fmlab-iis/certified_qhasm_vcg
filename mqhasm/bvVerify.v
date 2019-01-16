@@ -43,21 +43,42 @@ Ltac verify_program_safe_with o vs :=
       lazymatch goal with
       | |- forall s, bv64SSA.eval_bexp ?pre s ->
                      is_true (bv2z_program_safe_at ?prog s) =>
-        apply: (@eval_bexp_program_safe1 (ssa_vars empty_vmap vs));
+        time "bvVerify: verify_program_safe_with: apply theorem" (apply: (@eval_bexp_program_safe1 (ssa_vars empty_vmap vs)));
         [
           (* ssa_vars_unchanged_program *)
-          done
+          time "bvVerify: verify_program_safe_with: ssa_vars_unchanged_program" done
         |
           (* well_formed_ssa_program *)
-          done
+          time "bvVerify: verify_program_safe_with: well_formed_ssa_program" done
         |
           (* implication of QFBV64.eval_bexp *)
-          verify_qfbv_with o || fail 100 "Failed to prove bv2z_program_safe_at"
+          time "bvVerify: verify_program_safe_with: verify_qfbv_with" verify_qfbv_with o || fail 100 "bvVerify: failed to prove bv2z_program_safe_at"
         ]
-      | |- _ => fail 100 "Failed to prove bv2z_program_safe_at: goal does not match"
+      | |- _ => fail 100 "bvVerify: verify_program_safe_with: goal does not match"
       end in
   match b with
-  | true => time "verify_program_safe" (tac unit)
+  | true => time "bvVerify: verify_program_safe_with" (tac unit)
+  | false => tac unit
+  end.
+
+Ltac verify_spec_safe_with o ssa_vs :=
+  let b := constr:(opt_profiling o) in
+  let b := eval compute in b in
+  let tac _ :=
+      (* bv2z_spec_safe *)
+      time "bvVerify: verify_spec_safe_with: apply theorem" (apply: (@bv2z_spec_safe_qfbv1 ssa_vs));
+      [
+        (* well_formed_ssa_spec *)
+        time "bvVerify: verify_spec_safe_with: well_formed_ssa_spec" done
+      |
+        (* bv2z_spec_safe_qfbv *)
+        (match b with
+         | true => time "bvVerify: verify_spec_safe_with: verify_qfbv_with" (verify_qfbv_with o)
+         | false => (verify_qfbv_with o)
+         end) || fail 100 "bvVerify: verify_spec_safe_with: verify_qfbv_with fails"
+      ] in
+  match b with
+  | true => time "bvVerify: verify_spec_safe_with" (tac unit)
   | false => tac unit
   end.
 
@@ -68,18 +89,18 @@ Ltac verify_spec_rng_with o vs :=
   let tac _ :=
       match goal with
       | |- bv64SSA.valid_rspec ?s =>
-        apply: (@bexp_spec_sound_imp (bvSSA.ssa_vars bvSSA.empty_vmap vs));
+        time "bvVerify: verify_spec_rng_with: apply theorem" (apply: (@bexp_spec_sound_imp (bvSSA.ssa_vars bvSSA.empty_vmap vs)));
         [
           (* well_formed_ssa_spec *)
-          done
+          time "bvVerify: verify_spec_rng_with: well_formed_ssa_spec" done
         |
           (*  valid_bexp_spec_imp *)
-          verify_qfbv_with o || fail 100 "Failed to prove bv2z_spec_rng"
+          time "bvVerify: verify_spec_rng_with: verify_qfbv_with" verify_qfbv_with o || fail 100 "Failed to prove bv2z_spec_rng"
         ]
-      | |- _ => fail 100 "Failed to verify bv2z_spec_rng: goal does not match"
+      | |- _ => fail 100 "bvVerify: verify_spec_rng_with: goal does not match"
       end in
   match b with
-  | true => time "verify_spec_rng" (tac unit)
+  | true => time "bvVerify: verify_spec_rng_with" (tac unit)
   | false => tac unit
   end.
 
@@ -116,16 +137,17 @@ Ltac bv2zspec_to_poly_with o :=
   let tac _ :=
       lazymatch goal with
       | |- zSSA.valid_spec (bv2z_spec_eqn ?ssa_vs (bvSSA.ssa_spec ?spec)) =>
-        apply: (@zPoly.bexp_spec_sound ssa_vs);
+        time "bvVerify: bv2zspec_to_poly_with: apply theorem" (apply: (@zPoly.bexp_spec_sound ssa_vs));
         [ (* well_formed_ssa_spec *)
-          done
-        | bvzsimpl; rewrite_bv2z_consts; intros;
-          repeat (remove_exists_hyp || split_conj); clear_true
+          time "bvVerify: bv2zspec_to_poly_with: well_formed_ssa_spec" done
+        | time "bvVerify: bv2zspec_to_poly_with: simplify goal"
+               (bvzsimpl; rewrite_bv2z_consts; intros;
+                repeat (remove_exists_hyp || split_conj); clear_true)
         ]
-      | |- _ => fail 100 "Tactic bv2z_spec_to_poly fails: goal does not match"
+      | |- _ => fail 100 "bvVerify: bv2zspec_to_poly_with: goal does not match"
       end in
   match b with
-  | true => time "bv2zspec_to_poly" (tac unit)
+  | true => time "bvVerify: bv2zspec_to_poly_with" (tac unit)
   | false => tac unit
   end.
 
@@ -152,18 +174,8 @@ Ltac verify_bvdsl_with o vs :=
   | |- bv64DSL.valid_spec ?sp =>
     apply: ssa_spec_sound; apply: (@bv2z_spec_sound ssa_vs);
     [
-      (* bv2z_spec_safe *)
-      apply: (@bv2z_spec_safe_qfbv1 ssa_vs);
-      [
-        (* well_formed_ssa_spec *)
-        done
-      |
-        (* bv2z_spec_safe_qfbv *)
-        (match b with
-         | true => time "bv2z_spec_safe_qfbv" (verify_qfbv_with o)
-         | false => (verify_qfbv_with o)
-         end) || fail 100 "bv2z_spec_safe_qfbv fails"
-      ]
+      (* spec safe *)
+      verify_spec_safe_with o ssa_vs
     |
       (* valid bv2z_spec_rng *)
       verify_spec_rng_with o vs

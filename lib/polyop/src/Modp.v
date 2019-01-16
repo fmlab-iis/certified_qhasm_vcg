@@ -155,6 +155,11 @@ Fixpoint interpret t fv {struct t} : Z :=
 Ltac simplZ :=
   cbv beta iota zeta delta -[Zmult Zplus Zpower Z.pow_pos Zminus Z.opp Z.div Zmod].
 
+Ltac print_goal :=
+  match goal with
+    | |- ?x => idtac x
+  end.
+
 Ltac modp_find_witness_with eng :=
   match goal with
   | |- exists k : Z, ?p = k * ?c =>
@@ -163,8 +168,8 @@ Ltac modp_find_witness_with eng :=
     let ac := abstrait c l in
     pdiv_with eng ap ac ltac:(fun w =>
       let w := constr:(interpret w l) in
-      idtac "Witness:" w;
-      time "validate witness" (exists w; simplZ; ring)
+      idtac "PolyOp: Witness:" w;
+      time "PolyOp: validate witness" (exists w; simplZ; idtac "PolyOp: goal before ring"; print_goal; time "PolyOp: ring" ring)
     )
   end.
 

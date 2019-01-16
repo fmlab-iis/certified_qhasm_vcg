@@ -462,7 +462,7 @@ Ltac gbarith_with o :=
         | _ => fail 100 "No Groebner basis engine is selected."
         end in
     match b with
-    | true => time "gbarith" (gbarith_choice a)
+    | true => time "zVerify: gbarith" (gbarith_choice a)
     | false => gbarith_choice a
     end
   | |- _ =>
@@ -473,7 +473,7 @@ Ltac gbarith_with o :=
         | _ => fail 100 "No polynomial engine is selected."
         end in
     match b with
-    | true => time "modp_find_witness" (modp_find_witness_with a)
+    | true => time "zVerify: modp_find_witness" (modp_find_witness_with a)
     | false => modp_find_witness_with a
     end
   end.
@@ -484,12 +484,12 @@ Ltac nsatz_with o :=
   match goal with
   | H : _ = _ |- _ =>
     match b with
-    | true => time "nsatz" nsatz
+    | true => time "zVerify: nsatz" nsatz
     | false => nsatz
     end
   | |- _ =>
     match b with
-    | true => time "ring" ring
+    | true => time "zVerify: ring" ring
     | false => ring
     end
   end.
