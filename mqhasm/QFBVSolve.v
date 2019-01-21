@@ -2,7 +2,7 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat.
 From Common Require Import Arch Var Bits Nats SsrOrdered FSets Store.
-From mQhasm Require Import bvDSL bvSSA bvSSA2zSSA QFBV bvSSA2QFBV.
+From mQhasm Require Import Options bvDSL bvSSA bvSSA2zSSA QFBV bvSSA2QFBV.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -310,26 +310,42 @@ Ltac abs :=
   | |- ?g => abs_imp g
   end.
 
-Ltac solve_simp_with s f k :=
-  let id := fresh in
-  ((solve_simp_ml s id f || fail 100 "Failed to solve on the OCaml side: " f);
-  let res := eval compute in id in
-  k res).
+Ltac get_smt_solver o :=
+  let a := constr:((opt_z3 o, opt_boolector o)) in
+  let a := eval compute in a in
+  let a :=
+      match a with
+      | (true, _) => Z3
+      | (_, true) => Boolector
+      | _ => fail 100 "No SMT solver is selected."
+      end in
+  a.
 
-Ltac solve_simp f k :=
-  solve_simp_with Z3 f k || solve_simp_with Boolector f k.
+Ltac solve_simp_with o f k :=
+  let id := fresh in
+  let s := get_smt_solver o in
+  let isafety := constr:(opt_isafety o) in
+  let isafety := eval compute in isafety in
+  let jobs := constr:(opt_jobs o) in
+  let jobs := eval compute in jobs in
+      (
+        (solve_simp_ml s isafety jobs id f
+         || fail 100 "Failed to solve on the OCaml side: " f);
+        let res := eval compute in id in
+            k res).
+
+Ltac solve_simp f k := solve_simp_with default_options f k.
 
 Axiom valid_simp : forall P : Prop, P.
 
-Ltac solve_qfbv_with s :=
+Ltac solve_qfbv_with o :=
   bvsimpl; intro;
   let f := abs in
-  solve_simp_with s f ltac:(fun res =>
+  solve_simp_with o f ltac:(fun res =>
     match res with
     | true => exact: valid_simp
     | false => fail "Invalid QF_BV formula"
     end
   ).
 
-Ltac solve_qfbv :=
-  solve_qfbv_with Z3 || solve_qfbv_with Boolector.
+Ltac solve_qfbv := solve_qfbv_with default_options.

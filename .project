@@ -50,8 +50,7 @@ mqhasm/QFBV.v
 mqhasm/qf_bv.mli
 mqhasm/qf_bv.ml
 mqhasm/qf_bv_tactic.ml4
-mqhasm/qf_bv_plugin_mod.ml
-mqhasm/qf_bv_plugin.mllib
+mqhasm/qf_bv_plugin.mlpack
 mqhasm/QFBVSolve.v
 mqhasm/bvDSL.v
 mqhasm/bvSSA.v

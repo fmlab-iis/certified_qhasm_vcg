@@ -18,22 +18,8 @@ Definition bvspec : Type := (VS.t * bv64DSL.spec).
 Definition valid_bvspec (s : bvspec) : Prop :=
   bv64DSL.well_formed_spec (fst s) (snd s) /\ bv64DSL.valid_spec (snd s).
 
-
-
-Ltac get_smt_solver o :=
-  let a := constr:((opt_z3 o, opt_boolector o)) in
-  let a := eval compute in a in
-  let a :=
-      match a with
-      | (true, _) => QFBVSolve.Z3
-      | (_, true) => QFBVSolve.Boolector
-      | _ => fail 100 "No SMT solver is selected."
-      end in
-  a.
-
 Ltac verify_qfbv_with o :=
-  let a := get_smt_solver o in
-  bvsimpl; solve_qfbv_with a.
+  bvsimpl; solve_qfbv_with o.
 
 (* Prove that program is safe. *)
 Ltac verify_program_safe_with o vs :=

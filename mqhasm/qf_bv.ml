@@ -5,6 +5,7 @@ open Set
 open Map
 open Unix
 open Names
+open Lwt.Infix
 
 let qfbv () = "qfbv"
 
@@ -28,7 +29,9 @@ type solver = Z3 | Boolector
 
 let default_solver = Z3
 
+let split_conj = ref true
 
+let jobs = ref 2
 
 (* ------------------------------------------------------------------------- *)
 (*  Debugging                                                                *)
@@ -41,14 +44,28 @@ let unix s =
   if r = r then ()
   else ()
 
+let unix_lwt cmd =
+  Lwt_unix.system cmd
+
 let init_trace () =
   unix ("echo \"\" > " ^ dbgdir ^ "/log_qfbv")
 
 let trace s =
   unix ("echo \"" ^ s ^ "\n\" >> " ^ dbgdir ^ "/log_qfbv")
 
+let trace_lwt s =
+  unix_lwt ("echo \"" ^ s ^ "\n\" >> " ^ dbgdir ^ "/log_qfbv")
+
 let fail s =
   trace s; failwith s
+
+let fail_lwt s =
+  trace s; failwith s
+
+let mutex = Lwt_mutex.create ()
+
+let lock_log () = Lwt_mutex.lock mutex
+let unlock_log () = Lwt_mutex.unlock mutex
 
 let pp_constr fmt x = Pp.pp_with fmt (Printer.pr_constr x)
 
@@ -571,7 +588,7 @@ let rec vars_bexp e =
   | Subo (_, e1, e2)
   | Mulo (_, e1, e2) -> VM.merge mvars (vars_exp e1) (vars_exp e2)
   | Lneg e -> vars_bexp e
-  | Conj (e1, e2) 
+  | Conj (e1, e2)
   | Disj (e1, e2) -> VM.merge mvars (vars_bexp e1) (vars_bexp e2)
 
 let rec vars_imp es =
@@ -588,10 +605,14 @@ let coq_boolector = 2
 
 let convert_coq_solver (v : Globnames.global_reference) : solver =
   match v with
-  | Globnames.ConstructRef ((ind, _), idx) when Names.MutInd.to_string ind = "mQhasm.QFBVSolve.solver" ->
+  | Globnames.ConstructRef ((ind, _), idx)
+       when Names.MutInd.to_string ind = "mQhasm.QFBVSolve.solver"
+            || Names.MutInd.to_string ind = "Top.solver" ->
      if idx = coq_z3 then Z3
      else if idx = coq_boolector then Boolector
      else fail "Unknown solver."
+  | Globnames.ConstructRef ((ind, _), idx) ->
+     fail ("Found construct ref: " ^ Names.MutInd.to_string ind)
   | Globnames.ConstRef cr ->
      begin
      match Global.body_of_constant cr with
@@ -603,6 +624,32 @@ let convert_coq_solver (v : Globnames.global_reference) : solver =
      end
   | _ -> fail "Solver is not of type mQhasm.QFBVSolve.solver."
 
+let rec osolver_of_csolver e : solver =
+  if Constr.isConst e then
+    match Global.body_of_constant (Univ.out_punivs (Constr.destConst e)) with
+      None -> fail "Failed to find the definition of constant."
+    | Some (e', _) -> osolver_of_csolver e'
+  else if Constr.equal e (Lazy.force CoqQFBV._Boolector) then Boolector
+  else if Constr.equal e (Lazy.force CoqQFBV._Z3) then Z3
+  else let _ = trace "lala" in fail "lala"
+  (*
+  else
+    try
+      let (constructor, args) = Constr.destApp e in
+      if Constr.equal constructor (Lazy.force CoqQFBV._sbvUlt) then Ult (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUle) then Ule (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUgt) then Ugt (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvUge) then Uge (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvEq) then Eq (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvAddo) then Addo (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvSubo) then Subo (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvMulo) then Mulo (oint_of_cnat args.(0), oexp_of_cexp args.(1), oexp_of_cexp args.(2))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvLneg) then Lneg (obexp_of_cbexp args.(0))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvConj) then Conj (obexp_of_cbexp args.(0), obexp_of_cbexp args.(1))
+      else if Constr.equal constructor (Lazy.force CoqQFBV._sbvDisj) then Disj (obexp_of_cbexp args.(0), obexp_of_cbexp args.(1))
+      else fail "Not a valid sbexp (2)."
+    with destKO -> fail "Not a valid sbexp (1)."
+   *)
 
 
 (* ------------------------------------------------------------------------- *)
@@ -1007,10 +1054,27 @@ let run_z3 ifile ofile =
   unix ("cat " ^ ofile ^ " >>  " ^ dbgdir ^ "/log_qfbv");
   trace ""
 
+let run_z3_lwt ifile ofile =
+  let t1 = Unix.gettimeofday() in
+  let%lwt _ = unix_lwt (z3_path ^ " -smt2 -nw " ^ ifile ^ " 1> " ^ ofile ^ " 2>/dev/null") in
+  let t2 = Unix.gettimeofday() in
+  let%lwt _ = lock_log () in
+  let%lwt _ = trace_lwt ("Execution time of Z3: " ^ string_of_float (t2 -. t1) ^ " seconds") in
+  let%lwt _ = trace_lwt "OUTPUT FROM Z3:" in
+  let%lwt _ = unix_lwt ("cat " ^ ofile ^ " >>  " ^ dbgdir ^ "/log_qfbv") in
+  let%lwt _ = trace_lwt "" in
+  let _ = unlock_log () in
+  Lwt.return_unit
+
 let string_of_sat_engine e =
   match e with
   | Lingeling -> "lingeling"
   | Minisat -> "minisat"
+
+let string_of_solver e =
+  match e with
+  | Z3 -> "Z3"
+  | Boolector -> "Boolectoe"
 
 let run_boolector ifile ofile =
   let t1 = Unix.gettimeofday() in
@@ -1026,6 +1090,22 @@ let run_boolector ifile ofile =
   unix ("cat " ^ ofile ^ " >>  " ^ dbgdir ^ "/log_qfbv");
   trace ""
 
+let run_boolector_lwt ifile ofile =
+  let t1 = Unix.gettimeofday() in
+  let%lwt _ =
+    if !use_btor then
+      unix_lwt (boolector_path ^ " -SE " ^ string_of_sat_engine !sat_engine ^ " " ^ ifile ^ " 1> " ^ ofile ^ " 2>/dev/null")
+    else
+      unix_lwt (boolector_path ^ " --smt2 -SE " ^ string_of_sat_engine !sat_engine ^ " " ^ ifile ^ " 1> " ^ ofile ^ " 2>/dev/null") in
+  let t2 = Unix.gettimeofday() in
+  let%lwt _ = lock_log () in
+  let%lwt _ = trace_lwt ("Execution time of Boolector: " ^ string_of_float (t2 -. t1) ^ " seconds") in
+  let%lwt _ = trace_lwt "OUTPUT FROM Boolector:" in
+  let%lwt _ = unix_lwt ("cat " ^ ofile ^ " >>  " ^ dbgdir ^ "/log_qfbv") in
+  let%lwt _ = trace_lwt "" in
+  let _ = unlock_log () in
+  Lwt.return_unit
+
 let read_output file =
   (* read the output *)
   let line = ref "" in
@@ -1039,23 +1119,115 @@ let read_output file =
   (* parse the output *)
   String.trim !line = "unsat"
 
-let solve_simp ?solver:solver f =
-  let s =
-    match solver with
-    | None -> default_solver
-    | Some s -> s in
+let read_output_lwt file =
+  (* read the output *)
+  let line = ref "" in
+  let%lwt ch = Lwt_io.open_file Lwt_io.input file in
+  let%lwt line =
+    try%lwt
+      Lwt_io.read_line ch
+    with _ ->
+      fail_lwt "Failed to read the output file" in
+  let%lwt _ = Lwt_io.close ch in
+  (* parse the output *)
+  Lwt.return (String.trim line = "unsat")
+
+let rec bexp_split_conj e =
+  match e with
+  | False | True
+  | Ult _ | Ule _ | Ugt _ | Uge _
+  | Eq _
+  | Addo _ | Subo _ | Mulo _
+  | Lneg _ -> [e]
+  | Conj (e1, e2) -> (bexp_split_conj e1)@(bexp_split_conj e2)
+  | Disj _ -> [e]
+
+let imp_split_conj es =
+  let (premises_rev, goal) =
+    match List.rev es with
+    | g::ps -> (ps, g)
+    | _ -> fail "imp is empty" in
+  let gs = bexp_split_conj goal in
+  List.map (fun g -> List.rev (g::premises_rev)) gs
+
+let solve_simp_one s f =
   let ifile = Filename.temp_file "inputqfbv_" "" in
   let ofile = Filename.temp_file "outputqfbv_" "" in
-  let g = oimp_of_cimp f in
   let res =
     match s with
     | Z3 ->
-       let _ = smtlib2_write_input ifile g in
+       let _ = smtlib2_write_input ifile f in
        let _ = run_z3 ifile ofile in
        read_output ofile
     | Boolector ->
        let _ =
-         if !use_btor then btor_write_input ifile g else smtlib2_write_input ifile g in
+         if !use_btor then btor_write_input ifile f else smtlib2_write_input ifile f in
        let _ = run_boolector ifile ofile in
        read_output ofile in
-  cbool_of_obool res
+  res
+
+let solve_simp_one_lwt s f =
+  let ifile = Filename.temp_file "inputqfbv_" "" in
+  let ofile = Filename.temp_file "outputqfbv_" "" in
+  let res =
+    match s with
+    | Z3 ->
+       let _ = smtlib2_write_input ifile f in
+       let%lwt _ = run_z3_lwt ifile ofile in
+       let%lwt res = read_output_lwt ofile in
+       Lwt.return res
+    | Boolector ->
+       let _ =
+         if !use_btor then btor_write_input ifile f else smtlib2_write_input ifile f in
+       let%lwt _ = run_boolector_lwt ifile ofile in
+       let%lwt res = read_output_lwt ofile in
+       Lwt.return res in
+  res
+
+let work_on_pending delivered_helper res pending =
+  let (delivered, promised) = Lwt_main.run (Lwt.nchoose_split pending) in
+  let res' = List.fold_left delivered_helper res delivered in
+  (res', promised)
+
+let rec finish_pending delivered_helper res pending =
+  match pending with
+  | [] -> res
+  | _ -> let (res', pending') = work_on_pending delivered_helper res pending in
+         finish_pending delivered_helper res' pending'
+
+let solve_simp_seq s imps =
+  List.for_all (fun imp -> solve_simp_one s imp) imps
+
+let solve_simp_lwt s imps =
+  let mk_promise imp =
+    let solve = solve_simp_one_lwt s imp in
+    let%lwt solve_res = solve in
+    Lwt.return solve_res in
+  let delivered_helper r ret = r && ret in
+  let fold_fun (res, pending) imp =
+    if res then
+      if List.length pending < !jobs then
+        let promise = mk_promise imp in
+        (res, promise::pending)
+      else
+        let (res', pending') = work_on_pending delivered_helper res pending in
+        let promise = mk_promise imp in
+        (res', promise::pending')
+    else
+      (finish_pending delivered_helper res pending, [])
+ in
+  let (res, pending) = List.fold_left fold_fun (true, []) imps in
+  finish_pending delivered_helper res pending
+
+let solve_simp ?solver:solver imp =
+  let s =
+    match solver with
+    | None -> default_solver
+    | Some s -> s in
+  let imps =
+    if !split_conj then imp_split_conj imp
+    else [imp] in
+  let res =
+    if !jobs > 1 then solve_simp_lwt s imps
+    else solve_simp_seq s imps in
+  res
