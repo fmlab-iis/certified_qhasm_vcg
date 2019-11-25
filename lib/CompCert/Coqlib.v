@@ -1254,7 +1254,7 @@ Qed.
 Definition proj_sumbool (P Q: Prop) (a: {P} + {Q}) : bool :=
   if a then true else false.
 
-Implicit Arguments proj_sumbool [P Q].
+Arguments proj_sumbool [P Q].
 
 Coercion proj_sumbool: sumbool >-> bool.
 

@@ -1,5 +1,5 @@
 
-From Coq Require Import BinNums.
+From Coq Require Import BinNums ZArith.
 From mathcomp Require Import ssreflect ssrbool seq.
 
 Set Implicit Arguments.
@@ -60,7 +60,7 @@ Definition default_options : verify_options :=
      opt_singular := true;
      opt_magma := false;
      opt_isafety := false;
-     opt_jobs := 1;
+     opt_jobs := 1%positive;
      opt_profiling := true |}.
 
 Inductive bool_flag : Set :=
