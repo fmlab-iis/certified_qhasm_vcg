@@ -884,7 +884,7 @@ Section BitsLemmas.
         move: m Hi0 Hin Hlt1 => {p} m Hi0 Hin Hlt1.
         rewrite -{2}(subnK (ltnW Hin)). rewrite expnD.
         move: (expn2_gt0 (n - i)) => Hlt2.
-        rewrite -(muln_modr Hlt2). rewrite (mulKn _ Hlt2). reflexivity.
+        rewrite -muln_modr. rewrite (mulKn _ Hlt2). reflexivity.
       + move/negP/idP: Hin. rewrite -leqNgt => Hni.
         rewrite (eqP Hni) expn0 divn1.
         case: n p Hni.
@@ -1997,7 +1997,7 @@ Section BitsLemmas.
                         (Z.le_ge _ _ (Nat2Z.is_nonneg i))).
     rewrite (Z.mul_comm (2^Z.of_nat(n-i)) (2^Z.of_nat i)) Z.mul_assoc.
     rewrite Z.add_comm Z_mod_plus_full.
-    rewrite {1}Hn expnD -(muln_modl (expn2_gt0 i)) (mulnK _ (expn2_gt0 i)).
+    rewrite {1}Hn expnD -muln_modl (mulnK _ (expn2_gt0 i)).
     have Hne: (2 ^ (n - i))%N != 0%N. { rewrite -lt0n. exact: expn2_gt0. }
     rewrite (Nat2Z_inj_modn _ Hne) expn_pow Nat2Z_inj_pow.
     reflexivity.

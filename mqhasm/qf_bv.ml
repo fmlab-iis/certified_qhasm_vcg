@@ -1074,7 +1074,7 @@ let string_of_sat_engine e =
 let string_of_solver e =
   match e with
   | Z3 -> "Z3"
-  | Boolector -> "Boolectoe"
+  | Boolector -> "Boolector"
 
 let run_boolector ifile ofile =
   let t1 = Unix.gettimeofday() in
