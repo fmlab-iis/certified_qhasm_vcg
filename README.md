@@ -1,9 +1,9 @@
 
 # Compilation Instructions #
 
-1. Install (opam)[https://opam.ocaml.org].
+1. Install [opam](https://opam.ocaml.org).
    Follow the instructions in the
-   (installation page)[https://opam.ocaml.org/doc/Install.html].
+   [installation page](https://opam.ocaml.org/doc/Install.html).
 
 2. Configure opam.
 ```

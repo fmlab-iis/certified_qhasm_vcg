@@ -9,4 +9,5 @@
 -I .
 -I lib/polyop/src
 -I lib/gbarith/src
+-I lib/coq-bits/src
 -I mqhasm

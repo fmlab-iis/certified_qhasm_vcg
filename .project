@@ -10,6 +10,7 @@
 -I .
 -I lib/gbarith/src
 -I lib/polyop/src
+-I lib/coq-bits/src
 # 3rd Party Libraries
 lib/CompCert/Coqlib.v
 lib/CompCert/Integers.v
